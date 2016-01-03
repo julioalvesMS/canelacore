@@ -1,0 +1,13 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import shelve
+
+s = shelve.open("options.txt")
+
+s["card"] = "Cartão"
+s["ucard"] = u"Cartão"
+s["money"] = "Dinheiro"
+s["umoney"] = u"Dinheiro"
+
+s.close()
