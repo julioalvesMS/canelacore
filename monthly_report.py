@@ -115,7 +115,8 @@ class Report(wx.Frame):
                             k = s['spent'][u]
                             t1 += k['value']
                         s.close()
-                except KeyError:
+                        # TODO - Arrumar as exceções. Para testar deletar a linha abaixo.Acontece quando carrega as informações da janela dessa função.
+                except ValueError or KeyError:
                     pass
         pr1 = []
         pr2 = []

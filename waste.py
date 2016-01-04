@@ -98,7 +98,7 @@ class Waste(wx.Frame):
         dialogs.Ask(self, u"Sair", 91)
 
     def ask_end(self, event):
-        dialogs.Ask(self, u"Finalizar Registro", 3)
+        dialogs.Ask(self, u"Finalizar Registro", 13)
 
     def clean(self):
         self.textbox_description.Clear()
@@ -168,5 +168,5 @@ class Waste(wx.Frame):
         day_data.close()
         dialogs.Confirmation(self, u"Sucesso", 3)
 
-    def exit(self):
+    def exit(self, event):
         self.Close()
