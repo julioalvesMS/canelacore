@@ -25,6 +25,7 @@ import sale
 import settings
 import transactions
 import waste
+import teste
 
 __author__ = 'Julio'
 
@@ -95,7 +96,7 @@ class Base(wx.Frame):
                                 u"Recuperação", (120, 0), size=(120, 60))
         j = GenBitmapTextButton(part3, 16, wx.Bitmap(core.directory_paths['icons'] + 'Save.png', wx.BITMAP_TYPE_PNG),
                                 u"Backup", (240, 0), size=(120, 60))
-        # k = GenBitmapTextButton(self, 21, wx.Bitmap(core.directory_paths['icons'] + 'system-users.png', wx.BITMAP_TYPE_PNG), u"Programar Venda", (0, 0), size=(180, 60))
+        k = GenBitmapTextButton(self, 21, wx.Bitmap(core.directory_paths['icons'] + 'system-users.png', wx.BITMAP_TYPE_PNG), u"Teste SAT", (0, 0), size=(180, 60))
         GenBitmapTextButton(part4, 98, wx.Bitmap(core.directory_paths['icons'] + 'Down.png', wx.BITMAP_TYPE_PNG),
                             u"Minimizar", (0, 0), size=(120, 50))
         GenBitmapTextButton(part4, 99, wx.Bitmap(core.directory_paths['icons'] + 'Exit.png', wx.BITMAP_TYPE_PNG),
@@ -112,7 +113,7 @@ class Base(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.open_delivery_manager, id=18)
         self.Bind(wx.EVT_BUTTON, self.open_inventory_manager, id=19)
         self.Bind(wx.EVT_BUTTON, self.verify_credentials, id=20)
-        # self.Bind(wx.EVT_BUTTON, self.win15, id=21)
+        self.Bind(wx.EVT_BUTTON, self.open_teste_window, id=21)
         self.Bind(wx.EVT_BUTTON, self.open_settings, id=42)
         self.Bind(wx.EVT_BUTTON, self.hide_to_tray, id=98)
         self.Bind(wx.EVT_BUTTON, self.ask_exit, id=99)
@@ -338,6 +339,9 @@ class Base(wx.Frame):
 
     def open_settings(self, event):
         settings.SettingsMenu(self)
+
+    def open_teste_window(self, event):
+        teste.Teste(self)
 
 
 """
