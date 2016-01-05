@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 
 ###########################################################################
 ## Python code generated with wxFormBuilder (version Jun 17 2015)
@@ -14,6 +14,7 @@ from satcfe import ClienteSATLocal
 import os
 import sys
 import ctypes
+import random
 
 ###########################################################################
 ## Class MyFrame2
@@ -52,23 +53,14 @@ class Teste ( wx.Frame ):
     def __del__( self ):
         pass
 
-
     def getScriptPath(self):
         return os.path.dirname(os.path.realpath(sys.argv[0]))
 
     def funcao_teste(self):
-
-        print("BEFORE\n")
 
         cliente = ClienteSATLocal(BibliotecaSAT(self.getScriptPath() + '\SAT.dll'),
                                   codigo_ativacao='12345678')
 
         resposta = cliente.consultar_sat()
 
-        print('OI BR')
-        #print(resposta.mensagem)
-
-        #resposta = cliente.consultar_sat()
-
-
-        #print(resposta.mensagem)
+        print(resposta.mensagem)

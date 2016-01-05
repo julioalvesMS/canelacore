@@ -18,6 +18,7 @@
 #
 
 import locale
+import ctypes
 
 
 def digitos(valor):
@@ -83,10 +84,19 @@ def forcar_unicode(arg):
         TypeError: ...
 
     """
+    # DEBUG - VITOR
+    """" MODIFIQUEI O CODIGO AQUI. MUDEI:
+         ORIGINAL -
+             if isinstance(arg, unicode):
+                 return arg
+            elif isinstance(arg, str):
+                return arg.decode('utf-8')
+    """
     if isinstance(arg, unicode):
         return arg
     elif isinstance(arg, str):
-        return arg.decode('utf-8')
+        return arg.decode('latin-1')
+
 
     raise TypeError(
             'Expected unicode or str; got {!r} ({!r})'.format(arg, type(arg)))

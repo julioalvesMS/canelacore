@@ -86,6 +86,9 @@ class BibliotecaSAT(object):
         :raises ValueError: Se a convenção de chamada não puder ser determinada
             ou se não for um valor válido.
         """
+
+        """ DEBUG - CODIGO ORIGINAL ! - VITOR """
+        """
         if self._convencao is None:
             if self._caminho.endswith(('.DLL', '.dll')):
                 self._convencao = constantes.WINDOWS_STDCALL
@@ -97,6 +100,19 @@ class BibliotecaSAT(object):
 
         elif self._convencao == constantes.WINDOWS_STDCALL:
             loader = ctypes.WinDLL
+        """
+
+        if self._convencao is None:
+            if self._caminho.endswith(('.DLL', '.dll')):
+                self._convencao = constantes.STANDARD_C
+            else:
+                self._convencao = constantes.STANDARD_C
+
+        if self._convencao == constantes.STANDARD_C:
+            loader = ctypes.CDLL
+
+        elif self._convencao == constantes.WINDOWS_STDCALL:
+            loader = ctypes.CDLL
 
         else:
             raise ValueError('Convencao de chamada desconhecida: {!r}'.format(
@@ -354,6 +370,7 @@ class FuncoesSAT(object):
         :return: Retorna *verbatim* a resposta da função SAT.
         :rtype: string
         """
+
         return self.invocar__ConsultarSAT(self.gerar_numero_sessao())
 
 
