@@ -32,7 +32,9 @@ __author__ = 'Julio'
 
 class Base(wx.Frame):
 
+    backup_enabled = False
     backup_running = False
+
     logo = None
     panel_logo = None
     background_image = None
@@ -163,7 +165,7 @@ class Base(wx.Frame):
         wx.PaintDC(self.panel_logo).DrawBitmap(self.logo, 0, 0)
 
     def backup(self, event):    # TODO Fazer a thread fechar direito com o resto do app
-        if self.backup_running:
+        if self.backup_running or not self.backup_enabled:
             return
         back = threading.Thread(target=self.__backup__, args=[True if event else False])
         back.setDaemon(True)
@@ -193,10 +195,10 @@ class Base(wx.Frame):
                 files.sort()
                 files.reverse()
                 p = len(files)
-                while p > 100:
+                while p > 20:
                     os.remove(root + core.slash + files[p - 1])
                     p -= 1
-            self.timer_backup = threading.Timer(1800000.0, self.__backup__)
+            self.timer_backup = threading.Timer(2*3600*1000, self.__backup__)
             self.timer_backup.start()
             if called:
                 wx.CallAfter(self.backup_confirmation)
