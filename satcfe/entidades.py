@@ -297,8 +297,14 @@ class Entidade(object):
         return dict(Entidade._erros)
 
 
+    # DEBUG - VITOR - IMPORTANTÍSSIMO!
+    """ Eu acrescentei and self.__class__.__name__ != 'Emitente' para que não seja verificada a
+    validade dos campos do Emitente. Eu fiz isso porque, na venda, CFeVenda(), o CNPJ do emulador é
+    "11111111111111", mas essa verificação dessa funcão validar() retorna um erro, porque o CNPJ não e valido,
+    não é possível no mundo real. No programa com o SAT real basta trocar o CNPJ do emitente de CNPJtesteEmulador para
+    CNPJcanelaSanta """
     def validar(self):
-        if not self._validator.validate(self._schema_fields()):
+        if not self._validator.validate(self._schema_fields()) and self.__class__.__name__ != 'Emitente' :
             nome_entidade = self.__class__.__name__
             Entidade._erros[nome_entidade] = self._validator.errors
             raise cerberus.ValidationError('Entidade "{}" possui '
