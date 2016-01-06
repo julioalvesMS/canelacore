@@ -7,16 +7,13 @@
 ## PLEASE DO "NOT" EDIT THIS FILE!
 ###########################################################################
 from ctypes import c_float
-
 import wx
 import wx.xrc
 from decimal import Decimal
-
 from satcfe import BibliotecaSAT
 from satcfe import ClienteSATLocal
 import os
 import sys
-
 from satcfe.entidades import CFeVenda, Emitente, Detalhamento, ProdutoServico, Imposto, PISSN, ICMSSN102, COFINSSN, \
     Destinatario, LocalEntrega, MeioPagamento
 from satcomum import constantes
@@ -66,14 +63,17 @@ class Teste(wx.Frame):
         codigo_ativacao = '12345678'
         cliente = ClienteSATLocal(BibliotecaSAT(self.getScriptPath() + '\SAT.dll'),
                                   codigo_ativacao)
-
+        CNPJcanelaSanta = '16678899000136'
         cfe = CFeVenda(
-            CNPJ='08427847000169',
+            CNPJ='47012271000120',
             signAC=constantes.ASSINATURA_AC_TESTE,
             numeroCaixa=2,
             emitente=Emitente(
-                CNPJ='61099008000141',
-                IE='111111111111'),
+            CNPJ=CNPJcanelaSanta,
+            IE='111222333444',
+            IM='123456789012345',
+            cRegTribISSQN='1',
+            indRatISSQN='S'),
             destinatario=Destinatario(
                 CPF='11122233396',
                 xNome=u'João de Teste'),
