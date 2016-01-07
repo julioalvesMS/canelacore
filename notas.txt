@@ -1,1 +1,1 @@
-- lembrar de pesquisar o que é aquela parada de eCNPJ ICP-brasil que tem no manual do SAT EJ
+- documentar a sat.py especificando todas as entradas e como as funções devem ser usadas.

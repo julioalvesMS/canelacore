@@ -25,7 +25,7 @@ import sale
 import settings
 import transactions
 import waste
-import teste
+import sat
 
 __author__ = 'Julio'
 
@@ -343,7 +343,7 @@ class Base(wx.Frame):
         settings.SettingsMenu(self)
 
     def open_teste_window(self, event):
-        teste.Teste(self)
+        sat.Teste(self)
 
 
 """
