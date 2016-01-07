@@ -23,9 +23,9 @@ import monthly_report
 import record_editor
 import sale
 import settings
+import teste
 import transactions
 import waste
-import sat
 
 __author__ = 'Julio'
 
@@ -98,7 +98,7 @@ class Base(wx.Frame):
                                 u"Recuperação", (120, 0), size=(120, 60))
         j = GenBitmapTextButton(part3, 16, wx.Bitmap(core.directory_paths['icons'] + 'Save.png', wx.BITMAP_TYPE_PNG),
                                 u"Backup", (240, 0), size=(120, 60))
-        k = GenBitmapTextButton(self, 21, wx.Bitmap(core.directory_paths['icons'] + 'system-users.png', wx.BITMAP_TYPE_PNG), u"Teste SAT", (0, 0), size=(180, 60))
+        k = GenBitmapTextButton(self, 21, wx.Bitmap(core.directory_paths['icons'] + 'system-users.png', wx.BITMAP_TYPE_PNG), u"Teste", (0, 0), size=(180, 60))
         GenBitmapTextButton(part4, 98, wx.Bitmap(core.directory_paths['icons'] + 'Down.png', wx.BITMAP_TYPE_PNG),
                             u"Minimizar", (0, 0), size=(120, 50))
         GenBitmapTextButton(part4, 99, wx.Bitmap(core.directory_paths['icons'] + 'Exit.png', wx.BITMAP_TYPE_PNG),
@@ -343,7 +343,7 @@ class Base(wx.Frame):
         settings.SettingsMenu(self)
 
     def open_teste_window(self, event):
-        sat.Teste(self)
+        teste.Teste(self)
 
 
 """

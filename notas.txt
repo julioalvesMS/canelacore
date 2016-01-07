@@ -1,1 +1,45 @@
-- documentar a sat.py especificando todas as entradas e como as funções devem ser usadas.
+- documentar a sat.py especificando todas as entradas e como as funções devem ser usadas. As saidas (respostas) tambem devem ser documentadas.
+
+
+
+
+    destinatario=Destinatario(
+            CPF='11122233396',
+            xNome=u'João de Teste')
+
+    entrega=LocalEntrega(
+            xLgr='Rua Armando Gulim',
+            nro='65',
+            xBairro=u'Parque Glória III',
+            xMun='Catanduva',
+            UF='SP')
+
+    detalhamentos=[
+            Detalhamento(
+                produto=ProdutoServico(
+                    cProd='123456',
+                    xProd='BORRACHA STAEDTLER pvc-free',
+                    CFOP='5102',
+                    uCom='UN',
+                    qCom=Decimal('1.0000'),
+                    vUnCom=Decimal('5.75'),
+                    indRegra='A'),
+                imposto=Imposto(
+                    icms=ICMSSN102(Orig='2', CSOSN='500'),
+                    pis=PISSN(CST='49'),
+                    cofins=COFINSSN(CST='49'))),
+        ]
+
+    descontos_acrescimos_subtotal = DescAcrEntr(
+        vDescSubtot=Decimal('0.01'),
+        vAcresSubtot=Decimal('0.02'),
+        vCFeLei12741=Decimal('0.03'))
+
+    pagamentos = [
+            MeioPagamento(
+                cMP=constantes.WA03_DINHEIRO,
+                vMP=Decimal('10.00')),
+        ]
+
+
+    informacoes_adicionais = InformacoesAdicionais(infCpl='Teste')
