@@ -57,8 +57,6 @@ class Report(wx.Frame):
 
         self.setup_gui()
 
-        self.setup_options()
-
         self.setup(None)
 
         self.Show()
@@ -349,18 +347,17 @@ class Report(wx.Frame):
                                                style=wx.CB_READONLY)
         self.combobox_day_option.Bind(wx.EVT_COMBOBOX, self.setup)
         if len(self.month_options) != 0:
-            self.combobox_day_option.SetValue(self.month_options[0])
+            self.combobox_day_option.SetSelection(0)
 
     def setup(self, event): # TODO Fazer a thread fechar direito com o resto do app
         self.combobox_day_option.Disable()
         rest = threading.Thread(target=self.__setup__)
-        rest.daemon = True
         rest.start()
 
     def __setup__(self):
         if self.combobox_day_option.GetValue() != u'':
             self.clean()
-            self.day_file = self.months_files[self.combobox_day_option.GetSelection()]
+            self.day_file = self.months_files[self.combobox_day_option.GetCurrentSelection()]
             day_data = shelve.open(core.directory_paths['saves'] + self.day_file)
             root = self.list_sales.AddRoot("Vendas de " + self.combobox_day_option.GetValue())
             self.list_sales.SetItemFont(root, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
@@ -380,7 +377,7 @@ class Report(wx.Frame):
                 try:
                     for n in range(0, len(day_data["sales"][i]['descriptions'])):
                         pan = (day_data["sales"][i]['descriptions'][n])
-                        a = self.list_sales.AppendItem(sold, core.accents_remove(pan))
+                        a = self.list_sales.AppendItem(sold, pan)
                         self.list_sales.SetItemText(a, str(day_data["sales"][i]['amounts'][n]), 1)
                         self.list_sales.SetItemText(a, (
                             "R$ " + core.good_show("money", str(day_data["sales"][i]['prices'][n]))).replace(".", ","),
@@ -405,6 +402,7 @@ class Report(wx.Frame):
                 elif day_data["sales"][i]['payment'] == u"Cartão":
                     card_amount += 1
                     card_value += float(day_data["sales"][i]['value'])
+
             self.list_sales.SetItemText(root, str(sales_amount), 1)
             self.list_sales.SetItemText(root, ("R$ " + core.good_show("money", str(sales_value))).replace(".", ","), 3)
             self.list_sales.Expand(root)
@@ -416,8 +414,7 @@ class Report(wx.Frame):
             for i in day_data["spent"]:
                 hour = day_data["spent"][i]['time']
                 val = float(day_data["spent"][i]['value'])
-                paran = (day_data["spent"][i]['description'])
-                des = core.accents_remove(paran)
+                des = (day_data["spent"][i]['description'])
                 expenses_amount += 1
                 expenses_value += val
                 golf = self.list_expenses.AppendItem(raz, hour)
@@ -439,7 +436,7 @@ class Report(wx.Frame):
                 desc = (day_data["wastes"][i]['description'])
                 wastes_amount += 1
                 wastes_value += valo
-                king = self.list_wastes.AppendItem(pain, core.accents_remove(desc))
+                king = self.list_wastes.AppendItem(pain, desc)
                 self.list_wastes.SetItemText(king, str(amt), 1)
                 self.list_wastes.SetItemText(king, ("R$ " + core.good_show("money", str(valo))).replace(".", ","), 2)
             self.list_wastes.SetItemText(pain, str(wastes_amount), 1)
@@ -475,16 +472,16 @@ class Report(wx.Frame):
                 else:
                     self.textbox_cash_previous.SetValue(
                         core.good_show("money", str(day_data["closure"][10])).replace(".", ","))
-            except ValueError:
+            except IndexError:
                 self.textbox_cash_previous.SetValue('0,00')
             try:
                 self.textbox_cash_real.SetValue(core.good_show("money", str(day_data["closure"][12])).replace(".", ","))
-            except ValueError:
+            except IndexError:
                 self.textbox_cash_real.SetValue('0,00')
             try:
                 self.textbox_cash_removed.SetValue(
                     core.good_show("money", str(day_data["closure"][14])).replace(".", ","))
-            except ValueError:
+            except IndexError:
                 self.textbox_cash_removed.SetValue('0,00')
             tyde = float(self.textbox_cash_previous.GetValue().replace(",", ".")) + float(
                 self.textbox_money_value.GetValue().replace(",", ".")) - float(
@@ -525,7 +522,7 @@ class Report(wx.Frame):
     def reopen(self, event):
         self.combobox_day_option.Destroy()
         self.setup_options()
-        self.setup(-1)
+        self.setup(None)
 
     def save(self):
         a1 = float(self.textbox_day_total.GetValue().replace(",", "."))

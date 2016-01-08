@@ -82,7 +82,7 @@ class Base(wx.Frame):
                                 u"Registrar Gastos", (180, 0), size=(180, 60))
         c = GenBitmapTextButton(part1, 17,
                                 wx.Bitmap(core.directory_paths['icons'] + 'system-users.png', wx.BITMAP_TYPE_PNG),
-                                u"Gegistrar Desperdícios", (360, 0), size=(180, 60))
+                                u"Registrar Desperdícios", (360, 0), size=(180, 60))
         d = GenBitmapTextButton(part2, 14, wx.Bitmap(core.directory_paths['icons'] + 'Money.png', wx.BITMAP_TYPE_PNG),
                                 u"Fechamento", (0, 0), size=(120, 60))
         e = GenBitmapTextButton(part2, 12, wx.Bitmap(core.directory_paths['icons'] + 'Book.png', wx.BITMAP_TYPE_PNG),
