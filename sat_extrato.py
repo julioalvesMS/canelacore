@@ -1,0 +1,1 @@
+# Falta implementar. Pra isso é necessário ter a impressora nao fiscal.

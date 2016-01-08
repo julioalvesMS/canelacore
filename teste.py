@@ -88,10 +88,11 @@ def funcao_test():
     informacoes_adicionais = InformacoesAdicionais(infCpl='Teste')
 
     resp = sat.enviar_dados_venda(detalhamentos=detalhamentos, pagamentos=pagamentos, destinatario=destinatario,
-                               entrega=entrega, descontos_acrescimos_subtotal=descontos_acrescimos_subtotal,
-                               informacoes_adicionais=informacoes_adicionais)
+                                  entrega=entrega, descontos_acrescimos_subtotal=descontos_acrescimos_subtotal,
+                                  informacoes_adicionais=informacoes_adicionais)
 
     print(resp.mensagem)
+
 
     # Salva o xml, gerado pelo SAT depois da compra, no HD
     open("saida.xml", "w").write(resp.xml())

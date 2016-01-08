@@ -90,8 +90,6 @@ def cliente_sat_local():
 # Ativa o equipamento SAT com o certificado ACSAT SEFAZ.
 #       Só é necessário chamar essa função 1 vez para configuração
 def ativar_sat_acsat():
-    """ o CNPJ '11111111111111' (CNPJtesteEmulador) só é usado com o emulador.
-        No SAT real o CNPJ deve ser CNPJCanelaSanta """
     resp = cliente.ativar_sat(satcomum.constantes.CERTIFICADO_ACSAT_SEFAZ,
                               CNPJ_CANELA_SANTA,
                               br.codigo_ibge_uf('SP'))
