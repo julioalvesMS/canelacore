@@ -4,6 +4,8 @@ Programa de caixa
 
 DOCUMENTAÇÃO DO GOVERNO SAT ER: http://www.fazenda.sp.gov.br/sat/downloads/Especificacao_SAT_v_ER_2_17_10.pdf 
 
-link simulador SAT: http://www.desenvolvedoresdaruma.com.br/dde/htmls/dde032_2013-ambiente-sat.html
+EMULADOR SAT: http://www.fazenda.sp.gov.br/sat/downloads/vigentes.asp
 
-documentação SAT: http://satcfe.readthedocs.org/pt_BR/latest/index.html
+DOCUMENTACAO SAT BASE4SISTEMAS: http://satcfe.readthedocs.org/pt_BR/latest/index.html
+
+GITHUB BASE4SISTEMAS: https://github.com/base4sistemas
