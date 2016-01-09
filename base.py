@@ -46,11 +46,12 @@ class Base(wx.Frame):
         :param title: Titulo do Frame
         """
         wx.Frame.__init__(self, parent, -1, title,
-                          style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN | wx.TAB_TRAVERSAL)
+                          style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX |
+                          wx.CLIP_CHILDREN | wx.TAB_TRAVERSAL)
 
         self.setup_gui()
 
-        core.setup_enviroment()
+        core.setup_environment()
 
         # Faz o Backup e verifica entregas
         self.wd60 = {}

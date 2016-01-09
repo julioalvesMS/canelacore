@@ -2,17 +2,26 @@
 # -*- coding: utf-8 -*-
 
 import sqlite3
+import core
 
 
 class InventoryDB:
 
-    def __init__(self, db_path='inventory.db'):
+    def __init__(self, db_path=None):
         """
         Método construtor. Abre o Banco de Dados de produtos
+        :type db_path: String
         """
+        if not db_path:
+            db_path = core.directory_paths['databases'] + 'inventory.db'
         self.db_path = db_path
         self.db = sqlite3.connect(self.db_path)
         self.cursor = self.db.cursor()
+
+        try:
+            self.create_table()
+        except sqlite3.OperationalError:
+            pass
 
     def close(self):
         """
@@ -98,7 +107,7 @@ class InventoryDB:
         self.cursor.execute('UPDATE INVENTORY SET AMOUNT=AMOUNT+? where ID=?', (change, product_id))
         self.db.commit()
 
-    def search_by_barcode(self, barcode):
+    def barcode_search(self, barcode):
         """
         Busca o item com um codigo de barras especifico no BD
         :param barcode: Codigo de barras sendo buscado
@@ -109,7 +118,7 @@ class InventoryDB:
         self.cursor.execute("""SELECT * FROM INVENTORY WHERE BARCODE=?""", (barcode, ))
         return self.cursor.fetchall()
 
-    def complete_search(self, info):    # TODO Atualmente apenas busca por igualdade, melhorar a busca
+    def inventory_search(self, info):    # TODO Atualmente apenas busca por igualdade, melhorar a busca
         """
         Faz uma busca por um dado generico mno banco de dados.
         Dada uma String busca por correspondecia por descrições, ids, categoria, fornecedores e NCM
@@ -160,6 +169,14 @@ class InventoryDB:
 
         return filtered_list
 
+    def product_list(self):
+        """
+        Dados de todos os produtos cadastrados
+        :return: uma list com todos os produtos do BD
+        """
+        self.cursor.execute("""SELECT * FROM INVENTORY WHERE CATEGORY=?""")
+        return self.cursor.fetchall()
+
     def insert_category(self, category, ncm):
         """
         Insere uma nova entrada no Banco de Dados de Produtos
@@ -189,3 +206,39 @@ class InventoryDB:
         """
         self.cursor.execute('DELETE FROM CATEGORIES WHERE ID=?', (category_id, ))
         self.db.commit()
+
+    def categories_search(self, info):
+        """
+        Faz uma busca por um dado generico no banco de dados.
+        Dada uma String busca por correspondecia por ids, categoria, e NCM
+        :param info: String com o dado a ser buscado
+        :return: List com todos as categorias compativeis com a busca
+        """
+        # Lista para armazenar todos os produtos compativeis com a busca
+        filtered_list = []
+        try:
+            # converte para integer para buscar por IDs e codigo de barras
+            int_info = int(info)
+
+            self.cursor.execute("""SELECT * FROM CATEGORIES WHERE ID=?""", (int_info, ))
+            filtered_list = list(set(filtered_list + self.cursor.fetchall()))
+
+        except ValueError:
+            # Caso não seja possivel converter para INTEGER pula as IDs e continua com as outras buscas
+            pass
+
+        self.cursor.execute("""SELECT * FROM CATEGORIES WHERE NCM=?""", (info, ))
+        filtered_list = list(set(filtered_list + self.cursor.fetchall()))
+
+        self.cursor.execute("""SELECT * FROM CATEGORIES WHERE CATEGORY=?""", (info, ))
+        filtered_list = list(set(filtered_list + self.cursor.fetchall()))
+
+        return filtered_list
+
+    def categories_list(self):
+        """
+        Fornece todas as categorias presentes no BD
+        :return: Uma lista com todos os elementos do BD
+        """
+        self.cursor.execute("""SELECT * FROM CATEGORIES""")
+        return self.cursor.fetchall()

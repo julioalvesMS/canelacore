@@ -14,6 +14,10 @@ import wx.gizmos
 
 __author__ = 'Julio'
 
+"""
+data conversion functions
+"""
+
 
 def good_show(types, tex):
     if types == "hour":
@@ -158,6 +162,11 @@ def week_end(date):
     return saturdays
 
 
+"""
+unicode and ASCII functions
+"""
+
+
 def accents_remove(text):
     """
     Retira os acentos de uma string
@@ -182,6 +191,11 @@ def resize_bitmap(pic, x, y):
     seal = wx.ImageFromBitmap(pic)
     seal = seal.Scale(x, y, wx.IMAGE_QUALITY_HIGH)
     return wx.BitmapFromImage(seal)
+
+
+"""
+Event functions
+"""
 
 
 def check_money(event):
@@ -326,7 +340,7 @@ def check_id(event):
     :param event:
     :return:
     """
-    if len(event.GetEventObject().GetValue()) < 6:
+    if len(event.GetEventObject().GetValue()) < 8:
         check_number(event)
     elif event.getKeyCode() in [8, 9, 127, 314, 316]:
         event.Skip()
@@ -379,6 +393,11 @@ def all_char(event):
     event.Skip()
 
 
+'''
+general
+'''
+
+
 def password_check(password):
     """
     Verifica a corretude da senha inserida
@@ -401,13 +420,15 @@ def password_check(password):
         return False
 
 
-def setup_enviroment():
+def setup_environment():
     if not os.path.exists(directory_paths['saves']):
         os.mkdir(directory_paths['saves'])
     if not os.path.exists(directory_paths['inventory']):
         os.mkdir(directory_paths['inventory'])
     if not os.path.exists(directory_paths['clients']):
         os.mkdir(directory_paths['clients'])
+    if not os.path.exists(directory_paths['databases']):
+        os.mkdir(directory_paths['databases'])
     if os.path.exists(directory_paths['temporary']):
         shutil.rmtree(directory_paths['temporary'])
 
@@ -438,7 +459,8 @@ directory_paths = {
     'inventory': current_dir + 'inventory' + slash,
     'temporary': current_dir + '.temp' + slash,
     'trash': current_dir + '.trash' + slash,
-    'preferences': current_dir + 'preferences' + slash
+    'preferences': current_dir + 'preferences' + slash,
+    'databases': current_dir + 'databases' + slash
 }
 
 general_icon = current_dir + "bronze.ico"
