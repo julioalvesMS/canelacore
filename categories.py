@@ -3,6 +3,7 @@
 
 
 import threading
+import string
 
 import wx
 import wx.gizmos
@@ -188,6 +189,17 @@ class CategoryData(wx.Frame):
         dialogs.Ask(self, u"Sair", 91)
 
     def ask_end(self, event):
+        if not string.strip(self.textbox_description.GetValue()):
+            dialogs.launch_error(self, u'Nome de categoria inválido')
+            return
+        if len(self.textbox_ncm.GetValue()) != 8:
+            dialogs.launch_error(self, u'NCM inválido: O NCM deve ter 8 dígitos')
+            return
+        try:
+            int(self.textbox_ncm.GetValue())
+        except ValueError:
+            dialogs.launch_error(self, u'NCM inválido: O NCM deve conter apenas números')
+            return
         dialogs.Ask(self, u'Finalizar Cadastro', 17)
 
     def clean(self):
@@ -213,5 +225,5 @@ class CategoryData(wx.Frame):
         self.clean()
         dialogs.Confirmation(self, u'Nova Categoria Cadastrada', 8)
 
-    def exit(self):
+    def exit(self, event):
         self.Close()

@@ -139,6 +139,20 @@ def date_reverse(text):
     return '-'.join(text_)
 
 
+def format_date_internal(date):
+    date = date.replace('/', '-').split('-')
+    if len(date[0]) == 2:
+        date.reverse()
+    return '-'.join(date)
+
+
+def format_date_user(date):
+    date = date.replace('/', '-').split('-')
+    if len(date[0]) == 4:
+        date.reverse()
+    return '/'.join(date)
+
+
 def week_end(date):
     """
     Retorna as datas de todos os sabados de um mes
@@ -380,6 +394,36 @@ def check_cpf(event):
         box.SetValue('')
 
 
+def check_cep(event):
+    """
+    Verifica se um TextCtrl está com o texto com um CEP no formato correto
+    :param event: Evento gerado pela GUI
+    """
+    box = event.GetEventObject()
+    try:
+        value = event.GetKeyCode()
+        num = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 8, 127, 314, 316, 9]
+        text = box.GetValue()
+        text2 = text.replace('-', '')
+
+        if value in num[:10]:
+            text2 += str(chr(value))
+        elif value in num[10:12]:
+            text2 = text2[:-1]
+
+        if len(text2) > 8:
+            text2 = text2[:8]
+        text3 = text2
+        if len(text2) > 5:
+            text3 = text3[:5] + '-' + text3[5:]
+        box.SetValue(text3)
+
+        if value in num[12:]:
+            event.Skip()
+    except ValueError:
+        box.SetValue('')
+
+
 def no_char(event):
     """
     Torna não editavel
@@ -432,10 +476,10 @@ def setup_environment():
     if os.path.exists(directory_paths['temporary']):
         shutil.rmtree(directory_paths['temporary'])
 
-brazil_states = ['AL', 'AM', 'PI', 'SP', 'SC', 'RJ', 'DF',
-                 'GO', 'RS', 'MT', 'MS', 'MG', 'PR', 'PA',
-                 'RR', 'AP', 'PE', 'TO', 'RN', 'PB', 'CE',
-                 'MA', 'AC', 'SE', 'BA', 'RO', 'ES', '--']
+brazil_states = [u'AL', u'AM', u'PI', u'SP', u'SC', u'RJ', u'DF',
+                 u'GO', u'RS', u'MT', u'MS', u'MG', u'PR', u'PA',
+                 u'RR', u'AP', u'PE', u'TO', u'RN', u'PB', u'CE',
+                 u'MA', u'AC', u'SE', u'BA', u'RO', u'ES', u'--']
 brazil_states.sort()
 
 week_days = [u'Segunda', u'Terça', u'Quarta', u'Quinta', u'Sexta', u'Sábado', u'Domingo']
@@ -460,7 +504,8 @@ directory_paths = {
     'temporary': current_dir + '.temp' + slash,
     'trash': current_dir + '.trash' + slash,
     'preferences': current_dir + 'preferences' + slash,
-    'databases': current_dir + 'databases' + slash
+    'databases': current_dir + 'databases' + slash,
+    'sales': current_dir + 'databases' + slash + 'sales' + slash,
 }
 
 general_icon = current_dir + "bronze.ico"

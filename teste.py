@@ -38,7 +38,8 @@ class Teste(wx.Frame):
 
         self.Show()
 
-        funcao_test()
+        # funcao_test()
+        sat.consultar_sat()
 
     def __del__(self):
         pass

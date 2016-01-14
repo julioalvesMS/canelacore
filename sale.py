@@ -42,7 +42,7 @@ class Sale(wx.Frame):
     textbox_sale_value = None
 
     textbox_client_name = None
-    textbox_client_id = None
+    textbox_client_cpf = None
 
     textbox_delivery_receiver = None
     textbox_delivery_address = None
@@ -187,11 +187,11 @@ class Sale(wx.Frame):
         client = wx.Panel(self, 23, pos=(460, 285), size=(450, 325), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
         client.SetBackgroundColour(core.default_background_color)
         wx.StaticText(client, -1, u"Nome do cliente: ", pos=(10, 5))
-        wx.StaticText(client, -1, u"ID: ", pos=(350, 5))
+        wx.StaticText(client, -1, u"CPF: ", pos=(350, 5))
         self.textbox_client_name = wx.TextCtrl(client, -1, pos=(5, 25), size=(300, 25))
-        self.textbox_client_id = wx.TextCtrl(client, -1, pos=(345, 25), size=(70, 25))
-        self.textbox_client_id.Bind(wx.EVT_CHAR, core.check_number)
-        self.textbox_client_id.SetMaxLength(6)
+        self.textbox_client_cpf = wx.TextCtrl(client, -1, pos=(345, 25), size=(70, 25))
+        self.textbox_client_cpf.Bind(wx.EVT_CHAR, core.check_cpf)
+        self.textbox_client_cpf.SetMaxLength(6)
         if self.editable:
             client_ = wx.Panel(client, -1, pos=(10, 60), size=(400, 40), style=wx.SIMPLE_BORDER)
             cold = GenBitmapTextButton(client_, -1,
@@ -222,7 +222,7 @@ class Sale(wx.Frame):
         self.textbox_delivery_hour = wx.TextCtrl(client, -1, pos=(200, 280), size=(60, 25))
         if not self.editable:
             self.textbox_client_name.Disable()
-            self.textbox_client_id.Disable()
+            self.textbox_client_cpf.Disable()
             self.delivery.Disable()
             self.textbox_delivery_receiver.SetBackgroundColour(core.default_disabled_color)
             self.textbox_delivery_address.SetBackgroundColour(core.default_disabled_color)
@@ -276,7 +276,7 @@ class Sale(wx.Frame):
 
         # Adiciona os dados do cliente
         self.textbox_client_name.SetValue(day_data['sales'][self.argv[1]]['client_name'])
-        self.textbox_client_id.SetValue(day_data['sales'][self.argv[1]]['client_id'])
+        self.textbox_client_cpf.SetValue(day_data['sales'][self.argv[1]]['client_id'])
 
         # Caso haja, adiciona os dados da entrega
         if day_data["sales"][self.argv[1]]['delivery']:
@@ -330,7 +330,7 @@ class Sale(wx.Frame):
 
     def clean_client(self, event):
         self.textbox_client_name.Clear()
-        self.textbox_client_id.Clear()
+        self.textbox_client_cpf.Clear()
 
     def data_insert(self, event):
         if not self.textbox_product_description.GetValue() or self.textbox_product_price.GetValue() == '0,00' or not \
@@ -633,7 +633,7 @@ class Sale(wx.Frame):
             payment_method = self.textbox_payment_other.GetValue()
 
         client_name = self.textbox_client_name.GetValue()
-        client_id = self.textbox_client_id.GetValue()
+        client_id = self.textbox_client_cpf.GetValue()
         while len(client_id) < 6:
             client_id = '0' + client_id
         try:

@@ -6,7 +6,6 @@ import shelve
 import shutil
 import threading
 from datetime import datetime
-from string import lower
 
 import wx
 import wx.gizmos
@@ -15,6 +14,7 @@ from wx.lib.buttons import GenBitmapTextButton
 import core
 import dialogs
 import sale
+import database
 
 __author__ = 'Julio'
 
@@ -104,65 +104,27 @@ class ClientManager(wx.Frame):
 
     def setup(self, event):     # TODO Fazer a thread fechar direito com o resto do app
         turn = threading.Thread(target=self.__setup__)
-        turn.daemon = True
         turn.start()
 
     def __setup__(self):
         self.list_clients.DeleteAllItems()
         self.textbox_filter.Clear()
-        key_list = []
-        self.dict_clients_basic_data = {}
-        for root, dirs, files in os.walk(core.directory_paths['clients']):
-            if root != core.directory_paths['clients']:
-                try:
-                    o = shelve.open(root + core.slash + root.split(core.slash)[-1] + '_infos.txt')
-                    if not o['tel1']:
-                        if o['tel2']:
-                            tel = o['tel2']
-                        else:
-                            tel = '(__)____-____'
-                    else:
-                        tel = o['tel1']
-                    if o['adress'] and o['city'] and o['state'] != '--':
-                        ad = o['city'] + ' - ' + o['state'] + ', ' + o['adress']
-                    else:
-                        ad = '_____-__,_________ '
-                    self.dict_clients_basic_data[o['name']] = [str(int(root.split(core.slash)[-1])), tel, o['email'], ad]
-                    key_list.append(o['name'])
-                    o.close()
-                except ValueError or KeyError:
-                    pass
-        key_list.sort()
-        for g in key_list:
-            self.list_clients.Append((g, self.dict_clients_basic_data[g][0], self.dict_clients_basic_data[g][1],
-                                      self.dict_clients_basic_data[g][2], self.dict_clients_basic_data[g][3]))
+
+        db = database.ClientsDB()
+        clients = db.clients_list()
+        for person in clients:
+            address = person[9] + ' - ' + person[8] + ', ' + person[11]
+            self.list_clients.Append((person[1], person[0], person[5], person[4], address))
+        db.close()
 
     def data_delete(self, event):
         it = self.list_clients.GetFocusedItem()
         if it == -1:
             return
         e_id = self.list_clients.GetItem(it, 1).GetText()
-        rtime = core.good_show("o", str(datetime.now().hour)) + "-" + core.good_show("o", str(
-            datetime.now().minute)) + "-" + core.good_show("o", str(datetime.now().second))
-        rdate = str(datetime.now().year) + "-" + core.good_show("o", str(datetime.now().month)) + "-" + core.good_show(
-            "o", str(
-                datetime.now().day))
-        dt = '%s_%s' % (rdate, rtime)
-        while len(e_id) < 6:
-            e_id = '0' + e_id
-        if not os.path.exists('#Trash'):
-            os.mkdir('#Trash')
-        if not os.path.exists('#Trash/clients'):
-            os.mkdir('#Trash/clients')
-        if not os.path.exists('#Trash/clients/deleted'):
-            os.mkdir('#Trash/clients/deleted')
-        if not os.path.exists('#Trash/clients/deleted/' + e_id):
-            os.mkdir('#Trash/clients/deleted/' + e_id)
-        shutil.copytree('clients/' + e_id, '#Trash/clients/deleted/%s/%s' % (e_id, dt))
-        dirs = os.listdir('clients')
-        for i in dirs:
-            if int(i) == int(e_id):
-                shutil.rmtree('clients/' + i)
+        db = database.ClientsDB()
+        db.delete_client(int(e_id))
+        db.close()
         self.setup(None)
 
     def data_edit(self, event):
@@ -187,48 +149,20 @@ class ClientManager(wx.Frame):
             return
         name = self.list_clients.GetItemText(g, 0)
         client_id = self.list_clients.GetItemText(g, 1)
-        while len(client_id) < 6:
-            client_id = '0' + client_id
         self.parent.textbox_client_name.SetValue(name)
         self.parent.textbox_client_id.SetValue(client_id)
         self.exit(None)
 
     def database_search(self, event):
         self.list_clients.DeleteAllItems()
-        key_list = []
-        self.dict_clients_basic_data = {}
-        for root, dirs, files in os.walk(core.directory_paths['clients']):
-            if root != core.directory_paths['clients']:
-                try:
-                    o = shelve.open(root + core.slash + root.split(core.slash)[1] + '_infos.txt')
-                    tex = lower(self.textbox_filter.GetValue())
-                    num = len(tex)
-                    fri = []
-                    for a in o['name'].split():
-                        fri.append(lower(a[:num]))
-                    if (tex in fri) or (tex == str(int(root.split(core.slash)[1]))):
-                        if not o['tel1']:
-                            if o['tel2']:
-                                tel = o['tel2']
-                            else:
-                                tel = '(__)____-____'
-                        else:
-                            tel = o['tel1']
-                        if o['adress'] and o['city'] and o['state'] != '--':
-                            ad = o['city'] + ' - ' + o['state'] + ', ' + o['adress']
-                        else:
-                            ad = '_____-__,_________ '
-                        self.dict_clients_basic_data[o['name']] = [str(int(root.split(core.slash)[1])), tel, o['email'],
-                                                                   ad]
-                        key_list.append(o['name'])
-                    o.close()
-                except ValueError:
-                    pass
-        key_list.sort()
-        for g in key_list:
-            self.list_clients.Append((g, self.dict_clients_basic_data[g][0], self.dict_clients_basic_data[g][1],
-                                      self.dict_clients_basic_data[g][2], self.dict_clients_basic_data[g][3]))
-
+        
+        db = database.ClientsDB()
+        clients = db.clients_search(self.textbox_filter.GetValue())
+        for person in clients:
+            address = person[9] + ' - ' + person[8] + ', ' + person[11]
+            self.list_clients.Append((person[1], person[0], person[5], person[4], address))
+        db.close()
+        
     def clean(self):
         self.textbox_filter.Clear()
         self.setup(None)
@@ -247,8 +181,8 @@ class ClientRegister(wx.Frame):
     textbox_client_name = None
     textbox_client_sex = None
     textbox_client_birth = None
-    textbox_client_telephone_1 = None
-    textbox_client_telephone_2 = None
+    textbox_client_telephone = None
+    textbox_client_cep = None
     textbox_client_email = None
     textbox_client_cpf = None
     textbox_client_state = None
@@ -280,10 +214,10 @@ class ClientRegister(wx.Frame):
         wx.StaticText(panel_client_intel, -1, u'Nome do cliente:', pos=(190, 10))
         wx.StaticText(panel_client_intel, -1, u'Sexo:', pos=(190, 70))
         wx.StaticText(panel_client_intel, -1, u'Data de Nascimento:', pos=(340, 70))
-        wx.StaticText(panel_client_intel, -1, u'Telefone 1:', pos=(190, 130))
-        wx.StaticText(panel_client_intel, -1, u'Telefone 2:', pos=(340, 130))
+        wx.StaticText(panel_client_intel, -1, u'CPF:', pos=(190, 130))
+        wx.StaticText(panel_client_intel, -1, u'Telefone:', pos=(340, 130))
         wx.StaticText(panel_client_intel, -1, u'e-mail:', pos=(10, 190))
-        wx.StaticText(panel_client_intel, -1, u'CPF:', pos=(340, 190))
+        wx.StaticText(panel_client_intel, -1, u'CEP:', pos=(340, 190))
         wx.StaticText(panel_client_intel, -1, u'Estado:', pos=(10, 250))
         wx.StaticText(panel_client_intel, -1, u'Cidade:', pos=(100, 250))
         wx.StaticText(panel_client_intel, -1, u'Bairro:', pos=(280, 250))
@@ -293,10 +227,10 @@ class ClientRegister(wx.Frame):
         self.textbox_client_sex = wx.ComboBox(panel_client_intel, -1, choices=[u'Feminino', u'Maculino'], pos=(190, 90),
                                               size=(120, 30), style=wx.CB_READONLY)
         self.textbox_client_birth = wx.TextCtrl(panel_client_intel, -1, pos=(340, 90), size=(120, 30))
-        self.textbox_client_telephone_1 = wx.TextCtrl(panel_client_intel, -1, pos=(190, 150), size=(120, 30))
-        self.textbox_client_telephone_2 = wx.TextCtrl(panel_client_intel, -1, pos=(340, 150), size=(120, 30))
+        self.textbox_client_cpf = wx.TextCtrl(panel_client_intel, -1, pos=(190, 150), size=(120, 30))
+        self.textbox_client_telephone = wx.TextCtrl(panel_client_intel, -1, pos=(340, 150), size=(120, 30))
         self.textbox_client_email = wx.TextCtrl(panel_client_intel, -1, pos=(10, 210), size=(300, 30))
-        self.textbox_client_cpf = wx.TextCtrl(panel_client_intel, -1, pos=(340, 210), size=(120, 30))
+        self.textbox_client_cep = wx.TextCtrl(panel_client_intel, -1, pos=(340, 210), size=(120, 30))
         self.textbox_client_state = wx.ComboBox(panel_client_intel, -1, choices=core.brazil_states, pos=(10, 270),
                                                 size=(60, 30), style=wx.CB_READONLY)
         self.textbox_client_city = wx.TextCtrl(panel_client_intel, -1, pos=(100, 270), size=(150, 30))
@@ -305,12 +239,12 @@ class ClientRegister(wx.Frame):
         self.textbox_client_observations = wx.TextCtrl(panel_client_intel, -1, pos=(10, 390), size=(480, 100),
                                                        style=wx.TE_MULTILINE)
         self.textbox_client_birth.Bind(wx.EVT_CHAR, core.check_date)
-        self.textbox_client_telephone_1.Bind(wx.EVT_CHAR, core.check_telephone)
-        self.textbox_client_telephone_2.Bind(wx.EVT_CHAR, core.check_telephone)
+        self.textbox_client_telephone.Bind(wx.EVT_CHAR, core.check_telephone)
+        self.textbox_client_cep.Bind(wx.EVT_CHAR, core.check_cep)
         self.textbox_client_cpf.Bind(wx.EVT_CHAR, core.check_cpf)
         self.textbox_client_sex.SetValue(u'Feminino')
         self.textbox_client_birth.SetValue(u'__/__/____')
-        self.textbox_client_state.SetValue('SP')
+        self.textbox_client_state.SetValue(u'SP')
         self.textbox_client_city.SetValue(u'Itatiba')
 
         self.panel_client_image = wx.Panel(panel_client_intel, -1, size=(150, 150), pos=(10, 25),
@@ -348,8 +282,8 @@ class ClientRegister(wx.Frame):
         self.textbox_client_name.SetValue(u'')
         self.textbox_client_sex.SetValue(u'Feminino')
         self.textbox_client_birth.SetValue(u'__/__/____')
-        self.textbox_client_telephone_1.SetValue(u'')
-        self.textbox_client_telephone_2.SetValue(u'')
+        self.textbox_client_telephone.SetValue(u'')
+        self.textbox_client_cep.SetValue(u'')
         self.textbox_client_email.SetValue(u'')
         self.textbox_client_cpf.SetValue(u'')
         self.textbox_client_state.SetValue(u'SP')
@@ -362,58 +296,42 @@ class ClientRegister(wx.Frame):
         if not self.textbox_client_name.GetValue():
             dialogs.launch_error(self, u'É necessário o nome, para o cadastro', u'Error 404')
             return
-        if not os.path.exists('clients'):
-            os.mkdir('clients')
-        dirs = os.listdir('clients')
-        if os.path.exists('#Trash/clients/deleted'):
-            dirs += os.listdir('#Trash/clients/deleted')
-        if os.path.exists('#Trash/clients/edited'):
-            dirs += os.listdir('#Trash/clients/edited')
-        last_id = 0
-        for i in dirs:
-            if int(i) > last_id:
-                last_id = int(i)
-        new_id = last_id + 1
-        idstr = str(new_id)
-        while len(idstr) < 6:
-            idstr = '0' + idstr
-        os.mkdir('clients/' + idstr)
         rtime = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
             datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
         rdate = str(datetime.now().year) + "-" + core.good_show("o", str(datetime.now().month)) + "-" + core.good_show(
-            "o", str(
-                datetime.now().day))
-        po = (core.directory_paths['clients'] + idstr + core.slash + idstr + '_infos.txt')
-        s = shelve.open(po)
+            "o", str(datetime.now().day))
+
+        db = database.ClientsDB()
+
+        s = dict()
         xname = self.textbox_client_name.GetValue()
-        while xname[0] == ' ':
-            xname = xname[1:]
-        names = xname.split()
+        names = xname.strip().split()
         for i in range(0, len(names)):
             names[i] = names[i].capitalize()
         namef = ' '.join(names)
         s['name'] = namef
         s['sex'] = self.textbox_client_sex.GetValue()
-        s['birth'] = self.textbox_client_birth.GetValue()
+        s['birth'] = core.format_date_internal(self.textbox_client_birth.GetValue())
         s['email'] = self.textbox_client_email.GetValue()
-        s['cpf'] = self.textbox_client_cpf.GetValue()
-        s['tel1'] = self.textbox_client_telephone_1.GetValue()
-        s['tel2'] = self.textbox_client_telephone_2.GetValue()
+        s['cpf'] = self.textbox_client_cpf.GetValue().replace('-', '').replace('.', '')
+        s['tel'] = self.textbox_client_telephone.GetValue().replace('-', '').replace('(', '').replace(')', '')
+        s['cep'] = self.textbox_client_cep.GetValue().replace('-', '')
         s['state'] = self.textbox_client_state.GetValue()
         s['city'] = self.textbox_client_city.GetValue()
-        s['hood'] = self.textbox_client_district.GetValue()
+        s['district'] = self.textbox_client_district.GetValue()
         s['adress'] = self.textbox_client_address.GetValue()
         s['obs'] = self.textbox_client_observations.GetValue()
         s['time'] = rtime
         s['date'] = rdate
-        s.close()
+
+        client_id = db.insert_client(s)
+        db.close()
+
         self.clean()
         parent = self.GetParent()
-        if type(parent) is ClientManager:
-            parent.setup(1)
         if type(parent) is sale.Sale:
             parent.client_name.SetValue(namef)
-            parent.client_id.SetValue(idstr)
+            parent.client_id.SetValue(client_id)
             self.Close()
             return
         dialogs.Confirmation(self, u'Sucesso', 4)
@@ -430,8 +348,8 @@ class ClientData(wx.Frame):
     textbox_client_name = None
     textbox_client_sex = None
     textbox_client_birth = None
-    textbox_client_telephone_1 = None
-    textbox_client_telephone_2 = None
+    textbox_client_telephone = None
+    textbox_client_cep = None
     textbox_client_email = None
     textbox_client_cpf = None
     textbox_client_state = None
@@ -452,9 +370,6 @@ class ClientData(wx.Frame):
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU |
                           wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN | wx.TAB_TRAVERSAL)
 
-        client_id = str(client_id)
-        while len(client_id) < 6:
-            client_id = '0' + client_id
         self.editable = editable
         self.client_id = client_id
         self.parent = parent
@@ -469,47 +384,50 @@ class ClientData(wx.Frame):
         self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
         self.SetBackgroundColour(core.default_background_color)
         self.Centre()
+
         panel_client_intel = wx.Panel(self, -1, pos=(0, 0), size=(500, 500), style=wx.TAB_TRAVERSAL)
+
         wx.StaticText(panel_client_intel, -1, u'Nome do cliente:', pos=(190, 10))
-        self.textbox_client_name = wx.TextCtrl(panel_client_intel, -1, pos=(190, 30), size=(300, 30))
         wx.StaticText(panel_client_intel, -1, u'Sexo:', pos=(190, 70))
+        wx.StaticText(panel_client_intel, -1, u'Data de Nascimento:', pos=(340, 70))
+        wx.StaticText(panel_client_intel, -1, u'CPF:', pos=(190, 130))
+        wx.StaticText(panel_client_intel, -1, u'Telefone:', pos=(340, 130))
+        wx.StaticText(panel_client_intel, -1, u'e-mail:', pos=(10, 190))
+        wx.StaticText(panel_client_intel, -1, u'CEP:', pos=(340, 190))
+        wx.StaticText(panel_client_intel, -1, u'Estado:', pos=(10, 250))
+        wx.StaticText(panel_client_intel, -1, u'Cidade:', pos=(100, 250))
+        wx.StaticText(panel_client_intel, -1, u'Bairro:', pos=(280, 250))
+        wx.StaticText(panel_client_intel, -1, u'Endereço:', pos=(10, 310))
+        wx.StaticText(panel_client_intel, -1, u'Observações:', pos=(10, 370))
+        self.textbox_client_name = wx.TextCtrl(panel_client_intel, -1, pos=(190, 30), size=(300, 30))
         if self.editable:
             self.textbox_client_sex = wx.ComboBox(panel_client_intel, -1, choices=[u'Feminino', u'Maculino'],
-                                                  pos=(190, 90), size=(120, 30),
-                                                  style=wx.CB_READONLY)
+                                                  pos=(190, 90), size=(120, 30), style=wx.CB_READONLY)
         else:
             self.textbox_client_sex = wx.TextCtrl(panel_client_intel, -1, pos=(190, 90), size=(100, 30))
-        wx.StaticText(panel_client_intel, -1, u'Data de Nascimento:', pos=(340, 70))
         self.textbox_client_birth = wx.TextCtrl(panel_client_intel, -1, pos=(340, 90), size=(120, 30))
-        self.textbox_client_birth.SetValue('__/__/____')
-        self.textbox_client_birth.Bind(wx.EVT_CHAR, core.check_date)
-        wx.StaticText(panel_client_intel, -1, u'Telefone 1:', pos=(190, 130))
-        self.textbox_client_telephone_1 = wx.TextCtrl(panel_client_intel, -1, pos=(190, 150), size=(120, 30))
-        self.textbox_client_telephone_1.Bind(wx.EVT_CHAR, core.check_telephone)
-        wx.StaticText(panel_client_intel, -1, u'Telefone 2:', pos=(340, 130))
-        self.textbox_client_telephone_2 = wx.TextCtrl(panel_client_intel, -1, pos=(340, 150), size=(120, 30))
-        self.textbox_client_telephone_2.Bind(wx.EVT_CHAR, core.check_telephone)
-        wx.StaticText(panel_client_intel, -1, u'e-mail:', pos=(10, 190))
+        self.textbox_client_cpf = wx.TextCtrl(panel_client_intel, -1, pos=(190, 150), size=(120, 30))
+        self.textbox_client_telephone = wx.TextCtrl(panel_client_intel, -1, pos=(340, 150), size=(120, 30))
         self.textbox_client_email = wx.TextCtrl(panel_client_intel, -1, pos=(10, 210), size=(300, 30))
-        wx.StaticText(panel_client_intel, -1, u'CPF:', pos=(340, 190))
-        self.textbox_client_cpf = wx.TextCtrl(panel_client_intel, -1, pos=(340, 210), size=(120, 30))
-        self.textbox_client_cpf.Bind(wx.EVT_CHAR, core.check_cpf)
-        wx.StaticText(panel_client_intel, -1, u'Estado:', pos=(10, 250))
+        self.textbox_client_cep = wx.TextCtrl(panel_client_intel, -1, pos=(340, 210), size=(120, 30))
         if self.editable:
             self.textbox_client_state = wx.ComboBox(panel_client_intel, -1, choices=core.brazil_states, pos=(10, 270),
-                                                    size=(60, 30),
-                                                    style=wx.CB_READONLY)
+                                                    size=(60, 30), style=wx.CB_READONLY)
         else:
             self.textbox_client_state = wx.TextCtrl(panel_client_intel, -1, pos=(10, 270), size=(60, 30))
-        wx.StaticText(panel_client_intel, -1, u'Cidade:', pos=(100, 250))
         self.textbox_client_city = wx.TextCtrl(panel_client_intel, -1, pos=(100, 270), size=(150, 30))
-        wx.StaticText(panel_client_intel, -1, u'Bairro:', pos=(280, 250))
         self.textbox_client_district = wx.TextCtrl(panel_client_intel, -1, pos=(280, 270), size=(150, 30))
-        wx.StaticText(panel_client_intel, -1, u'Endereço:', pos=(10, 310))
         self.textbox_client_address = wx.TextCtrl(panel_client_intel, -1, pos=(10, 330), size=(300, 30))
-        wx.StaticText(panel_client_intel, -1, u'Observações:', pos=(10, 370))
         self.textbox_client_observations = wx.TextCtrl(panel_client_intel, -1, pos=(10, 390), size=(480, 100),
                                                        style=wx.TE_MULTILINE)
+
+        self.textbox_client_cpf.Bind(wx.EVT_CHAR, core.check_cpf)
+        self.textbox_client_birth.Bind(wx.EVT_CHAR, core.check_date)
+        self.textbox_client_telephone.Bind(wx.EVT_CHAR, core.check_telephone)
+        self.textbox_client_cep.Bind(wx.EVT_CHAR, core.check_cep)
+
+        self.textbox_client_birth.SetValue(u'__/__/____')
+
         self.panel_client_image = wx.Panel(panel_client_intel, -1, size=(150, 150), pos=(10, 25),
                                            style=wx.SIMPLE_BORDER)
         self.panel_client_image.SetBackgroundColour('#ffffff')
@@ -567,29 +485,18 @@ class ClientData(wx.Frame):
         self.list_bought.InsertColumn(0, u'Data/Horário', width=180)
         self.list_bought.InsertColumn(1, u'Valor', width=140)
         self.clean()
-        if self.editable == 0:
+        if not self.editable:
             self.textbox_client_name.Disable()
-            self.textbox_client_name.SetBackgroundColour('#C6C6C6')
             self.textbox_client_sex.Disable()
-            self.textbox_client_sex.SetBackgroundColour('#C6C6C6')
             self.textbox_client_birth.Disable()
-            self.textbox_client_birth.SetBackgroundColour('#C6C6C6')
-            self.textbox_client_telephone_1.Disable()
-            self.textbox_client_telephone_1.SetBackgroundColour('#C6C6C6')
-            self.textbox_client_telephone_2.Disable()
-            self.textbox_client_telephone_2.SetBackgroundColour('#C6C6C6')
+            self.textbox_client_telephone.Disable()
+            self.textbox_client_cep.Disable()
             self.textbox_client_email.Disable()
-            self.textbox_client_email.SetBackgroundColour('#C6C6C6')
             self.textbox_client_cpf.Disable()
-            self.textbox_client_cpf.SetBackgroundColour('#C6C6C6')
             self.textbox_client_state.Disable()
-            self.textbox_client_state.SetBackgroundColour('#C6C6C6')
             self.textbox_client_city.Disable()
-            self.textbox_client_city.SetBackgroundColour('#C6C6C6')
             self.textbox_client_district.Disable()
-            self.textbox_client_district.SetBackgroundColour('#C6C6C6')
             self.textbox_client_address.Disable()
-            self.textbox_client_address.SetBackgroundColour('#C6C6C6')
             self.textbox_client_observations.Disable()
 
     def ask_delete(self, event):
@@ -691,20 +598,21 @@ class ClientData(wx.Frame):
                               str(cv)).replace('.', ',')))
 
     def clean(self):
-        p = shelve.open(core.directory_paths['clients'] + self.client_id + core.slash + self.client_id + '_infos.txt')
-        self.textbox_client_name.SetValue(p['name'])
-        self.textbox_client_sex.SetValue(p['sex'])
-        self.textbox_client_birth.SetValue(p['birth'])
-        self.textbox_client_telephone_1.SetValue(p['tel1'])
-        self.textbox_client_telephone_2.SetValue(p['tel2'])
-        self.textbox_client_email.SetValue(p['email'])
-        self.textbox_client_state.SetValue(p['state'])
-        self.textbox_client_city.SetValue(p['city'])
-        self.textbox_client_district.SetValue(p['hood'])
-        self.textbox_client_address.SetValue(p['adress'])
-        self.textbox_client_observations.SetValue(p['obs'])
-        self.sales_list()
-        p.close()
+        db = database.ClientsDB()
+        client = db.clients_search_id(self.client_id)
+        self.textbox_client_name.SetValue(client[1])
+        self.textbox_client_sex.SetValue(client[2])
+        self.textbox_client_birth.SetValue(core.format_date_user(client[3]))
+        self.textbox_client_telephone.SetValue(client[5])
+        self.textbox_client_email.SetValue(client[4])
+        self.textbox_client_cpf.SetValue(client[6])
+        self.textbox_client_cep.SetValue(client[7])
+        self.textbox_client_state.SetValue(client[8])
+        self.textbox_client_city.SetValue(client[9])
+        self.textbox_client_district.SetValue(client[10])
+        self.textbox_client_address.SetValue(client[11])
+        self.textbox_client_observations.SetValue(client[12])
+        # self.sales_list()
 
     def end(self):
         if not self.textbox_client_name.GetValue():
@@ -713,47 +621,32 @@ class ClientData(wx.Frame):
             a.ShowModal()
             a.Destroy()
             return
-        rtime = core.good_show("o", str(datetime.now().hour)) + "-" + core.good_show("o", str(
-                datetime.now().minute)) + "-" + core.good_show("o", str(datetime.now().second))
-        rdate = str(datetime.now().year) + "-" + core.good_show("o", str(datetime.now().month)) + "-" + core.good_show(
-                "o", str(datetime.now().day))
-        dt = '%s_%s' % (rdate, rtime)
-        if not os.path.exists('#Trash'):
-            os.mkdir('#Trash')
-        if not os.path.exists('#Trash/clients'):
-            os.mkdir('#Trash/clients')
-        if not os.path.exists('#Trash/clients/edited'):
-            os.mkdir('#Trash/clients/edited')
-        if not os.path.exists('#Trash/clients/edited/' + self.client_id):
-            os.mkdir('#Trash/clients/edited/' + self.client_id)
-        shutil.copytree('clients/' + self.client_id, '#Trash/clients/edited/%s/%s' % (self.client_id, dt))
-        po = (core.directory_paths['clients'] + self.client_id + core.slash + self.client_id + '_infos.txt')
-        s = shelve.open(po)
+
+        db = database.ClientsDB()
+
+        s = dict()
         xname = self.textbox_client_name.GetValue()
-        while xname[0] == ' ':
-            xname = xname[1:]
-        names = xname.split()
+
+        names = xname.strip().split()
         for i in range(0, len(names)):
             names[i] = names[i].capitalize()
         namef = ' '.join(names)
         s['name'] = namef
-        s['name'] = self.textbox_client_name.GetValue()
         s['sex'] = self.textbox_client_sex.GetValue()
-        s['birth'] = self.textbox_client_birth.GetValue()
+        s['birth'] = core.format_date_internal(self.textbox_client_birth.GetValue())
         s['email'] = self.textbox_client_email.GetValue()
-        s['tel1'] = self.textbox_client_telephone_1.GetValue()
-        s['tel2'] = self.textbox_client_telephone_2.GetValue()
-        s['cpf'] = self.textbox_client_cpf.GetValue()
+        s['tel'] = self.textbox_client_telephone.GetValue().replace('-','' ).replace('(', '').replace(')', '')
+        s['cep'] = self.textbox_client_cep.GetValue().replace('-', '')
+        s['cpf'] = self.textbox_client_cpf.GetValue().replace('-', '').replace('.', '')
         s['state'] = self.textbox_client_state.GetValue()
         s['city'] = self.textbox_client_city.GetValue()
-        s['hood'] = self.textbox_client_district.GetValue()
+        s['district'] = self.textbox_client_district.GetValue()
         s['adress'] = self.textbox_client_address.GetValue()
         s['obs'] = self.textbox_client_observations.GetValue()
-        s['time'] = rtime
-        s['date'] = rdate
-        s.close()
-        if type(self.GetParent()) is ClientManager:
-            self.GetParent().setup(None)
+
+        db.edit_client(s, self.client_id)
+        db.close()
+
         self.exit(None)
 
     def exit(self, event):

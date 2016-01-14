@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import codecs
 import os
 import shelve
-import shutil
 import threading
 from datetime import datetime
 from string import lower, strip
@@ -16,6 +14,7 @@ from wx.lib.buttons import GenBitmapTextButton
 import core
 import dialogs
 import categories
+import database
 
 __author__ = 'Julio'
 
@@ -64,6 +63,8 @@ class InventoryManager(wx.Frame):
                                     u'Entrada', pos=(200, 0), size=(100, 40))
         mplus.SetBackgroundColour(core.default_background_color)
         mplus.Bind(wx.EVT_BUTTON, self.open_update_inventory)
+        # Desabilitado por enquanto
+        mplus.Disable()
         edi = GenBitmapTextButton(panel_buttons_left, -1,
                                   wx.Bitmap(core.directory_paths['icons'] + 'Edit.png', wx.BITMAP_TYPE_PNG), u'Editar',
                                   pos=(300, 0), size=(100, 40))
@@ -114,54 +115,20 @@ class InventoryManager(wx.Frame):
     def __setup__(self):
         self.list_products.DeleteAllItems()
         self.textbox_filter.Clear()
-        inventory = []
-        self.dict_products = {}
-        for root, dirs, files in os.walk(core.directory_paths['inventory']):
-            if root != core.directory_paths['inventory']:
-                try:
-                    o = shelve.open(root + core.slash + root.split(core.slash)[-1] + '_infos.txt')
-                    self.dict_products[o['description']] = [str(int(root.split(core.slash)[-1])), o['type'],
-                                                            'R$ ' + core.good_show('money', str(o['price'])).replace(
-                                                                '.', ','), o['amount']]
-                    inventory.append(o['description'])
-                    o.close()
-                except ValueError:
-                    print
-                    print 'ERROR:   ' + root
-        inventory.sort()
-        for g in inventory:
-            self.list_products.Append((g, self.dict_products[g][0], self.dict_products[g][1], self.dict_products[g][2],
-                                       self.dict_products[g][3]))
+        db = database.InventoryDB()
+        inventory = db.product_list()
+        for product in inventory:
+            self.list_products.Append((product[2], product[0], product[3], product[4], product[5], product[6]))
+        db.close()
 
-    def data_delete(self, event):
+    def data_delete(self, event):   # TODO Fazer os dados não serem apagados permanentemente
         it = self.list_products.GetFocusedItem()
         if it == -1:
             return
         e_id = self.list_products.GetItem(it, 1).GetText()
-        rtime = core.good_show("o", str(datetime.now().hour)) + "-" + core.good_show("o", str(
-            datetime.now().minute)) + "-" + core.good_show("o", str(datetime.now().second))
-        rdate = str(datetime.now().year) + "-" + core.good_show("o", str(datetime.now().month)) + "-" + core.good_show(
-            "o", str(
-                datetime.now().day))
-        dt = '%s_%s' % (rdate, rtime)
-        while len(e_id) < 6:
-            e_id = '0' + e_id
-        if not os.path.exists('#Trash'):
-            os.mkdir('#Trash')
-        if not os.path.exists('#Trash/inventory'):
-            os.mkdir('#Trash/inventory')
-        if not os.path.exists('#Trash/inventory/deleted'):
-            os.mkdir('#Trash/inventory/deleted')
-        if not os.path.exists('#Trash/inventory/deleted/' + e_id):
-            os.mkdir('#Trash/inventory/deleted/' + e_id)
-        shutil.copytree(core.directory_paths['inventory'] + e_id, '#Trash/inventory/deleted/%s/%s' % (e_id, dt))
-        dirs = os.listdir(core.directory_paths['inventory'])
-        for i in dirs:
-            try:
-                if int(i) == int(e_id):
-                    shutil.rmtree(core.directory_paths['inventory'] + i)
-            except ValueError:
-                pass
+        db = database.InventoryDB()
+        db.delete_product(e_id)
+        db.close()
         self.setup(None)
 
     def data_edit(self, event):
@@ -182,35 +149,12 @@ class InventoryManager(wx.Frame):
 
     def database_search(self, event):
         self.list_products.DeleteAllItems()
-        inventory = []
-        self.dict_products = {}
-        for root, dirs, files in os.walk(core.directory_paths['inventory']):
-            if root != core.directory_paths['inventory']:
-                try:
-                    o = shelve.open(root + core.slash + root.split(core.slash)[-1] + '_infos.txt')
-                    tex = lower(self.textbox_filter.GetValue())
-                    num = len(tex)
-                    fri = []
-                    for a in o['description'].split():
-                        fri.append(lower(a[:num]))
-                    fri.append(lower(o['description'][:num]))
-                    for a in o['type'].split():
-                        fri.append(lower(a[:num]))
-                    fri.append(lower(o['type'][:num]))
-                    if (tex in fri) or (tex == str(int(root.split(core.slash)[-1]))):
-                        self.dict_products[o['description']] = [str(int(root.split(core.slash)[-1])), o['type'],
-                                                                'R$ ' + core.good_show('money',
-                                                                                       str(o['price'])).replace('.',
-                                                                                                                ','),
-                                                                o['amount']]
-                        inventory.append(o['description'])
-                    o.close()
-                except ValueError:
-                    pass
-        inventory.sort()
-        for g in inventory:
-            self.list_products.Append((g, self.dict_products[g][0], self.dict_products[g][1], self.dict_products[g][2],
-                                       self.dict_products[g][3]))
+        db = database.InventoryDB()
+        info = self.textbox_filter.GetValue()
+        inventory = db.inventory_search(info)
+        for product in inventory:
+            self.list_products.Append((product[2], product[0], product[3], product[4], product[5]))
+        db.close()
 
     def clean(self, event):
         self.textbox_filter.Clear()
@@ -237,6 +181,7 @@ class ProductRegister(wx.Frame):
     panel_image = None
 
     textbox_description = None
+    textbox_barcode = None
     textbox_amount = None
     textbox_price = None
     textbox_supplier = None
@@ -263,21 +208,24 @@ class ProductRegister(wx.Frame):
 
         self.panel_data = wx.Panel(self, -1, pos=(0, 0), size=(500, 320), style=wx.TAB_TRAVERSAL)
         wx.StaticText(self.panel_data, -1, u'Descrição do produto:', pos=(190, 10))
-        wx.StaticText(self.panel_data, -1, u'Preço:', pos=(190, 70))
-        wx.StaticText(self.panel_data, -1, u'Estoque:', pos=(340, 70))
-        wx.StaticText(self.panel_data, -1, u'Categoria:', pos=(190, 130))
-        wx.StaticText(self.panel_data, -1, u'Fornecedor:', pos=(350, 130))
-        wx.StaticText(self.panel_data, -1, u'Observações:', pos=(10, 190))
+        wx.StaticText(self.panel_data, -1, u'Código de Barras:', pos=(190, 70))
+        wx.StaticText(self.panel_data, -1, u'Preço:', pos=(190, 130))
+        wx.StaticText(self.panel_data, -1, u'Estoque:', pos=(350, 130))
+        wx.StaticText(self.panel_data, -1, u'Categoria:', pos=(190, 190))
+        wx.StaticText(self.panel_data, -1, u'Fornecedor:', pos=(350, 190))
+        wx.StaticText(self.panel_data, -1, u'Observações:', pos=(10, 230))
         self.textbox_description = wx.TextCtrl(self.panel_data, -1, pos=(190, 30), size=(300, 30))
-        self.textbox_price = wx.TextCtrl(self.panel_data, -1, pos=(190, 90), size=(100, 30))
-        self.textbox_amount = wx.TextCtrl(self.panel_data, -1, pos=(340, 90), size=(100, 30))
-        self.combobox_category = wx.ComboBox(self.panel_data, -1, pos=(190, 150), size=(150, 30))
-        self.textbox_supplier = wx.TextCtrl(self.panel_data, -1, pos=(350, 150), size=(140, 30))
-        self.textbox_observation = wx.TextCtrl(self.panel_data, -1, pos=(10, 210), size=(480, 100),
+        self.textbox_barcode = wx.TextCtrl(self.panel_data, -1, pos=(190, 90), size=(300, 30))
+        self.textbox_price = wx.TextCtrl(self.panel_data, -1, pos=(190, 150), size=(100, 30))
+        self.textbox_amount = wx.TextCtrl(self.panel_data, -1, pos=(350, 150), size=(100, 30))
+        self.combobox_category = wx.ComboBox(self.panel_data, -1, pos=(190, 210), size=(150, 30), style=wx.TE_READONLY)
+        self.textbox_supplier = wx.TextCtrl(self.panel_data, -1, pos=(350, 210), size=(140, 30))
+        self.textbox_observation = wx.TextCtrl(self.panel_data, -1, pos=(10, 250), size=(480, 65),
                                                style=wx.TE_MULTILINE)
+        self.textbox_barcode.Bind(wx.EVT_CHAR, core.check_number)
         self.textbox_price.Bind(wx.EVT_CHAR, core.check_currency)
 
-        self.panel_image = wx.Panel(self.panel_data, -1, size=(150, 150), pos=(10, 25), style=wx.SIMPLE_BORDER)
+        self.panel_image = wx.Panel(self.panel_data, -1, size=(150, 150), pos=(10, 45), style=wx.SIMPLE_BORDER)
         self.panel_image.SetBackgroundColour('#ffffff')
         wx.EVT_PAINT(self.panel_image, self.OnPaint)
         self.clean()
@@ -309,25 +257,18 @@ class ProductRegister(wx.Frame):
             self.Close()
 
     def clean(self):
+        db = database.InventoryDB()
+        category_list = db.categories_list()
+        category_options = []
+        for category in category_list:
+            category_options.append(category[1])
         self.textbox_description.SetValue('')
         self.textbox_price.SetValue('R$ 0,00')
         self.textbox_amount.SetValue('')
-        self.combobox_category.SetValue('')
         self.textbox_supplier.SetValue('')
         self.textbox_observation.SetValue('')
-        if not os.path.exists(core.directory_paths['inventory']):
-            os.mkdir(core.directory_paths['inventory'])
-        if not os.path.exists(core.directory_paths['inventory'] + 'category.txt'):
-            f = codecs.open(core.directory_paths['inventory'] + 'category.txt', 'w+', 'utf-8')
-        else:
-            f = codecs.open(core.directory_paths['inventory'] + 'category.txt', 'r', 'utf-8')
-        cat = f.readlines()
-        l = ''.join(cat).replace('\n', '').replace('\r', '\r')
-        cat = l.split('\\\\')
-        self.combobox_category.SetItems(cat)
-        self.combobox_category.Destroy()
-        self.combobox_category = wx.ComboBox(self.panel_data, -1, choices=cat, pos=(190, 150), size=(150, 30))
-        f.close()
+        self.combobox_category.SetItems(category_options)
+        db.close()
 
     def end(self):
         if not self.textbox_description.GetValue():
@@ -335,59 +276,31 @@ class ProductRegister(wx.Frame):
             a.ShowModal()
             a.Destroy()
             return
-        if not os.path.exists(core.directory_paths['inventory']):
-            os.mkdir(core.directory_paths['inventory'])
-        dirs = os.listdir(core.directory_paths['inventory'])
-        if os.path.exists('#Trash/inventory/deleted'):
-            dirs += os.listdir('#Trash/inventory/deleted')
-        if os.path.exists('#Trash/inventory/edited'):
-            dirs += os.listdir('#Trash/inventory/edited')
-        w = self.combobox_category.GetItems()
-        for a in range(0, len(w)):
-            w[a] = (lower(w[a]))
-        if (lower(self.combobox_category.GetValue())) not in w:
-            li = []
-            if os.path.exists(core.directory_paths['inventory'] + 'category.txt'):
-                f = codecs.open(core.directory_paths['inventory'] + 'category.txt', 'r', 'utf-8')
-                li = f.readlines()
-                f.close()
-            f = codecs.open(core.directory_paths['inventory'] + 'category.txt', 'w', 'utf-8')
-            li.append(self.combobox_category.GetValue().capitalize())
-            li.sort()
-            f.write('\\\\'.join(li))
-            f.close()
-        last_id = 0
-        for i in dirs:
-            try:
-                if int(i) > last_id:
-                    last_id = int(i)
-            except ValueError:
-                pass
-        new_id = last_id + 1
-        idstr = str(new_id)
-        while len(idstr) < 6:
-            idstr = '0' + idstr
-        os.mkdir(core.directory_paths['inventory'] + idstr)
         rtime = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
             datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
         rdate = str(datetime.now().year) + "-" + core.good_show("o", str(datetime.now().month)) + "-" + core.good_show(
             "o", str(
                 datetime.now().day))
-        po = (core.directory_paths['inventory'] + idstr + core.slash + idstr + '_infos.txt')
-        s = shelve.open(po)
         names = strip(self.textbox_description.GetValue()).split()
         for i in range(0, len(names)):
             names[i] = names[i].capitalize()
         namef = ' '.join(names)
+        db = database.InventoryDB()
+        category = db.category_id(self.combobox_category.GetValue())
+
+        s = dict()
+        s['barcode'] = self.textbox_barcode.GetValue()
         s['description'] = namef
         s['price'] = float(self.textbox_price.GetValue().replace(',', '.').replace('R$ ', ''))
-        s['amount'] = self.textbox_amount.GetValue()
-        s['type'] = self.combobox_category.GetValue()
+        s['amount'] = int(self.textbox_amount.GetValue())
+        s['category'] = category[0]
         s['supplier'] = self.textbox_supplier.GetValue()
         s['obs'] = self.textbox_observation.GetValue()
         s['time'] = rtime
         s['date'] = rdate
-        s.close()
+        s['date'] = rdate
+        db.insert_product(s)
+        db.close()
         self.clean()
         dialogs.Confirmation(self, 'Sucesso', 5)
 
@@ -405,6 +318,7 @@ class ProductData(wx.Frame):
     panel_image = None
 
     textbox_description = None
+    textbox_barcode = None
     textbox_amount = None
     textbox_price = None
     textbox_supplier = None
@@ -435,23 +349,27 @@ class ProductData(wx.Frame):
         self.Centre()
         self.panel_data = wx.Panel(self, -1, pos=(0, 0), size=(500, 320), style=wx.TAB_TRAVERSAL)
         wx.StaticText(self.panel_data, -1, u'Descrição do produto:', pos=(190, 10))
-        wx.StaticText(self.panel_data, -1, u'Preço:', pos=(190, 70))
-        wx.StaticText(self.panel_data, -1, u'Estoque:', pos=(340, 70))
-        wx.StaticText(self.panel_data, -1, u'Categoria:', pos=(190, 130))
+        wx.StaticText(self.panel_data, -1, u'Código de Barras:', pos=(190, 70))
+        wx.StaticText(self.panel_data, -1, u'Preço:', pos=(190, 130))
+        wx.StaticText(self.panel_data, -1, u'Estoque:', pos=(350, 130))
+        wx.StaticText(self.panel_data, -1, u'Categoria:', pos=(190, 190))
+        wx.StaticText(self.panel_data, -1, u'Fornecedor:', pos=(350, 190))
+        wx.StaticText(self.panel_data, -1, u'Observações:', pos=(10, 230))
         self.textbox_description = wx.TextCtrl(self.panel_data, -1, pos=(190, 30), size=(300, 30))
-        self.textbox_price = wx.TextCtrl(self.panel_data, -1, pos=(190, 90), size=(100, 30))
-        self.textbox_amount = wx.TextCtrl(self.panel_data, -1, pos=(340, 90), size=(100, 30))
+        self.textbox_barcode = wx.TextCtrl(self.panel_data, -1, pos=(190, 90), size=(300, 30))
+        self.textbox_price = wx.TextCtrl(self.panel_data, -1, pos=(190, 150), size=(100, 30))
+        self.textbox_amount = wx.TextCtrl(self.panel_data, -1, pos=(350, 150), size=(100, 30))
         self.textbox_price.Bind(wx.EVT_CHAR, core.check_money)
+        self.textbox_barcode.Bind(wx.EVT_CHAR, core.check_number)
         if not self.editable:
-            self.combobox_category = wx.TextCtrl(self.panel_data, -1, pos=(190, 150), size=(150, 30))
+            self.combobox_category = wx.TextCtrl(self.panel_data, -1, pos=(190, 210), size=(150, 30))
         else:
-            self.combobox_category = wx.ComboBox(self.panel_data, -1, pos=(190, 150), size=(150, 30))
-        wx.StaticText(self.panel_data, -1, u'Fornecedor:', pos=(350, 130))
-        wx.StaticText(self.panel_data, -1, u'Observações:', pos=(10, 190))
-        self.textbox_supplier = wx.TextCtrl(self.panel_data, -1, pos=(350, 150), size=(140, 30))
-        self.textbox_observation = wx.TextCtrl(self.panel_data, -1, pos=(10, 210), size=(480, 100),
+            self.combobox_category = wx.ComboBox(self.panel_data, -1, pos=(190, 210), size=(150, 30),
+                                                 style=wx.TE_READONLY)
+        self.textbox_supplier = wx.TextCtrl(self.panel_data, -1, pos=(350, 210), size=(140, 30))
+        self.textbox_observation = wx.TextCtrl(self.panel_data, -1, pos=(10, 250), size=(480, 65),
                                                style=wx.TE_MULTILINE)
-        self.panel_image = wx.Panel(self.panel_data, -1, size=(150, 150), pos=(10, 25), style=wx.SIMPLE_BORDER)
+        self.panel_image = wx.Panel(self.panel_data, -1, size=(150, 150), pos=(10, 45), style=wx.SIMPLE_BORDER)
         self.panel_image.SetBackgroundColour('#ffffff')
         wx.EVT_PAINT(self.panel_image, self.OnPaint)
         panel_bottom = wx.Panel(self, -1, pos=(0, 325), size=(500, 50))
@@ -466,15 +384,11 @@ class ProductData(wx.Frame):
                                          u"Sair", pos=(100, 0), size=(100, 40))
             cancel.Bind(wx.EVT_BUTTON, self.ask_exit)
             self.combobox_category.Disable()
-            self.combobox_category.SetBackgroundColour('#C6C6C6')
             self.textbox_description.Disable()
-            self.textbox_description.SetBackgroundColour('#C6C6C6')
+            self.textbox_barcode.Disable()
             self.textbox_price.Disable()
-            self.textbox_price.SetBackgroundColour('#C6C6C6')
             self.textbox_amount.Disable()
-            self.textbox_amount.SetBackgroundColour('#C6C6C6')
             self.textbox_supplier.Disable()
-            self.textbox_supplier.SetBackgroundColour('#C6C6C6')
             self.textbox_observation.Disable()
         else:
             panel_bottom_buttons = wx.Panel(panel_bottom, pos=(90, 5), size=(320, 40), style=wx.SIMPLE_BORDER)
@@ -505,26 +419,24 @@ class ProductData(wx.Frame):
             self.Close()
 
     def clean(self):
-        s = shelve.open(
-            core.directory_paths['inventory'] + self.product_id + core.slash + self.product_id + '_infos.txt')
-        self.textbox_description.SetValue(s['description'])
-        self.textbox_price.SetValue('R$ ' + core.good_show('money', str(s['price'])).replace('.', ','))
-        self.textbox_amount.SetValue(str(s['amount']))
-        self.textbox_supplier.SetValue(s['supplier'])
-        self.textbox_observation.SetValue(s['obs'])
+        db = database.InventoryDB()
+        category_list = db.categories_list()
+        category_options = []
+        for category in category_list:
+            category_options.append(category[1])
+        product = db.inventory_search_id(self.product_id)
+        self.textbox_description.SetValue(product[2])
+        self.textbox_barcode.SetValue(product[1])
+        self.textbox_price.SetValue('R$ ' + core.good_show('money', product[4]))
+        self.textbox_amount.SetValue(str(product[5]))
+        self.textbox_supplier.SetValue(product[7])
+        self.textbox_observation.SetValue(product[8])
+
         if self.editable:
-            if not os.path.exists(core.directory_paths['inventory']):
-                os.mkdir(core.directory_paths['inventory'])
-            if not os.path.exists(core.directory_paths['inventory'] + 'category.txt'):
-                f = codecs.open(core.directory_paths['inventory'] + 'category.txt', 'w+', 'utf-8')
-            else:
-                f = codecs.open(core.directory_paths['inventory'] + 'category.txt', 'r', 'utf-8')
-            cat = f.readlines()
-            l = ''.join(cat).replace('\n', '').replace('\r', '\r')
-            cat = l.split('\\\\')
-            self.combobox_category.SetItems(cat)
-            f.close()
-        self.combobox_category.SetValue(s['type'])
+            self.combobox_category.SetItems(category_options)
+        self.combobox_category.SetValue(db.categories_search_id(product[3])[1])
+
+        db.close()
 
     def set_editable(self, event):
         ProductData(self.parent, self.title, self.product_id, True)
@@ -536,55 +448,34 @@ class ProductData(wx.Frame):
             a.ShowModal()
             a.Destroy()
             return
-        idstr = self.product_id
         rtime = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
             datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
         rdate = str(datetime.now().year) + "-" + core.good_show("o", str(datetime.now().month)) + "-" + core.good_show(
             "o", str(
                 datetime.now().day))
-        dt = '%s_%s' % (rdate, rtime.replace(':', '-'))
-        if not os.path.exists('#Trash'):
-            os.mkdir('#Trash')
-        if not os.path.exists('#Trash/inventory'):
-            os.mkdir('#Trash/inventory')
-        if not os.path.exists('#Trash/inventory/edited'):
-            os.mkdir('#Trash/inventory/edited')
-        if not os.path.exists('#Trash/inventory/edited/' + idstr):
-            os.mkdir('#Trash/inventory/edited/' + idstr)
-        w = self.combobox_category.GetItems()
-        for a in range(0, len(w)):
-            w[a] = (lower(w[a]))
-        if (lower(self.combobox_category.GetValue())) not in w:
-            li = []
-            if os.path.exists(core.directory_paths['inventory'] + 'category.txt'):
-                f = codecs.open(core.directory_paths['inventory'] + 'category.txt', 'r', 'utf-8')
-                li = f.readlines()
-                f.close()
-            f = codecs.open(core.directory_paths['inventory'] + 'category.txt', 'w', 'utf-8')
-            li.append(self.combobox_category.GetValue().capitalize())
-            li.sort()
-            f.write('\\\\'.join(li))
-            f.close()
-        shutil.copytree(core.directory_paths['inventory'] + idstr, '#Trash/inventory/edited/%s/%s' % (idstr, dt))
-        po = (core.directory_paths['inventory'] + idstr + core.slash + idstr + '_infos.txt')
-        s = shelve.open(po)
         names = strip(self.textbox_description.GetValue()).split()
         for i in range(0, len(names)):
             names[i] = names[i].capitalize()
         namef = ' '.join(names)
+        db = database.InventoryDB()
+        category = db.category_id(self.combobox_category.GetValue())
+
+        s = dict()
+        s['barcode'] = int(self.textbox_barcode.GetValue())
         s['description'] = namef
         s['price'] = float(self.textbox_price.GetValue().replace(',', '.').replace('R$ ', ''))
-        s['amount'] = self.textbox_amount.GetValue()
-        s['type'] = self.combobox_category.GetValue()
+        s['amount'] = int(self.textbox_amount.GetValue())
+        s['category'] = category[0]
         s['supplier'] = self.textbox_supplier.GetValue()
         s['obs'] = self.textbox_observation.GetValue()
         s['time'] = rtime
         s['date'] = rdate
-        s.close()
+        s['date'] = rdate
+        db.edit_product(self.product_id, s)
+        db.close()
+
         self.clean()
-        if type(self.parent) is InventoryManager:
-            self.parent.setup(None)
-        self.Close()
+        self.exit(None)
 
     def OnPaint(self, event):
         wx.PaintDC(self.panel_image).DrawBitmap(
@@ -693,7 +584,7 @@ class UpdateInventory(wx.Frame):
                 if root != core.directory_paths['inventory']:
                     try:
                         o = shelve.open(root + core.slash + root.split(core.slash)[-1] + '_infos.txt')
-                        self.dict_products[o['description']] = [str(int(root.split(core.slash)[-1])), o['type'],
+                        self.dict_products[o['description']] = [str(int(root.split(core.slash)[-1])), o['category'],
                                                                 'R$ ' + core.good_show('money',
                                                                                        str(o['price'])).replace('.',
                                                                                                                 ','),
@@ -724,7 +615,7 @@ class UpdateInventory(wx.Frame):
                 s['description'] = namef
                 s['price'] = k[2]
                 s['amount'] = k[1]
-                s['type'] = ''
+                s['category'] = ''
                 s['supplier'] = ''
                 s['obs'] = ''
                 s['time'] = rtime
@@ -742,7 +633,7 @@ class UpdateInventory(wx.Frame):
                     s['amount'] += k[1]
                     s.close()
         dialogs.Confirmation(self, u'Sucesso', 6)
-        self.clean(1)
+        self.clean(None)
 
     def clean(self, event):
         for a in self.new_products:
