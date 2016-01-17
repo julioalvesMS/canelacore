@@ -11,6 +11,7 @@ import clients
 import core
 import daily_report
 import inventory
+import categories
 import monthly_report
 import sale
 
@@ -66,7 +67,7 @@ class Confirmation(wx.Dialog):
         nok.Bind(wx.EVT_BUTTON, self.cont)
         self.SetBackgroundColour(core.default_background_color)
         if type(parent.GetParent()) in [daily_report.Report, monthly_report.Report, clients.ClientManager,
-                                        inventory.InventoryManager]:
+                                        inventory.InventoryManager, categories.CategoryManager]:
             parent.GetParent().setup(None)
         self.ShowModal()
         self.Destroy()
@@ -179,12 +180,14 @@ ask_options = {
     14: u"Finalizar cadastro de cliente?",
     15: u"Finalizar cadastro de produto?",
     16: u"Finalizar registro de ganho?",
+    17: u"Finalizar registro de categoria?",
     21: u"Você tem certeza que deseja apagar esta venda?",
     22: u"Você tem certeza que deseja apagar este gasto?",
     23: u"Você tem certeza que deseja apagar este registro?",
     24: u"Você tem certeza que deseja apagar este cliente?",
     25: u"Você tem certeza que deseja apagar este produto?",
     26: u"Você tem certeza que deseja apagar este ganho?",
+    27: u"Você tem certeza que deseja apagar esta categoria?",
     30: u"Você tem certeza que deseja restaurar esse registro?",
     40: u"Você tem certeza que deseja desconectar essa venda?",
     90: u"Você tem certeza que deseja sair do programa?",
@@ -198,5 +201,6 @@ confirmation_options = {
     4: u"Cliente cadastrado com sucesso!\nCadatrar outro?",
     5: u"Produto cadastrado com sucesso!\nCadatrar outro?",
     6: u"Produtos registrados com sucesso!\nRegistrar outros?",
-    7: u"Ganho registrado com sucesso!\nRegistrar outro?"
+    7: u"Ganho registrado com sucesso!\nRegistrar outro?",
+    8: u"Categoria registrada com sucesso!\nRegistrar outra?"
 }

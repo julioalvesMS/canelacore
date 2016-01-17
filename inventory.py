@@ -15,6 +15,7 @@ from wx.lib.buttons import GenBitmapTextButton
 
 import core
 import dialogs
+import categories
 
 __author__ = 'Julio'
 
@@ -41,7 +42,13 @@ class InventoryManager(wx.Frame):
         self.SetIcon((wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO)))
         self.SetBackgroundColour(core.default_background_color)
         panel_top = wx.Panel(self, pos=(10, 10), size=(1180, 100))
-        panel_buttons_left = wx.Panel(panel_top, pos=(75, 40), size=(500, 40), style=wx.SIMPLE_BORDER)
+
+        button_categories = GenBitmapTextButton(panel_top, -1, wx.Bitmap(core.directory_paths['icons'] + 'Tools.png',
+                                                wx.BITMAP_TYPE_PNG), u'Categorias', pos=(10, 40), size=(100, 40),
+                                                style=wx.SIMPLE_BORDER)
+        button_categories.SetBackgroundColour(core.default_background_color)
+        button_categories.Bind(wx.EVT_BUTTON, self.open_category_manager)
+        panel_buttons_left = wx.Panel(panel_top, pos=(120, 40), size=(500, 40), style=wx.SIMPLE_BORDER)
         see = GenBitmapTextButton(panel_buttons_left, -1,
                                   wx.Bitmap(core.directory_paths['icons'] + 'Tools.png', wx.BITMAP_TYPE_PNG),
                                   u'Ver Mais', pos=(0, 0), size=(100, 40))
@@ -211,6 +218,9 @@ class InventoryManager(wx.Frame):
 
     def ask_delete(self, event):
         dialogs.Ask(self, u'Apagar Produto', 25)
+
+    def open_category_manager(self, event):
+        categories.CategoryManager(self)
 
     def open_new_product(self, event):
         ProductRegister(self)
@@ -741,3 +751,4 @@ class UpdateInventory(wx.Frame):
 
     def exit(self, event):
         self.Close()
+
