@@ -1,0 +1,7 @@
+unidecode >= 0.4.17
+PyESCPOS >= 0.0.6
+satcomum >= 0.0.8
+
+[testing]
+pytest
+pytest-cov

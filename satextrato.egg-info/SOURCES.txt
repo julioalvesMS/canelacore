@@ -1,0 +1,16 @@
+LICENSE
+MANIFEST.in
+README.rst
+requirements.txt
+setup.cfg
+setup.py
+satextrato/__init__.py
+satextrato/base.py
+satextrato/cancelamento.py
+satextrato/config.py
+satextrato/venda.py
+satextrato.egg-info/PKG-INFO
+satextrato.egg-info/SOURCES.txt
+satextrato.egg-info/dependency_links.txt
+satextrato.egg-info/requires.txt
+satextrato.egg-info/top_level.txt

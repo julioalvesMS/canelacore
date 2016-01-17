@@ -1,0 +1,5 @@
+{
+  "satextrato/tests/test_satextrato.py::test_extrato_cancelamento": true, 
+  "satextrato/tests/test_satextrato.py::test_extrato_venda": true, 
+  "satextrato/tests/test_satextrato.py::test_extrato_venda_resumido": true
+}
