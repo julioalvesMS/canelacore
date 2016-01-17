@@ -23,7 +23,7 @@ import monthly_report
 import record_editor
 import sale
 import settings
-# import teste
+import teste
 import transactions
 import waste
 

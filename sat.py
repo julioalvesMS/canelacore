@@ -24,7 +24,6 @@ CODIGO_ATIVACAO = '12345678'
 CNPJ_DESENVOLVEDOR_AC = '76861313000104'
 CNPJ_CANELA_SANTA = '11111111111111'  # tem que permanecer "11111..." ou o emulador não funciona
 NUMERO_CAIXA_PADRAO = 1
-REGRA_CALCULO = 'A'
 
 
 #####################################################
