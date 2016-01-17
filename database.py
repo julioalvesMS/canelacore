@@ -38,7 +38,7 @@ class InventoryDB:
         :return: None
         """
         self.cursor.execute('''CREATE TABLE INVENTORY(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-            BARCODE CHAR(32) NOT NULL UNIQUE, DESCRIPTION TEXT NOT NULL, CATEGORY INTEGER NOT NULL,
+            BARCODE CHAR(32) UNIQUE, DESCRIPTION TEXT NOT NULL, CATEGORY INTEGER NOT NULL,
             PRICE REAL NOT NULL, AMOUNT INTEGER, SOLD INTEGER, SUPPLIER TEXT, OBS TEXT, RECORD_TIME CHAR(8) NOT NULL,
             RECORD_DATE CHAR(10) NOT NULL)''')
 
@@ -117,7 +117,7 @@ class InventoryDB:
 
         # Faz o BD mostrar apenas o item com um codigo de barras especifico
         self.cursor.execute("""SELECT * FROM INVENTORY WHERE BARCODE=?""", (barcode, ))
-        return self.cursor.fetchall()
+        return self.cursor.fetchone()
 
     def inventory_search_id(self, product_id):
         """
@@ -157,26 +157,26 @@ class InventoryDB:
             int_info = -1
 
         info = '%' + info + '%'
-        self.cursor.execute("""SELECT * FROM INVENTORY WHERE DESCRIPTION LIKE ?""", (info, ))
+        self.cursor.execute("""SELECT * FROM INVENTORY WHERE DESCRIPTION LIKE ? ORDER BY DESCRIPTION""", (info, ))
         filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
-        self.cursor.execute("""SELECT * FROM INVENTORY WHERE SUPPLIER LIKE ?""", (info, ))
+        self.cursor.execute("""SELECT * FROM INVENTORY WHERE SUPPLIER LIKE ? ORDER BY DESCRIPTION""", (info, ))
         filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
         # Busca a entrada na tabela de categorias, compara com o nome da categoria
         category_list = list()
 
-        self.cursor.execute("""SELECT * FROM CATEGORIES WHERE CATEGORY LIKE ?""", (info, ))
+        self.cursor.execute("""SELECT * FROM CATEGORIES WHERE CATEGORY LIKE ? ORDER BY DESCRIPTION""", (info, ))
         category_list = list(set(category_list + self.cursor.fetchall()))
 
         # Caso a entrada seja numerica, busca pelo NCM
         if int_info != -1:
-            self.cursor.execute("""SELECT * FROM CATEGORIES WHERE NCM LIKE ?""", (info, ))
+            self.cursor.execute("""SELECT * FROM CATEGORIES WHERE NCM LIKE ? ORDER BY DESCRIPTION""", (info, ))
             category_list = list(set(category_list + self.cursor.fetchall()))
 
         # Seleciona todos os produtos da categoria compativel com a busca
         for category in category_list:
-            self.cursor.execute("""SELECT * FROM INVENTORY WHERE CATEGORY=?""", (category[0], ))
+            self.cursor.execute("""SELECT * FROM INVENTORY WHERE CATEGORY=? ORDER BY DESCRIPTION""", (category[0], ))
             filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
         return filtered_list
@@ -186,7 +186,7 @@ class InventoryDB:
         Dados de todos os produtos cadastrados
         :return: uma list com todos os produtos do BD
         """
-        self.cursor.execute("""SELECT * FROM INVENTORY""")
+        self.cursor.execute("""SELECT * FROM INVENTORY ORDER BY DESCRIPTION""")
         return self.cursor.fetchall()
 
     def insert_category(self, category, ncm):
@@ -232,7 +232,7 @@ class InventoryDB:
             # converte para integer para buscar por IDs e codigo de barras
             int_info = int(info)
 
-            self.cursor.execute("""SELECT * FROM CATEGORIES WHERE ID=?""", (int_info, ))
+            self.cursor.execute("""SELECT * FROM CATEGORIES WHERE ID=? ORDER BY CATEGORY""", (int_info, ))
             filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
         except ValueError:
@@ -241,10 +241,10 @@ class InventoryDB:
 
         info = '%' + info + '%'
 
-        self.cursor.execute("""SELECT * FROM CATEGORIES WHERE NCM LIKE ?""", (info, ))
+        self.cursor.execute("""SELECT * FROM CATEGORIES WHERE NCM LIKE ? ORDER BY CATEGORY""", (info, ))
         filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
-        self.cursor.execute("""SELECT * FROM CATEGORIES WHERE CATEGORY LIKE ?""", (info, ))
+        self.cursor.execute("""SELECT * FROM CATEGORIES WHERE CATEGORY LIKE ? ORDER BY CATEGORY""", (info, ))
         filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
         return filtered_list
@@ -280,7 +280,7 @@ class InventoryDB:
         Fornece todas as categorias presentes no BD
         :return: Uma lista com todos os elementos do BD
         """
-        self.cursor.execute("""SELECT * FROM CATEGORIES""")
+        self.cursor.execute("""SELECT * FROM CATEGORIES ORDER BY CATEGORY""")
         return self.cursor.fetchall()
 
 
@@ -382,10 +382,10 @@ class ClientsDB:
             # converte para integer para buscar por IDs e codigo de barras
             int_info = int(info)
 
-            self.cursor.execute("""SELECT * FROM CLIENTS WHERE ID=?""", (int_info, ))
+            self.cursor.execute("""SELECT * FROM CLIENTS WHERE ID=? ORDER BY NAME""", (int_info, ))
             filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
-            self.cursor.execute("""SELECT * FROM CLIENTS WHERE CPF=?""", (info, ))
+            self.cursor.execute("""SELECT * FROM CLIENTS WHERE CPF=? ORDER BY NAME""", (info, ))
             filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
         except ValueError:
@@ -394,32 +394,32 @@ class ClientsDB:
 
         info = '%' + info + '%'
 
-        self.cursor.execute("""SELECT * FROM CLIENTS WHERE NAME LIKE ?""", (info, ))
+        self.cursor.execute("""SELECT * FROM CLIENTS WHERE NAME LIKE ? ORDER BY NAME""", (info, ))
         filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
-        self.cursor.execute("""SELECT * FROM CLIENTS WHERE EMAIL LIKE ?""", (info, ))
+        self.cursor.execute("""SELECT * FROM CLIENTS WHERE EMAIL LIKE ? ORDER BY NAME""", (info, ))
         filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
-        self.cursor.execute("""SELECT * FROM CLIENTS WHERE TELEPHONE LIKE ?""", (info, ))
+        self.cursor.execute("""SELECT * FROM CLIENTS WHERE TELEPHONE LIKE ? ORDER BY NAME""", (info, ))
         filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
         if int_info != -1:
-            self.cursor.execute("""SELECT * FROM CLIENTS WHERE CEP LIKE ?""", (info, ))
+            self.cursor.execute("""SELECT * FROM CLIENTS WHERE CEP LIKE ? ORDER BY NAME""", (info, ))
             filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
-        self.cursor.execute("""SELECT * FROM CLIENTS WHERE STATE LIKE ?""", (info, ))
+        self.cursor.execute("""SELECT * FROM CLIENTS WHERE STATE LIKE ? ORDER BY NAME""", (info, ))
         filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
-        self.cursor.execute("""SELECT * FROM CLIENTS WHERE DISTRICT LIKE ?""", (info, ))
+        self.cursor.execute("""SELECT * FROM CLIENTS WHERE DISTRICT LIKE ? ORDER BY NAME""", (info, ))
         filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
-        self.cursor.execute("""SELECT * FROM CLIENTS WHERE CITY LIKE ?""", (info, ))
+        self.cursor.execute("""SELECT * FROM CLIENTS WHERE CITY LIKE ? ORDER BY NAME""", (info, ))
         filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
-        self.cursor.execute("""SELECT * FROM CLIENTS WHERE ADRESS LIKE ?""", (info, ))
+        self.cursor.execute("""SELECT * FROM CLIENTS WHERE ADRESS LIKE ? ORDER BY NAME""", (info, ))
         filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
-        self.cursor.execute("""SELECT * FROM CLIENTS WHERE OBS LIKE ?""", (info, ))
+        self.cursor.execute("""SELECT * FROM CLIENTS WHERE OBS LIKE ? ORDER BY NAME""", (info, ))
         filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
         return filtered_list
@@ -448,7 +448,7 @@ class ClientsDB:
         :rtype: list
         :return: uma list com todos os produtos do BD
         """
-        self.cursor.execute("""SELECT * FROM CLIENTS""")
+        self.cursor.execute("""SELECT * FROM CLIENTS ORDER BY NAME""")
         return self.cursor.fetchall()
 
 
@@ -633,10 +633,8 @@ class DeliveriesDB:
         Cria todas as tabelas do Banco de Dados de Produtos> Produtos, Categorias
         :return: None
         """
-        self.cursor.execute('''CREATE TABLE CLIENTS(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-            NAME TEXT NOT NULL, SEX CHAR(1) NOT NULL, BIRTH CHAR(10), EMAIL TEXT, TELEPHONE CHAR(11),
-            CPF CHAR(11), CEP CHAR(8), STATE CHAR(2), CITY TEXT, DISTRICT TEXT, ADRESS TEXT,
-            OBS TEXT, RECORD_TIME CHAR(8) NOT NULL, RECORD_DATE CHAR(10) NOT NULL)''')
+        self.cursor.execute('''CREATE TABLE DELIVERIES(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
+            SALE_ID INTEGER NOT NULL, DELIVERY_TIME CHAR(8) NOT NULL, DELIVERY_DATE CHAR(10) NOT NULL)''')
 
         self.db.commit()
 
@@ -744,4 +742,3 @@ class DeliveriesDB:
         """
         self.cursor.execute("""SELECT * FROM CLIENTS""")
         return self.cursor.fetchall()
-
