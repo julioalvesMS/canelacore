@@ -52,13 +52,6 @@ def funcao_test():
         CPF='11122233396',  # ou CNPJ, mas nunca os 2 ao mesmo tempo.
         xNome=u'João de Teste')
 
-    entrega = LocalEntrega(
-        xLgr='Rua Armando Gulim',
-        nro='65',
-        xBairro=u'Parque Glória III',
-        xMun='Catanduva',
-        UF='SP')
-
     detalhamentos = [
         Detalhamento(
             produto=ProdutoServico(
@@ -70,9 +63,10 @@ def funcao_test():
                 vUnCom=Decimal('5.75'),
                 indRegra='A'),
             imposto=Imposto(
-                icms=ICMSSN102(Orig='2', CSOSN='500'),
+                icms=ICMSSN102(Orig='0', CSOSN='102'),
                 pis=PISSN(CST='49'),
-                cofins=COFINSSN(CST='49'))),
+                cofins=COFINSSN(CST='49'),
+                vItem12741 = Decimal('19.99'))),
     ]
 
     descontos_acrescimos_subtotal = DescAcrEntr(
@@ -88,7 +82,7 @@ def funcao_test():
     informacoes_adicionais = InformacoesAdicionais(infCpl='Teste')
 
     resp = sat.enviar_dados_venda(detalhamentos=detalhamentos, pagamentos=pagamentos, destinatario=destinatario,
-                                  entrega=entrega, descontos_acrescimos_subtotal=descontos_acrescimos_subtotal,
+                                  entrega=None, descontos_acrescimos_subtotal=descontos_acrescimos_subtotal,
                                   informacoes_adicionais=informacoes_adicionais)
 
     print(resp.mensagem)
