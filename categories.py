@@ -83,6 +83,7 @@ class CategoryManager(wx.Frame):
         rest.start()
 
     def __setup__(self):
+        self.list_categories.DeleteAllItems()
         db = database.InventoryDB()
         categories = db.categories_list()
         for category in categories:
@@ -126,11 +127,13 @@ class CategoryManager(wx.Frame):
 
 
 class CategoryData(wx.Frame):
+
     textbox_description = None
     textbox_ncm = None
+    combobox_cfop = None
 
     def __init__(self, parent, title='Nova Categoria', category_id=-1):
-        wx.Frame.__init__(self, parent, -1, title, size=(500, 200),
+        wx.Frame.__init__(self, parent, -1, title, size=(490, 200),
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN)
         
         self.category_id = category_id
@@ -145,37 +148,43 @@ class CategoryData(wx.Frame):
         self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
         self.SetBackgroundColour(core.default_background_color)
         # first
-        first = wx.Panel(self, -1, size=(480, 85), pos=(10, 10), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
+        first = wx.Panel(self, -1, size=(320, 150), pos=(10, 10), style=wx.SIMPLE_BORDER | wx.TAB_TRAVERSAL)
         first.SetBackgroundColour(core.default_background_color)
+
         wx.StaticText(first, -1, u"Descrição:", pos=(10, 5))
         self.textbox_description = wx.TextCtrl(first, -1, pos=(10, 25), size=(300, 30))
-        wx.StaticText(first, -1, u"NCM:", pos=(370, 5))
-        self.textbox_ncm = wx.TextCtrl(first, -1, pos=(370, 25), size=(80, 30))
-        self.textbox_ncm.Bind(wx.EVT_CHAR, core.check_id)
+
+        wx.StaticText(first, -1, u"CFOP:", pos=(150, 70))
+        self.combobox_cfop = wx.ComboBox(first, -1, pos=(150, 90), size=(160, 30), style=wx.CB_READONLY)
+
+        wx.StaticText(first, -1, u"NCM:", pos=(10, 70))
+        self.textbox_ncm = wx.TextCtrl(first, -1, pos=(10, 90), size=(80, 30))
+        self.textbox_ncm.Bind(wx.EVT_CHAR, core.check_ncm)
+
         # last
-        last = wx.Panel(self, -1, size=(480, 60), pos=(10, 105), style=wx.SUNKEN_BORDER)
+        last = wx.Panel(self, -1, size=(140, 150), pos=(340, 10), style=wx.SIMPLE_BORDER)
         last.SetBackgroundColour(core.default_background_color)
-        last_ = wx.Panel(last, pos=(80, 10), size=(320, 40), style=wx.SIMPLE_BORDER)
+        last_ = wx.Panel(last, pos=(10, 15), size=(120, 120), style=wx.SIMPLE_BORDER)
         finish = GenBitmapTextButton(last_, -1,
                                      wx.Bitmap(core.directory_paths['icons'] + 'Check.png', wx.BITMAP_TYPE_PNG),
-                                     u'Finalizar', pos=(0, 0), size=(100, 40))
+                                     u'Finalizar', pos=(0, 0), size=(120, 40))
         finish.Bind(wx.EVT_BUTTON, self.ask_end)
         restart = GenBitmapTextButton(last_, -1,
                                       wx.Bitmap(core.directory_paths['icons'] + 'Reset.png', wx.BITMAP_TYPE_PNG),
-                                      u'Recomeçar', pos=(100, 0), size=(120, 40))
+                                      u'Recomeçar', pos=(0, 40), size=(120, 40))
         restart.Bind(wx.EVT_BUTTON, self.ask_clean)
         cancel = GenBitmapTextButton(last_, -1,
                                      wx.Bitmap(core.directory_paths['icons'] + 'Exit.png', wx.BITMAP_TYPE_PNG),
-                                     u"sair", pos=(220, 0), size=(100, 40))
+                                     u"sair", pos=(0, 80), size=(120, 40))
         cancel.Bind(wx.EVT_BUTTON, self.ask_exit)
 
     def setup(self):
         if self.category_id == -1:
             return
         db = database.InventoryDB()
-        data = db.categories_search(self.category_id)
+        data = db.categories_search_id(self.category_id)
         self.textbox_description.SetValue(data[1])
-        self.textbox_ncm.SetValue(data[1])
+        self.combobox_cfop.SetValue(data[2])
 
     def ask_clean(self, event):
         dialogs.Ask(self, u"Apagar Tudo", 1)
@@ -184,7 +193,7 @@ class CategoryData(wx.Frame):
         pl = str(self.textbox_description.GetValue())
         po = str(self.textbox_ncm.GetValue())
         if pl == '' and po == '':
-            self.exit()
+            self.exit(None)
             return
         dialogs.Ask(self, u"Sair", 91)
 

@@ -348,7 +348,7 @@ def check_number(event):
         event.Skip()
 
 
-def check_id(event):
+def check_ncm(event):
     """
     Verifica se a ID de um cliente ou produto esta no formato certo
     :param event:
