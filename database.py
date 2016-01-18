@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import sqlite3
+
+import data_types
 import core
 
 
@@ -494,23 +496,33 @@ class SalesDB:
         """
         self.cursor.execute('''CREATE TABLE ?(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
             PRODUCTS TEXT NOT NULL, AMOUNTS TEXT NOT NULL, PRICES TEXT NOT NULL, SOLD REAL, DISCOUNT REAL, TAXES REAL,
-            VALUE REAL, PAYMENTE TEXT, CLIENT INTEGER, TELEPHONE CHAR(11), CEP CHAR(8), STATE CHAR(2), CITY TEXT, DISTRICT TEXT, ADRESS TEXT,
+            VALUE REAL, PAYMENTE TEXT, CLIENT_NAME TEXT, CLIENT_CPF CHAR(11), DELIVERY_ID CHAR(8),
             RECORD_TIME CHAR(8) NOT NULL, RECORD_DATE CHAR(10) NOT NULL)''', (day, ))
 
         self.db.commit()
 
-    def insert_sale(self, data, ):
+    def insert_sale(self, data, day=-1):
         """
         Insere uma nova entrada no Banco de Dados de Produtos
-        :param data: dados do novo produto a ser inserida
+        :param data: dados da nova venda a ser cadastrada
+        :param day: dia da venda sendo cadastrada
         """
 
-        # Transfere os dados do dict mandado para um tuple
-        _data = (data['name'], data['sex'], data['birth'], data['email'], data['tel'], data['cpf'], data['cep'],
-                 data['state'], data['city'], data['district'], data['adress'], data['obs'], data['time'], data['date'])
+        if day == -1:
+            day = data.record_date[8:]
 
-        cmd = 'INSERT INTO INVENTORY (NAME, SEX, BIRTH, EMAIL, TELEPHONE, CPF, CEP, STATE, CITY, '
-        cmd += 'DISTRICT, ADRESS, OBS, RECORD_TIME, RECORD_DATE) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+        try:
+            self.create_table(day)
+        except sqlite3.OperationalError:
+            pass
+
+        # Transfere os dados do dict mandado para um tuple
+        _data = (day, data.products_IDs, data.amounts, data.prices, data.sold, data.discount, data.taxes,
+                 data.value, data.payment, data.client_name, data.client_cpf, data.delivery_ID, data.record_time,
+                 data.record_date)
+
+        cmd = 'INSERT INTO ? (PRODUCTS, AMOUNTS, PRICES, SOLD, DISCOUNT, TAXES, VALUE, PAYMENT, CLIENT_NAME, '
+        cmd += 'CLIENT_CPF, DELIVERY_ID, RECORD_TIME, RECORD_DATE) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'
 
         # Insere o novo produto no BD
         self.cursor.execute(cmd, _data)
@@ -522,73 +534,31 @@ class SalesDB:
         :param data: dados do novo produto a ser inserida
         """
 
+        day = data.record_date[8:]
+
         # Transfere os dados do dict mandado para um tuple
-        _data = (data['name'], data['sex'], data['birth'], data['email'], data['tel'], data['cpf'], data['cep'],
-                 data['state'], data['city'], data['district'], data['adress'], data['obs'])
+        _data = (day, data.products_IDs, data.amounts, data.prices, data.sold, data.discount, data.taxes,
+                 data.value, data.payment, data.client_name, data.client_cpf, data.delivery_ID, data.record_time,
+                 data.record_date, data.ID)
 
         # Prepara a linha de comando
 
-        cmd = 'UPDATE CLIENTS SET NAME=?, SEX=?, BIRTH=?, EMAIL=?, TELEPHONE=?, CPF=?, CEP=?, STATE=?, CITY=?, '
-        cmd += 'DISTRICT=?, ADRESS=?, OBS=? WHERE ID=?'
+        cmd = 'UPDATE ? SET PRODUCTS=?, AMOUNTS=?, PRICES=?, SOLD=?, DISCOUNT=?, TAXES=?, VALUE=?, PAYMENT=?, '
+        cmd += 'CLIENT_NAME=?, CLIENT_CPF=?, DELIVERY_ID=?, RECORD_TIME=?, RECORD_DATE=? WHERE ID=?'
 
         # Edita o produto no BD
         self.cursor.execute(cmd, _data)
         self.db.commit()
 
-    def delete_sale(self, product_id):
+    def delete_sale(self, ID, day):
         """
         Delete um produto do BD
-        :param product_id: id do produto a ser deletado
+        :param ID: id do produto a ser deletado
+        :param day: dia em que está registrada a venda
         :return:
         """
-        self.cursor.execute('DELETE FROM CLIENTS WHERE ID=?', (product_id, ))
+        self.cursor.execute('DELETE FROM ? WHERE ID=?', (day, ID))
         self.db.commit()
-
-    def sales_search(self, info):    # TODO Atualmente apenas busca por igualdade, melhorar a busca
-        """
-        Faz uma busca por um dado generico mno banco de dados.
-        Dada uma String busca por correspondecia por descrições, ids, categoria, fornecedores e NCM
-        :param info: String com o dado a ser buscado
-        :return: List com todos os produtos compativeis com a busca
-        """
-        # Lista para armazenar todos os produtos compativeis com a busca
-        filtered_list = []
-        try:
-            # converte para integer para buscar por IDs e codigo de barras
-            int_info = int(info)
-
-            self.cursor.execute("""SELECT * FROM CLIENTS WHERE ID=?""", (int_info, ))
-            filtered_list = list(set(filtered_list + self.cursor.fetchall()))
-
-            self.cursor.execute("""SELECT * FROM CLIENTS WHERE CPF=?""", (info, ))
-            filtered_list = list(set(filtered_list + self.cursor.fetchall()))
-
-        except ValueError:
-            # Caso não seja possivel converter para INTEGER pula as IDs e continua com as outras buscas
-            int_info = -1
-
-        info = '%' + info + '%'
-
-        self.cursor.execute("""SELECT * FROM CLIENTS WHERE NAME LIKE ?""", (info, ))
-        filtered_list = list(set(filtered_list + self.cursor.fetchall()))
-
-        self.cursor.execute("""SELECT * FROM CLIENTS WHERE EMAIL LIKE ?""", (info, ))
-        filtered_list = list(set(filtered_list + self.cursor.fetchall()))
-
-        self.cursor.execute("""SELECT * FROM CLIENTS WHERE TELEPHONE LIKE ?""", (info, ))
-        filtered_list = list(set(filtered_list + self.cursor.fetchall()))
-
-        if int_info != -1:
-            self.cursor.execute("""SELECT * FROM CLIENTS WHERE CEP LIKE ?""", (info, ))
-            filtered_list = list(set(filtered_list + self.cursor.fetchall()))
-
-        self.cursor.execute("""SELECT * FROM CLIENTS WHERE ADRESS LIKE ?""", (info, ))
-        filtered_list = list(set(filtered_list + self.cursor.fetchall()))
-
-        self.cursor.execute("""SELECT * FROM CLIENTS WHERE OBS LIKE ?""", (info, ))
-        filtered_list = list(set(filtered_list + self.cursor.fetchall()))
-
-        return filtered_list
 
     def daily_sales_list(self, day):
         """
@@ -597,8 +567,26 @@ class SalesDB:
         :rtype: list
         :return: uma list com todos os produtos do BD
         """
-        self.cursor.execute("""SELECT * FROM ?""", (day, ))
-        return self.cursor.fetchall()
+        try:
+            self.cursor.execute("""SELECT * FROM ?""", (day, ))
+            return self.cursor.fetchall()
+        except sqlite3.OperationalError:
+            return []
+
+    def monthly_sales_list(self):
+        """
+        Dados de todas as vendas cadastrados em um mes
+        :rtype: dict
+        :return: uma list com todos os produtos do BD
+        """
+        total = dict()
+        for day in range(1, 32):
+            try:
+                self.cursor.execute("""SELECT * FROM ?""", (day, ))
+            except sqlite3.OperationalError:
+                continue
+            total[day] = self.cursor.fetchall()
+        return total
 
 
 class DeliveriesDB:
