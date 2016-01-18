@@ -53,14 +53,16 @@ class Base(wx.Frame):
 
         core.setup_environment()
 
-        # Faz o Backup e verifica entregas
-        self.wd60 = {}
-        self.bool_b = False
-        self.backup(None)
-        self.timer_delivery = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.delivery_check, self.timer_delivery)
-        self.delivery_check(None)
-        self.up_on = False
+        # desabilitado em faze de desenvolvimento
+
+        # # Faz o Backup e verifica entregas
+        # self.wd60 = {}
+        # self.bool_b = False
+        # self.backup(None)
+        # self.timer_delivery = wx.Timer(self)
+        # self.Bind(wx.EVT_TIMER, self.delivery_check, self.timer_delivery)
+        # self.delivery_check(None)
+        # self.up_on = False
 
         self.Show()
         self.tray = BaseTray(self)

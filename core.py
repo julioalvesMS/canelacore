@@ -282,7 +282,7 @@ def check_date(event):
         event.GetEventObject().SetValue('__/__/____')
 
 
-def hour_check(event):
+def check_hour(event):
     """
     Verifica se um TextCtrl está com o texto com um horario no formato correto
     :param event: Evento gerado pela GUI
@@ -290,7 +290,7 @@ def hour_check(event):
     num = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57]
     dex = [8, 127, 314, 316, 9]
     pro = event.GetKeyCode()
-    box = event.getEventObject()
+    box = event.GetEventObject()
     rhyme = box.GetValue().replace(":", ".")
     if pro == dex[2] or pro == dex[3] or pro == dex[4]:
         event.Skip()
@@ -356,7 +356,7 @@ def check_ncm(event):
     """
     if len(event.GetEventObject().GetValue()) < 8:
         check_number(event)
-    elif event.getKeyCode() in [8, 9, 127, 314, 316]:
+    elif event.GetKeyCode() in [8, 9, 127, 314, 316]:
         event.Skip()
 
 

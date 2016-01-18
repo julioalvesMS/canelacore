@@ -7,6 +7,49 @@ import data_types
 import core
 
 
+def database2product(database_list):
+    """
+    Converte uma lista obtidada do banco de dados em um objeto produto
+    :param database_list: lista obtidada do db contendo dados de um produto
+    :type database_list: tuple
+    :return: Objeto Produto
+    :rtype: data_types.ProductData
+    """
+    data = data_types.ProductData()
+
+    data.ID = database_list[0]
+    data.barcode = database_list[1]
+    data.description = database_list[2]
+    data.category_ID = database_list[3]
+    data.price = database_list[4]
+    data.amount = database_list[5]
+    data.sold = database_list[6]
+    data.supplier = database_list[7]
+    data.obs = database_list[8]
+    data.record_time = database_list[9]
+    data.record_date = database_list[10]
+
+    return data
+
+
+def database2category(database_list):
+    """
+    Converte uma lista obtidada do banco de dados em um objeto categoria
+    :param database_list: lista obtidada do db contendo dados de uma categoria
+    :type database_list: tuple
+    :return: Objeto Categoria
+    :rtype: data_types.CategoryData
+    """
+    data = data_types.CategoryData()
+
+    data.ID = database_list[0]
+    data.category = database_list[1]
+    data.ncm = database_list[2]
+    data.cfop = database_list[3]
+
+    return data
+
+
 class InventoryDB:
 
     def __init__(self, db_path=None):
@@ -51,28 +94,31 @@ class InventoryDB:
     def insert_product(self, data):
         """
         Insere uma nova entrada no Banco de Dados de Produtos
+        :type data: data_types.ProductData
         :param data: dados do novo produto a ser inserida
         """
 
-        # Transfere os dados do dict mandado para um tuple
-        _data = (data['barcode'], data['description'], data['category'], data['price'], data['amount'],
-                 0, data['supplier'], data['obs'], data['time'], data['date'])
+        # Transfere os dados mandados para um tuple
+
+        _data = (data.barcode, data.description, data.category_ID, data.price, data.amount,
+                 data.sold, data.supplier, data.obs, data.record_time, data.record_date)
+
         cmd = 'INSERT INTO INVENTORY (BARCODE, DESCRIPTION, CATEGORY, PRICE, AMOUNT, SOLD, SUPPLIER, OBS, '
         cmd += 'RECORD_TIME, RECORD_DATE) VALUES (?,?,?,?,?,?,?,?,?,?)'
         # Insere o novo produto no BD
         self.cursor.execute(cmd, _data)
         self.db.commit()
 
-    def edit_product(self, product_id, data):
+    def edit_product(self, data):
         """
         Edita uma entrada do Banco de Dados de Produtos
-        :param product_id: id do produto a ser alterado
+        :type data: data_types.ProductData
         :param data: dados do novo produto a ser inserida
         """
 
         # Transfere os dados do dict mandado para um tuple
-        _data = (data['barcode'], data['description'], data['category'], data['price'], data['amount'],
-                 data['supplier'], data['obs'], data['time'], data['date'], product_id)
+        _data = (data.barcode, data.description, data.category_ID, data.price,
+                 data.amount, data.supplier, data.obs, data.record_time, data.record_date)
 
         # Prepara a linha de comando
         cmd = 'UPDATE INVENTORY SET BARCODE=?, DESCRIPTION=?, CATEGORY=?, PRICE=?, '
@@ -81,63 +127,67 @@ class InventoryDB:
         self.cursor.execute(cmd, _data)
         self.db.commit()
 
-    def delete_product(self, product_id):
+    def delete_product(self, data):
         """
         Delete um produto do BD
-        :param product_id: id do produto a ser deletado
-        :return:
+        :type data: data_types.ProductData
+        :param data: id do produto a ser deletado
         """
-        self.cursor.execute('DELETE FROM INVENTORY WHERE ID=?', (product_id, ))
+        self.cursor.execute('DELETE FROM INVENTORY WHERE ID=?', (data.ID, ))
         self.db.commit()
 
-    def update_product_amount(self, product_id, amount):
+    def update_product_amount(self, data):
         """
         Atualiza a quantidade de um produto em estoque
-        :param product_id: id do produto tendo o estoque atualizado
-        :param amount: nova quantidade em estoque
-        :return:
+        :type data: data_types.ProductData
+        :param data: dados do produto
         """
-        self.cursor.execute('UPDATE INVENTORY SET AMOUNT = ? where ID=?', (amount, product_id))
+        self.cursor.execute('UPDATE INVENTORY SET AMOUNT = ? where ID=?', (data.amount, data.ID))
         self.db.commit()
 
-    def update_product_stock(self, product_id, change):
+    def update_product_stock(self, data):
         """
         Atualiza a quantidade de um produto em estoque
-        :param product_id: id do produto tendo o estoque atualizado
-        :param change: variação no estoque
-        :return:
+        :type data: data_types.ProductData
+        :param data: dados do produto
         """
-        self.cursor.execute('UPDATE INVENTORY SET AMOUNT=AMOUNT+? where ID=?', (change, product_id))
+        self.cursor.execute('UPDATE INVENTORY SET AMOUNT=AMOUNT+? where ID=?', (data.amount, data.ID))
         self.db.commit()
 
-    def barcode_search(self, barcode):
+    def barcode_search(self, data):
         """
         Busca o item com um codigo de barras especifico no BD
-        :param barcode: Codigo de barras sendo buscado
-        :return:
+        :type data: data_types.ProductData
+        :param data: dados do produto
+        :return: Dados do produto encontrado
+        :rtype: data_types.ProductData
         """
 
         # Faz o BD mostrar apenas o item com um codigo de barras especifico
-        self.cursor.execute("""SELECT * FROM INVENTORY WHERE BARCODE=?""", (barcode, ))
-        return self.cursor.fetchone()
+        self.cursor.execute("""SELECT * FROM INVENTORY WHERE BARCODE=?""", (data.barcode, ))
+        return database2product(self.cursor.fetchone())
 
-    def inventory_search_id(self, product_id):
+    def inventory_search_id(self, data):
         """
         Busca o item com um ID especifico no BD
-        :param product_id: ID do produto sendo buscado sendo buscado
-        :return:
+        :type data: data_types.ProductData
+        :param data: dados do produto
+        :return: Dados do produto encontrado
+        :rtype: data_types.ProductData
         """
 
         # Faz o BD mostrar apenas o item com um codigo de barras especifico
-        self.cursor.execute("""SELECT * FROM INVENTORY WHERE ID=?""", (product_id, ))
-        return self.cursor.fetchone()
+        self.cursor.execute("""SELECT * FROM INVENTORY WHERE ID=?""", (data.ID, ))
+        return database2product(self.cursor.fetchone())
 
     def inventory_search(self, info):    # TODO Atualmente apenas busca por igualdade, melhorar a busca
         """
         Faz uma busca por um dado generico mno banco de dados.
         Dada uma String busca por correspondecia por descrições, ids, categoria, fornecedores e NCM
         :param info: String com o dado a ser buscado
+        :type info: String
         :return: List com todos os produtos compativeis com a busca
+        :rtype: list(data_types.ProductData)
         """
         # Lista para armazenar todos os produtos compativeis com a busca
         filtered_list = []
@@ -181,15 +231,29 @@ class InventoryDB:
             self.cursor.execute("""SELECT * FROM INVENTORY WHERE CATEGORY=? ORDER BY DESCRIPTION""", (category[0], ))
             filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
-        return filtered_list
+        products_list = list()
+
+        for product in filtered_list:
+            products_list.append(database2product(product))
+
+        return products_list
 
     def product_list(self):
         """
         Dados de todos os produtos cadastrados
-        :return: uma list com todos os produtos do BD
+        :return: Dados do produto encontrado
+        :rtype: list(data_types.ProductData)
         """
         self.cursor.execute("""SELECT * FROM INVENTORY ORDER BY DESCRIPTION""")
-        return self.cursor.fetchall()
+
+        temp = self.cursor.fetchall()
+
+        products_list = list()
+
+        for product in temp:
+            products_list.append(database2product(product))
+
+        return products_list
 
     def insert_category(self, category, ncm):
         """
@@ -249,7 +313,12 @@ class InventoryDB:
         self.cursor.execute("""SELECT * FROM CATEGORIES WHERE CATEGORY LIKE ? ORDER BY CATEGORY""", (info, ))
         filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
-        return filtered_list
+        categories_list = list()
+
+        for product in filtered_list:
+            categories_list.append(database2product(product))
+
+        return categories_list
 
     def categories_search_id(self, info):
         """
@@ -264,7 +333,7 @@ class InventoryDB:
         int_info = int(info)
 
         self.cursor.execute("""SELECT * FROM CATEGORIES WHERE ID=?""", (int_info, ))
-        return self.cursor.fetchone()
+        return database2category(self.cursor.fetchone())
 
     def category_id(self, info):
         """
@@ -275,7 +344,7 @@ class InventoryDB:
         """
 
         self.cursor.execute("""SELECT * FROM CATEGORIES WHERE CATEGORY=?""", (info, ))
-        return self.cursor.fetchone()
+        return database2category(self.cursor.fetchone())
 
     def categories_list(self):
         """
@@ -283,7 +352,44 @@ class InventoryDB:
         :return: Uma lista com todos os elementos do BD
         """
         self.cursor.execute("""SELECT * FROM CATEGORIES ORDER BY CATEGORY""")
-        return self.cursor.fetchall()
+
+        temp = self.cursor.fetchall()
+
+        categories_list = list()
+
+        for product in temp:
+            categories_list.append(database2product(product))
+
+        return categories_list
+
+
+def database2client(database_list):
+    """
+    Converte uma lista obtidada do banco de dados em um objeto cliente
+    :param database_list: lista obtidada do db contendo dados de um cliente
+    :type database_list: tuple
+    :return: Objeto Cliente
+    :rtype: data_types.ClientData
+    """
+    data = data_types.ClientData()
+
+    data.ID = database_list[0]
+    data.name = database_list[1]
+    data.sex = database_list[2]
+    data.birth = database_list[3]
+    data.email = database_list[4]
+    data.telephone = database_list[5]
+    data.cpf = database_list[6]
+    data.cep = database_list[7]
+    data.state = database_list[8]
+    data.city = database_list[9]
+    data.district = database_list[10]
+    data.address = database_list[11]
+    data.obs = database_list[12]
+    data.last_sale = database_list[13]
+    data.record_date = database_list[14]
+
+    return data
 
 
 class ClientsDB:
@@ -320,7 +426,7 @@ class ClientsDB:
         """
         self.cursor.execute('''CREATE TABLE CLIENTS(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
             NAME TEXT NOT NULL, SEX CHAR(10) NOT NULL, BIRTH CHAR(10), EMAIL TEXT, TELEPHONE CHAR(11),
-            CPF CHAR(11), CEP CHAR(8), STATE CHAR(2), CITY TEXT, DISTRICT TEXT, ADRESS TEXT,
+            CPF CHAR(11), CEP CHAR(8), STATE CHAR(2), CITY TEXT, DISTRICT TEXT, ADDRESS TEXT,
             OBS TEXT, LAST_SALE CHAR(10), RECORD_DATE CHAR(10) NOT NULL)''')
 
         self.db.commit()
@@ -333,10 +439,10 @@ class ClientsDB:
 
         # Transfere os dados do dict mandado para um tuple
         _data = (data['name'], data['sex'], data['birth'], data['email'], data['tel'], data['cpf'], data['cep'],
-                 data['state'], data['city'], data['district'], data['adress'], data['obs'], data['date'])
+                 data['state'], data['city'], data['district'], data['address'], data['obs'], data['date'])
 
         cmd = 'INSERT INTO CLIENTS (NAME, SEX, BIRTH, EMAIL, TELEPHONE, CPF, CEP, STATE, CITY, '
-        cmd += 'DISTRICT, ADRESS, OBS, RECORD_DATE) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'
+        cmd += 'DISTRICT, ADDRESS, OBS, RECORD_DATE) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'
 
         # Insere o novo produto no BD
         self.cursor.execute(cmd, _data)
@@ -351,12 +457,12 @@ class ClientsDB:
 
         # Transfere os dados do dict mandado para um tuple
         _data = (data['name'], data['sex'], data['birth'], data['email'], data['tel'], data['cpf'], data['cep'],
-                 data['state'], data['city'], data['district'], data['adress'], data['obs'], client_id)
+                 data['state'], data['city'], data['district'], data['address'], data['obs'], client_id)
 
         # Prepara a linha de comando
 
         cmd = 'UPDATE CLIENTS SET NAME=?, SEX=?, BIRTH=?, EMAIL=?, TELEPHONE=?, CPF=?, CEP=?, STATE=?, CITY=?, '
-        cmd += 'DISTRICT=?, ADRESS=?, OBS=? WHERE ID=?'
+        cmd += 'DISTRICT=?, ADDRESS=?, OBS=? WHERE ID=?'
 
         # Edita o produto no BD
         self.cursor.execute(cmd, _data)
@@ -418,7 +524,7 @@ class ClientsDB:
         self.cursor.execute("""SELECT * FROM CLIENTS WHERE CITY LIKE ? ORDER BY NAME""", (info, ))
         filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
-        self.cursor.execute("""SELECT * FROM CLIENTS WHERE ADRESS LIKE ? ORDER BY NAME""", (info, ))
+        self.cursor.execute("""SELECT * FROM CLIENTS WHERE ADDRESS LIKE ? ORDER BY NAME""", (info, ))
         filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
         self.cursor.execute("""SELECT * FROM CLIENTS WHERE OBS LIKE ? ORDER BY NAME""", (info, ))
@@ -452,6 +558,34 @@ class ClientsDB:
         """
         self.cursor.execute("""SELECT * FROM CLIENTS ORDER BY NAME""")
         return self.cursor.fetchall()
+
+
+def database2sale(database_list):
+    """
+    Converte uma lista obtidada do banco de dados em um objeto venda
+    :param database_list: lista obtidada do db contendo dados de uma venda
+    :type database_list: tuple
+    :return: Objeto Venda
+    :rtype: data_types.SaleData
+    """
+    data = data_types.SaleData()
+
+    data.ID = database_list[0]
+    data.products_IDs = database_list[1].split()
+    data.amounts = database_list[2].split()
+    data.prices = database_list[3].split()
+    data.sold = database_list[4]
+    data.discount = database_list[5]
+    data.taxes = database_list[6]
+    data.value = database_list[7]
+    data.payment = database_list[8]
+    data.client_name = database_list[9]
+    data.client_cpf = database_list[10]
+    data.delivery_ID = database_list[11]
+    data.record_time = database_list[12]
+    data.record_date = database_list[13]
+
+    return data
 
 
 class SalesDB:
@@ -634,10 +768,10 @@ class DeliveriesDB:
 
         # Transfere os dados do dict mandado para um tuple
         _data = (data['name'], data['sex'], data['birth'], data['email'], data['tel'], data['cpf'], data['cep'],
-                 data['state'], data['city'], data['district'], data['adress'], data['obs'], data['time'], data['date'])
+                 data['state'], data['city'], data['district'], data['address'], data['obs'], data['time'], data['date'])
 
         cmd = 'INSERT INTO INVENTORY (NAME, SEX, BIRTH, EMAIL, TELEPHONE, CPF, CEP, STATE, CITY, '
-        cmd += 'DISTRICT, ADRESS, OBS, RECORD_TIME, RECORD_DATE) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+        cmd += 'DISTRICT, ADDRESS, OBS, RECORD_TIME, RECORD_DATE) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
 
         # Insere o novo produto no BD
         self.cursor.execute(cmd, _data)
@@ -651,12 +785,12 @@ class DeliveriesDB:
 
         # Transfere os dados do dict mandado para um tuple
         _data = (data['name'], data['sex'], data['birth'], data['email'], data['tel'], data['cpf'], data['cep'],
-                 data['state'], data['city'], data['district'], data['adress'], data['obs'])
+                 data['state'], data['city'], data['district'], data['address'], data['obs'])
 
         # Prepara a linha de comando
 
         cmd = 'UPDATE CLIENTS SET NAME=?, SEX=?, BIRTH=?, EMAIL=?, TELEPHONE=?, CPF=?, CEP=?, STATE=?, CITY=?, '
-        cmd += 'DISTRICT=?, ADRESS=?, OBS=? WHERE ID=?'
+        cmd += 'DISTRICT=?, ADDRESS=?, OBS=? WHERE ID=?'
 
         # Edita o produto no BD
         self.cursor.execute(cmd, _data)
@@ -709,7 +843,7 @@ class DeliveriesDB:
             self.cursor.execute("""SELECT * FROM CLIENTS WHERE CEP LIKE ?""", (info, ))
             filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
-        self.cursor.execute("""SELECT * FROM CLIENTS WHERE ADRESS LIKE ?""", (info, ))
+        self.cursor.execute("""SELECT * FROM CLIENTS WHERE ADDRESS LIKE ?""", (info, ))
         filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
         self.cursor.execute("""SELECT * FROM CLIENTS WHERE OBS LIKE ?""", (info, ))

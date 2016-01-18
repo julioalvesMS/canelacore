@@ -223,7 +223,7 @@ class Sale(wx.Frame):
 
         self.textbox_delivery_telephone.Bind(wx.EVT_CHAR, core.check_telephone)
         self.textbox_delivery_date.Bind(wx.EVT_CHAR, core.check_date)
-        self.textbox_delivery_hour.Bind(wx.wxEVT_CHAR, core.hour_check)
+        self.textbox_delivery_hour.Bind(wx.EVT_CHAR, core.check_hour)
 
         self.textbox_delivery_receiver.Disable()
         self.textbox_delivery_address.Disable()
@@ -334,22 +334,19 @@ class Sale(wx.Frame):
     def data_insert(self, event):
         if not self.textbox_product_description.GetValue() or self.textbox_product_price.GetValue() == '0,00' or not \
                 self.textbox_product_amount.GetValue():
-            a = wx.MessageDialog(self, u'Dados insuficientes!', u'Error 404', style=wx.OK | wx.ICON_ERROR)
-            a.ShowModal()
-            a.Destroy()
+            dialogs.launch_error(self, u'Dados Insulficientes!')
             return
-        else:
-            a = self.textbox_product_price.GetValue().replace(",", ".")
-            trem = int(self.textbox_product_amount.GetValue()) * float(a)
-            hug = "R$ " + core.good_show('money', str(trem))
-            kill = "R$ " + core.good_show('money', str(float(a)))
-            self.list_sold.Append(((self.textbox_product_description.GetValue().capitalize()),
-                                   self.textbox_product_amount.GetValue(), kill, hug))
-            self.textbox_product_amount.Clear()
-            self.textbox_product_price.Clear()
-            self.textbox_product_description.Clear()
-            self.update_sale_data()
-            self.textbox_product_price.SetValue("0,00")
+        a = self.textbox_product_price.GetValue().replace(",", ".")
+        trem = int(self.textbox_product_amount.GetValue()) * float(a)
+        hug = "R$ " + core.good_show('money', str(trem))
+        kill = "R$ " + core.good_show('money', str(float(a)))
+        self.list_sold.Append(((self.textbox_product_description.GetValue().capitalize()),
+                               self.textbox_product_amount.GetValue(), kill, hug))
+        self.textbox_product_amount.Clear()
+        self.textbox_product_price.Clear()
+        self.textbox_product_description.Clear()
+        self.update_sale_data()
+        self.textbox_product_price.SetValue("0,00")
 
     def data_delete(self, event):
         if self.list_sold.GetFocusedItem() == -1:
@@ -506,6 +503,7 @@ class Sale(wx.Frame):
             if len(a) == 1:
                 a = '0' + a
             self.textbox_delivery_date.SetValue(core.good_show("date", ("%s/%s" % (datetime.now().day, a))))
+            self.textbox_delivery_hour.SetValue('00:00')
 
         else:
             self.textbox_delivery_receiver.Disable()
@@ -692,93 +690,6 @@ class Sale(wx.Frame):
                         'hour': delivery_hour}
             day_data['sales'] = asn
 
-            # Desfaz as alteracoes no estoque feitas pela venda original
-            for f in old['descriptions']:
-                g = 0
-                k = old['descriptions'].index(f)
-                l = old['unit_prices'][k]
-                m = old['amounts'][k]
-                for ids in self.database_inventory:
-                    if lower(f) == lower(self.database_inventory[ids]['description']) and l == \
-                            self.database_inventory[ids]['price']:
-                        q = core.directory_paths['inventory'] + ids + '%s_infos.txt' % ids
-                        s = shelve.open(q)
-                        try:
-                            v = int(s['amount'].replace(' ', ''))
-                            if v < 0:
-                                s['amount'] = 0
-                            else:
-                                s['amount'] = v + m
-                        except ValueError:
-                            pass
-                        s.close()
-                        g = 1
-                        break
-                if g == 1:
-                    w = core.directory_paths['inventory'] + ids + core.slash + '%s_sales.txt' % ids
-                    tu = self.argv[0].split(core.slash)
-                    r = str('%s_%s' % (tu[-1][:-4], self.argv[2].replace(':', '-')))
-                    d = shelve.open(w)
-                    des = d
-                    if r in des:
-                        del des[r]
-                    d = des
-                    d.close()
-
-            # Desfaz as alteracoes no registro do cliente feitas pela venda original
-            if old['client_id']:
-                if old['client_id'] in os.listdir(core.directory_paths['clients']):
-                    try:
-                        w = core.directory_paths['clients'] + old['client_id'] + core.slash + '%s_sales.txt' % old[
-                            'client_id']
-                        tu = self.argv[0].split(core.slash)
-                        r = str('%s_%s' % (tu[1][:-4], self.argv[2].replace(':', '-')))
-                        d = shelve.open(w)
-                        qu = d
-                        if r in qu:
-                            del qu[r]
-                        d = qu
-                        d.close()
-                    except KeyError:
-                        pass
-        for f in products_descriptions:
-            g = 0
-            k = products_descriptions.index(f)
-            l = products_unitary_prices[k]
-            m = products_amounts[k]
-            for ids in self.database_inventory:
-                if lower(f) == lower(self.database_inventory[ids]['description']) and l == self.database_inventory[ids][
-                        'price']:
-                    q = core.directory_paths['inventory'] + ids + core.slash + '%s_infos.txt' % ids
-                    s = shelve.open(q)
-                    try:
-                        v = int(s['amount'].replace(' ', ''))
-                        if v - m < 0:
-                            s['amount'] = 0
-                        else:
-                            s['amount'] = v - m
-                    except ValueError:
-                        pass
-                    s.close()
-                    g = 1
-                    break
-            if g == 1:
-                w = core.directory_paths['inventory'] + ids + core.slash + '%s_infos.txt' % ids
-                r = '%s_%s' % (date, finish_time.replace(':', '-'))
-                d = shelve.open(w)
-                x = asn[key]
-                x['key'] = key
-                d[r] = x
-                d.close()
-        if client_id:
-            if client_id in os.listdir('clients'):
-                w = core.directory_paths['clients'] + str(client_id) + core.slash + '%s_deals.txt' % client_id
-                r = '%s_%s' % (date, finish_time.replace(':', '-'))
-                d = shelve.open(w)
-                x = asn[key]
-                x['key'] = key
-                d[r] = x
-                d.close()
 
         # Caso seja entrega, adiciona-a ao sistema                 
         delivery_database = shelve.open(core.directory_paths['saves'] + "deliverys.txt")
