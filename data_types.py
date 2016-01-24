@@ -20,10 +20,7 @@ class SaleData:
 
     payment = None
 
-    client_name = None
     client_cpf = None
-
-    delivery_ID = None
 
     record_time = None
     record_date = None
@@ -67,7 +64,10 @@ class CategoryData:
     category = None
 
     ncm = None
+
     cfop = None
+
+    imposto = 0.0
 
     def __init__(self):
         pass
@@ -100,37 +100,26 @@ class ClientData:
         pass
 
 
-class NCMData:
-    ID = -1
-
-    description = None
-    cfop = 0.0
-
-    def __init__(self):
-        pass
-
-
 class DeliveryData:
     ID = -1
 
-    name = None
-    sex = None
-    birth = None
-    cpf = None
+    sale_ID = -1
 
-    email = None
+    client = None
+
+    receiver = None
+
     telephone = None
 
-    cep = None
     state = None
     city = None
     district = None
     address = None
 
-    obs = None
+    date = None
+    hour = None
 
-    last_sale = None
-    record_date = None
+    obs = None
 
     def __init__(self):
         pass
