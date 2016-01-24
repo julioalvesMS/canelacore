@@ -5,7 +5,7 @@ import os
 import shelve
 import threading
 from datetime import datetime
-from string import lower, strip
+from string import strip
 
 import wx
 import wx.gizmos
@@ -15,6 +15,7 @@ import core
 import dialogs
 import categories
 import database
+import data_types
 
 __author__ = 'Julio'
 
@@ -118,7 +119,9 @@ class InventoryManager(wx.Frame):
         db = database.InventoryDB()
         inventory = db.product_list()
         for product in inventory:
-            self.list_products.Append((product[2], product[0], product[3], product[4], product[5], product[6]))
+            self.list_products.Append((product.description, product.ID,
+                                       db.categories_search_id(product.category_ID).category,
+                                       product.price, product.amount, product.sold))
         db.close()
 
     def data_delete(self, event):   # TODO Fazer os dados não serem apagados permanentemente
@@ -153,7 +156,9 @@ class InventoryManager(wx.Frame):
         info = self.textbox_filter.GetValue()
         inventory = db.inventory_search(info)
         for product in inventory:
-            self.list_products.Append((product[2], product[0], product[3], product[4], product[5]))
+            self.list_products.Append((product.description, product.ID,
+                                       db.categories_search_id(product.category_ID).category,
+                                       product.price, product.amount, product.sold))
         db.close()
 
     def clean(self, event):
@@ -261,7 +266,7 @@ class ProductRegister(wx.Frame):
         category_list = db.categories_list()
         category_options = []
         for category in category_list:
-            category_options.append(category[1])
+            category_options.append(category.category)
         self.textbox_description.SetValue('')
         self.textbox_price.SetValue('R$ 0,00')
         self.textbox_amount.SetValue('')
@@ -288,17 +293,16 @@ class ProductRegister(wx.Frame):
         db = database.InventoryDB()
         category = db.category_id(self.combobox_category.GetValue())
 
-        s = dict()
-        s['barcode'] = self.textbox_barcode.GetValue()
-        s['description'] = namef
-        s['price'] = float(self.textbox_price.GetValue().replace(',', '.').replace('R$ ', ''))
-        s['amount'] = int(self.textbox_amount.GetValue())
-        s['category'] = category[0]
-        s['supplier'] = self.textbox_supplier.GetValue()
-        s['obs'] = self.textbox_observation.GetValue()
-        s['time'] = rtime
-        s['date'] = rdate
-        s['date'] = rdate
+        s = data_types.ProductData()
+        s.barcode = self.textbox_barcode.GetValue()
+        s.description = namef
+        s.price = float(self.textbox_price.GetValue().replace(',', '.').replace('R$ ', ''))
+        s.amount = int(self.textbox_amount.GetValue())
+        s.category_ID = category.ID
+        s.supplier = self.textbox_supplier.GetValue()
+        s.obs = self.textbox_observation.GetValue()
+        s.record_time = rtime
+        s.record_date = rdate
         db.insert_product(s)
         db.close()
         self.clean()
@@ -423,18 +427,18 @@ class ProductData(wx.Frame):
         category_list = db.categories_list()
         category_options = []
         for category in category_list:
-            category_options.append(category[1])
+            category_options.append(category.category)
         product = db.inventory_search_id(self.product_id)
-        self.textbox_description.SetValue(product[2])
-        self.textbox_barcode.SetValue(product[1])
-        self.textbox_price.SetValue('R$ ' + core.good_show('money', product[4]))
-        self.textbox_amount.SetValue(str(product[5]))
-        self.textbox_supplier.SetValue(product[7])
-        self.textbox_observation.SetValue(product[8])
+        self.textbox_description.SetValue(product.description)
+        self.textbox_barcode.SetValue(product.barcode)
+        self.textbox_price.SetValue('R$ ' + core.good_show('money', product.price))
+        self.textbox_amount.SetValue(str(product.amount))
+        self.textbox_supplier.SetValue(product.supplier)
+        self.textbox_observation.SetValue(product.obs)
 
         if self.editable:
             self.combobox_category.SetItems(category_options)
-        self.combobox_category.SetValue(db.categories_search_id(product[3])[1])
+        self.combobox_category.SetValue(db.categories_search_id(product.category_ID).category)
 
         db.close()
 
@@ -444,10 +448,8 @@ class ProductData(wx.Frame):
 
     def end(self):
         if not self.textbox_description.GetValue():
-            a = wx.MessageDialog(self, u'É necessária uma descrição!', u'Error 404', style=wx.OK | wx.ICON_ERROR)
-            a.ShowModal()
-            a.Destroy()
-            return
+            return dialogs.launch_error(self, u'É necessária uma descrição!')
+
         rtime = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
             datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
         rdate = str(datetime.now().year) + "-" + core.good_show("o", str(datetime.now().month)) + "-" + core.good_show(
@@ -460,18 +462,18 @@ class ProductData(wx.Frame):
         db = database.InventoryDB()
         category = db.category_id(self.combobox_category.GetValue())
 
-        s = dict()
-        s['barcode'] = int(self.textbox_barcode.GetValue())
-        s['description'] = namef
-        s['price'] = float(self.textbox_price.GetValue().replace(',', '.').replace('R$ ', ''))
-        s['amount'] = int(self.textbox_amount.GetValue())
-        s['category'] = category[0]
-        s['supplier'] = self.textbox_supplier.GetValue()
-        s['obs'] = self.textbox_observation.GetValue()
-        s['time'] = rtime
-        s['date'] = rdate
-        s['date'] = rdate
-        db.edit_product(self.product_id, s)
+        s = data_types.ProductData()
+        s.ID = self.product_id
+        s.barcode = self.textbox_barcode.GetValue()
+        s.description = namef
+        s.price = float(self.textbox_price.GetValue().replace(',', '.').replace('R$ ', ''))
+        s.amount = int(self.textbox_amount.GetValue())
+        s.category_ID = category.ID
+        s.supplier = self.textbox_supplier.GetValue()
+        s.obs = self.textbox_observation.GetValue()
+        s.record_time = rtime
+        s.record_date = rdate
+        db.edit_product(s)
         db.close()
 
         self.clean()

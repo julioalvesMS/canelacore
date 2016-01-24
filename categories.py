@@ -12,6 +12,7 @@ from wx.lib.buttons import GenBitmapTextButton
 import core
 import dialogs
 import database
+import data_types
 
 
 class CategoryManager(wx.Frame):
@@ -87,13 +88,13 @@ class CategoryManager(wx.Frame):
         db = database.InventoryDB()
         categories = db.categories_list()
         for category in categories:
-            self.list_categories.Append(category)
+            self.list_categories.Append((category.ID, category.category, category.ncm))
 
     def database_search(self, event):
         db = database.InventoryDB()
         categories = db.categories_search(event.getEventObject().getValue())
         for category in categories:
-            self.list_categories.Append(category)
+            self.list_categories.Append((category.ID, category.category, category.ncm))
         db.close()
         
     def clean(self, event):
@@ -183,8 +184,8 @@ class CategoryData(wx.Frame):
             return
         db = database.InventoryDB()
         data = db.categories_search_id(self.category_id)
-        self.textbox_description.SetValue(data[1])
-        self.combobox_cfop.SetValue(data[2])
+        self.textbox_description.SetValue(data.category)
+        self.combobox_cfop.SetValue(data.cfop)
 
     def ask_clean(self, event):
         dialogs.Ask(self, u"Apagar Tudo", 1)
@@ -218,18 +219,23 @@ class CategoryData(wx.Frame):
             self.textbox_ncm.Clear()
         else:
             db = database.InventoryDB()
-            data = db.categories_search(self.category_id)
-            self.textbox_description.SetValue(data[1])
-            self.textbox_ncm.SetValue(data[1])
+            data = db.categories_search_id(self.category_id)
+            self.textbox_description.SetValue(data.category)
+            self.textbox_ncm.SetValue(data.ncm)
 
     def end(self):
         ncm = self.textbox_ncm.GetValue()
         category = self.textbox_description.GetValue()
         db = database.InventoryDB()
+
+        data = data_types.CategoryData()
+        data.ncm = ncm
+        data.category = category
+
         if self.category_id == -1:
-            db.insert_category(category, ncm)
+            db.insert_category(data)
         else:
-            db.edit_category(self.category_id, category, ncm)
+            db.edit_category(data)
         db.close()
         self.clean()
         dialogs.Confirmation(self, u'Nova Categoria Cadastrada', 8)

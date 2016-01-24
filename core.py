@@ -153,6 +153,24 @@ def format_date_user(date):
     return '/'.join(date)
 
 
+def format_cpf(cpf):
+    cpf = cpf.replace('-', '').replace('.', '')
+
+    # limita o tamanho do cpf a 11 chars
+    if len(cpf) > 11:
+        cpf = cpf[:11]
+
+    original = cpf
+    if len(cpf) > 3:
+        original = cpf[:3] + '.' + cpf[3:]
+    if len(cpf) > 6:
+        original = original[:7] + '.' + original[7:]
+    if len(cpf) > 9:
+        original = original[:11] + '-' + original[11:]
+
+    return original
+
+
 def week_end(date):
     """
     Retorna as datas de todos os sabados de um mes
@@ -377,16 +395,7 @@ def check_cpf(event):
         elif value in num[10:12]:
             text2 = text2[:-1]
 
-        if len(text2) > 11:
-            text2 = text2[:11]
-        text3 = text2
-        if len(text2) > 3:
-            text3 = text2[:3] + '.' + text2[3:]
-        if len(text2) > 6:
-            text3 = text3[:7] + '.' + text3[7:]
-        if len(text2) > 9:
-            text3 = text3[:11] + '-' + text3[11:]
-        box.SetValue(text3)
+        box.SetValue(format_cpf(text2))
 
         if value in num[12:]:
             event.Skip()
