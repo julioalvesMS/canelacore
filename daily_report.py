@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
 import shelve
-import threading
-from datetime import datetime
 
 import wx
 import wx.gizmos
@@ -16,6 +13,8 @@ import record_editor
 import sale
 import transactions
 import waste
+import database
+import data_types
 
 __author__ = 'Julio'
 
@@ -77,13 +76,15 @@ class Report(wx.Frame):
         fupdate.Bind(wx.EVT_BUTTON, self.reopen)
         pol = wx.Button(self.panel_top, -1, u"Recuperação de registros", pos=(900, 5), size=(-1, 40))
         pol.Bind(wx.EVT_BUTTON, self.open_record_editor)
+
         # Painel das vendas
         panel1 = wx.Panel(self, -1, pos=(10, 65), size=(810, 260), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
         panel1.SetBackgroundColour(core.default_background_color)
         self.list_sales = wx.gizmos.TreeListCtrl(panel1, -1, pos=(10, 5), size=(620, 250),
-                                                 style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE | wx.TR_FULL_ROW_HIGHLIGHT)
+                                                 style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE |
+                                                 wx.TR_FULL_ROW_HIGHLIGHT)
         self.list_sales.AddColumn(u"Descrição", width=250)
-        self.list_sales.AddColumn(u"Quantidade")
+        self.list_sales.AddColumn(u"Quantidade", width=90)
         self.list_sales.AddColumn(u"Pagamento", width=150)
         self.list_sales.AddColumn(u"Valor", width=120)
         self.list_sales.SetMainColumn(0)
@@ -92,11 +93,11 @@ class Report(wx.Frame):
                                    wx.Bitmap(core.directory_paths['icons'] + 'Add.png', wx.BITMAP_TYPE_PNG),
                                    u"Nova venda",
                                    pos=(0, 0), size=(145, 40))
-        plus.Bind(wx.EVT_BUTTON, self.open_new_sale)
+        plus.Bind(wx.EVT_BUTTON, self.open_sale_register)
         edit = GenBitmapTextButton(panel1b, -1,
                                    wx.Bitmap(core.directory_paths['icons'] + 'Edit.png', wx.BITMAP_TYPE_PNG),
                                    u"Editar venda", pos=(0, 40), size=(145, 40))
-        edit.Bind(wx.EVT_BUTTON, self.open_edit_sale)
+        edit.Bind(wx.EVT_BUTTON, self.open_sale_edit)
         remove = GenBitmapTextButton(panel1b, -1,
                                      wx.Bitmap(core.directory_paths['icons'] + 'Trash.png', wx.BITMAP_TYPE_PNG),
                                      u'Apagar venda', pos=(0, 80), size=(145, 40))
@@ -105,25 +106,27 @@ class Report(wx.Frame):
                                      wx.Bitmap(core.directory_paths['icons'] + 'Reset.png', wx.BITMAP_TYPE_PNG),
                                      u'Atualizar', pos=(0, 120), size=(145, 40))
         update.Bind(wx.EVT_BUTTON, self.setup)
+
         # Painel dos gastos
         panel2 = wx.Panel(self, 53, pos=(10, 335), size=(810, 170), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
         panel2.SetBackgroundColour(core.default_background_color)
         self.list_expenses = wx.gizmos.TreeListCtrl(panel2, -1, pos=(10, 5), size=(620, 160),
-                                                    style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE | wx.TR_FULL_ROW_HIGHLIGHT)
+                                                    style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE |
+                                                    wx.TR_FULL_ROW_HIGHLIGHT)
         self.list_expenses.AddColumn(u"Data/Horário", width=130)
         self.list_expenses.AddColumn(u"Descrição", width=280)
-        self.list_expenses.AddColumn(u"Quantidade", width=100)
+        self.list_expenses.AddColumn(u"Quantidade", width=90)
         self.list_expenses.AddColumn(u"Valor", width=110)
         self.list_expenses.SetMainColumn(0)
         panel2b = wx.Panel(panel2, pos=(650, 5), size=(145, 160), style=wx.SIMPLE_BORDER)
         splus = GenBitmapTextButton(panel2b, -1,
                                     wx.Bitmap(core.directory_paths['icons'] + 'Add.png', wx.BITMAP_TYPE_PNG),
                                     u'Adicionar gasto', pos=(0, 0), size=(145, 40))
-        splus.Bind(wx.EVT_BUTTON, self.open_new_expense)
+        splus.Bind(wx.EVT_BUTTON, self.open_expense_register)
         sedit = GenBitmapTextButton(panel2b, -1,
                                     wx.Bitmap(core.directory_paths['icons'] + 'Edit.png', wx.BITMAP_TYPE_PNG),
                                     u'Editar gasto', pos=(0, 40), size=(145, 40))
-        sedit.Bind(wx.EVT_BUTTON, self.open_edit_expense)
+        sedit.Bind(wx.EVT_BUTTON, self.open_expense_edit)
         sremove = GenBitmapTextButton(panel2b, -1,
                                       wx.Bitmap(core.directory_paths['icons'] + 'Trash.png', wx.BITMAP_TYPE_PNG),
                                       u'Apagar gasto', pos=(0, 80), size=(145, 40))
@@ -137,20 +140,21 @@ class Report(wx.Frame):
         panel_last = wx.Panel(self, 56, pos=(10, 515), size=(810, 170), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
         panel_last.SetBackgroundColour(core.default_background_color)
         self.list_wastes = wx.gizmos.TreeListCtrl(panel_last, -1, pos=(10, 5), size=(620, 160),
-                                                  style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE | wx.TR_FULL_ROW_HIGHLIGHT)
+                                                  style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE |
+                                                  wx.TR_FULL_ROW_HIGHLIGHT)
         self.list_wastes.AddColumn(u"Descrição", width=280)
-        self.list_wastes.AddColumn(u"Quantidade", width=100)
+        self.list_wastes.AddColumn(u"Quantidade", width=90)
         self.list_wastes.AddColumn(u"Valor", width=110)
         self.list_wastes.SetMainColumn(0)
         panel_last_buttons = wx.Panel(panel_last, pos=(650, 5), size=(145, 160), style=wx.SIMPLE_BORDER)
         wplus = GenBitmapTextButton(panel_last_buttons, -1,
                                     wx.Bitmap(core.directory_paths['icons'] + 'Add.png', wx.BITMAP_TYPE_PNG),
                                     u'Adicionar registro', pos=(0, 0), size=(145, 40))
-        wplus.Bind(wx.EVT_BUTTON, self.open_new_waste)
+        wplus.Bind(wx.EVT_BUTTON, self.open_waste_register)
         wedit = GenBitmapTextButton(panel_last_buttons, -1,
                                     wx.Bitmap(core.directory_paths['icons'] + 'Edit.png', wx.BITMAP_TYPE_PNG),
                                     u'Editar registro', pos=(0, 40), size=(145, 40))
-        wedit.Bind(wx.EVT_BUTTON, self.open_edit_waste)
+        wedit.Bind(wx.EVT_BUTTON, self.open_waste_edit)
         wremove = GenBitmapTextButton(panel_last_buttons, -1,
                                       wx.Bitmap(core.directory_paths['icons'] + 'Trash.png', wx.BITMAP_TYPE_PNG),
                                       u'Apagar registro', pos=(0, 80), size=(145, 40))
@@ -163,7 +167,7 @@ class Report(wx.Frame):
         self.available_lists = [self.list_sales, self.list_expenses, self.list_wastes]
 
         # Painel com o resulmo do dia
-        panel3 = wx.Panel(self, 54, pos=(830, 65), size=(400, 620), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
+        panel3 = wx.Panel(self, -1, pos=(830, 65), size=(400, 620), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
         panel3.SetBackgroundColour(core.default_background_color)
         part1 = wx.Panel(panel3, -1, pos=(5, 50), size=(390, 265), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
         part2 = wx.Panel(panel3, -1, pos=(5, 320), size=(390, 85), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
@@ -187,17 +191,17 @@ class Report(wx.Frame):
         self.textbox_cash_tomorrow = wx.TextCtrl(part3, -1, "0,00", pos=(310, 125), size=(70, 30), style=wx.TE_READONLY)
         self.textbox_cash_removed = wx.TextCtrl(part3, -1, "0,00", pos=(310, 165), size=(70, 30))
 
-        self.textbox_day_total.SetBackgroundColour(core.default_disabled_color)
-        self.textbox_sales_value.SetBackgroundColour(core.default_disabled_color)
-        self.textbox_sales_amount.SetBackgroundColour(core.default_disabled_color)
-        self.textbox_money_value.SetBackgroundColour(core.default_disabled_color)
-        self.textbox_money_amount.SetBackgroundColour(core.default_disabled_color)
-        self.textbox_card_value.SetBackgroundColour(core.default_disabled_color)
-        self.textbox_card_amount.SetBackgroundColour(core.default_disabled_color)
-        self.textbox_spent_value.SetBackgroundColour(core.default_disabled_color)
-        self.textbox_spent_amount.SetBackgroundColour(core.default_disabled_color)
-        self.textbox_cash_ideal.SetBackgroundColour(core.default_disabled_color)
-        self.textbox_cash_tomorrow.SetBackgroundColour(core.default_disabled_color)
+        self.textbox_day_total.Disable()
+        self.textbox_sales_value.Disable()
+        self.textbox_sales_amount.Disable()
+        self.textbox_money_value.Disable()
+        self.textbox_money_amount.Disable()
+        self.textbox_card_value.Disable()
+        self.textbox_card_amount.Disable()
+        self.textbox_spent_value.Disable()
+        self.textbox_spent_amount.Disable()
+        self.textbox_cash_ideal.Disable()
+        self.textbox_cash_tomorrow.Disable()
 
         static_money_texts.append(wx.StaticText(panel3, -1, u"Total do dia", pos=(10, 17)))
         static_money_texts.append(wx.StaticText(part1, -1, u"Total das Vendas", pos=(5, 12)))
@@ -213,9 +217,14 @@ class Report(wx.Frame):
         static_money_texts.append(wx.StaticText(part3, -1, u"Caixa real", pos=(5, 92)))
         static_money_texts.append(wx.StaticText(part3, -1, u"Caixa de amanhã", pos=(5, 132)))
         static_money_texts.append(wx.StaticText(part3, -1, u"Dinheiro retirado", pos=(5, 172)))
+        
         self.textbox_cash_previous.Bind(wx.EVT_CHAR, core.check_money)
         self.textbox_cash_real.Bind(wx.EVT_CHAR, core.check_money)
         self.textbox_cash_removed.Bind(wx.EVT_CHAR, core.check_money)
+
+        self.textbox_cash_previous.Bind(wx.EVT_TEXT, self.update_cash)
+        self.textbox_cash_real.Bind(wx.EVT_TEXT, self.update_cash)
+        self.textbox_cash_removed.Bind(wx.EVT_TEXT, self.update_cash)
 
         # Adiciona os pontos em cada linha com os numeros a direita para facilitar a leitura
         mon = self.GetTextExtent('R$')[0]
@@ -225,16 +234,19 @@ class Report(wx.Frame):
             wid = box.GetSize()[0]
             post = box.GetPosition()[1]
             free = space - wid
-            if box in static_number_texts:
-                dots = free // dot
-                wx.StaticText(box.GetParent(), -1, '.' * dots, pos=(5 + wid, post))
+            free = free - mon
+            dots = free // dot
+            if box is static_money_texts[0]:
+                wx.StaticText(box.GetParent(), -1, '.' * dots + 'R$', pos=(10 + wid, post))
             else:
-                free = free - mon
-                dots = free // dot
-                if box is static_money_texts[0]:
-                    wx.StaticText(box.GetParent(), -1, '.' * dots + 'R$', pos=(10 + wid, post))
-                else:
-                    wx.StaticText(box.GetParent(), -1, '.' * dots + 'R$', pos=(5 + wid, post))
+                wx.StaticText(box.GetParent(), -1, '.' * dots + 'R$', pos=(5 + wid, post))
+
+        for box in static_number_texts:
+            wid = box.GetSize()[0]
+            post = box.GetPosition()[1]
+            free = space - wid
+            dots = free // dot
+            wx.StaticText(box.GetParent(), -1, '.' * dots, pos=(5 + wid, post))
 
     def ask_delete_sale(self, event):
         boom = self.list_sales.GetSelection()
@@ -255,111 +267,65 @@ class Report(wx.Frame):
         dialogs.Ask(self, u"Apagar Registro", 23)
 
     def delete(self, box):
+        """
+        Apaga uma entrada em agum dos dados do dia
+        :param box: TreeListCtrl da entrada
+        :type box: wx.gizmos.TreeListCtrl
+        :return:
+        """
         boom = box.GetSelection()
-        atom = box.GetItemText(boom, 0)
         if boom == box.GetRootItem():
             return
-        if len(str(atom)) != 8 and box == self.list_sales:
+
+        item_data = box.GetItemData(boom).GetData()
+
+        if isinstance(item_data, data_types.ProductData):
             boom = box.GetItemParent(boom)
-            atom = box.GetItemText(boom, 0)
-        day_data = shelve.open(core.directory_paths['saves'] + self.day_file)
-        if box == self.list_sales:
-            for i in day_data["sales"]:
-                if day_data["sales"][i]['time'] == atom:
-                    ckey = day_data['sales'][i]['client_id']
-                    if ckey in os.listdir('clients'):
-                        try:
-                            h = shelve.open(core.directory_paths['clients'] + ckey + core.slash + ckey + '_deals.txt')
-                            r = str(self.day_file[:10] + '_' + day_data['sales'][i]['time'].replace(':', '-'))
-                            del h[r]
-                            h.close()
-                        except:
-                            pass
-                    finish_time = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
-                        datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
-                    asw = day_data["edit"]
-                    asw[finish_time] = day_data["sales"][i]
-                    asw[finish_time]['key'] = i
-                    asw[finish_time]['mode'] = 2
-                    day_data["edit"] = asw
-                    hair = day_data["sales"]
-                    del hair[i]
-                    day_data["sales"] = hair
-                    day_data.close()
-                    self.setup(None)
-                    return
-        elif box == self.list_expenses:
-            for i in day_data["spent"]:
-                if day_data["spent"][i]['time'] == atom:
-                    finish_time = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
-                        datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
-                    asw = day_data["edit"]
-                    asw[finish_time] = day_data["spent"][i]
-                    asw[finish_time]['key'] = i
-                    asw[finish_time]['mode'] = 2
-                    day_data["edit"] = asw
-                    hair = day_data["spent"]
-                    del hair[i]
-                    day_data["spent"] = hair
-                    day_data.close()
-                    self.setup(None)
-                    return
-        elif box == self.list_wastes:
-            for i in day_data["wastes"]:
-                neutron = int(box.GetItemText(boom, 1))
-                proton = float(box.GetItemText(boom, 2).replace('R$ ', '').replace(',', '.'))
-                if (day_data["wastes"][i]['description']) == atom and day_data["wastes"][i][
-                    'amount'] == neutron and day_data["wastes"][i]['value'] == proton:
-                    finish_time = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
-                        datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
-                    asw = day_data["edit"]
-                    asw[finish_time] = day_data["wastes"][i]
-                    asw[finish_time]['key'] = i
-                    asw[finish_time]['mode'] = 2
-                    day_data["edit"] = asw
-                    hair = day_data["wastes"]
-                    del hair[i]
-                    day_data["wastes"] = hair
-                    day_data.close()
-                    self.setup(-1)
-                    return
+            item_data = box.GetItemData(boom).GetData()
+
+        db = database.TransactionsDB()
+
+        switch = {
+            self.list_sales: db.delete_sale,
+            self.list_expenses: db.delete_expense,
+            self.list_wastes: db.delete_waste
+        }
+        func = switch.get(box)
+
+        func(item_data.ID)
+
+        db.close()
+        self.setup(None)
 
     def setup_options(self):
-        self.month_options = []
-        self.months_files = []
-        for root, dirs, files in os.walk(core.directory_paths['saves']):
-            if root != core.directory_paths['saves']:
-                break
-            files.sort()
-            files.reverse()
-            for i in files:
-                try:
-                    if len(str(int(i.replace("-", '').replace(".txt", "")))) == 8:
-                        ab = i[8:10]
-                        ab = ab + "/" + i[5:7]
-                        ab = ab + "/" + i[0:4]
-                        self.month_options.append(ab)
-                        self.months_files.append(i)
-                except ValueError or IndexError:
-                    pass
+        db = database.TransactionsDB()
+
+        self.month_options = list()
+
+        for date in db.list_record_dates():
+            self.month_options.append(core.format_date_user(date))
+
+        db.close()
+
         self.combobox_day_option = wx.ComboBox(self.panel_top, -1, choices=self.month_options, size=(130, -1),
-                                               pos=(600, 10),
-                                               style=wx.CB_READONLY)
+                                               pos=(600, 10), style=wx.CB_READONLY)
         self.combobox_day_option.Bind(wx.EVT_COMBOBOX, self.setup)
         if len(self.month_options) != 0:
             self.combobox_day_option.SetSelection(0)
 
-    def setup(self, event): # TODO Fazer a thread fechar direito com o resto do app
+    def setup(self, event):      # TODO Fazer a thread fechar direito com o resto do app
         self.combobox_day_option.Disable()
-        rest = threading.Thread(target=self.__setup__)
-        rest.start()
+        self.__setup__()
 
     def __setup__(self):
         if self.combobox_day_option.GetValue() != u'':
             self.clean()
-            self.day_file = self.months_files[self.combobox_day_option.GetCurrentSelection()]
-            day_data = shelve.open(core.directory_paths['saves'] + self.day_file)
-            root = self.list_sales.AddRoot("Vendas de " + self.combobox_day_option.GetValue())
+            transactions_db = database.TransactionsDB()
+            inventory_db = database.InventoryDB()
+
+            day = core.format_date_internal(self.combobox_day_option.GetValue())
+
+            root = self.list_sales.AddRoot(u"Vendas de " + self.combobox_day_option.GetValue())
             self.list_sales.SetItemFont(root, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
             sales_value = 0.0
             sales_amount = 0
@@ -367,138 +333,162 @@ class Report(wx.Frame):
             money_amount = 0
             card_value = 0.00
             card_amount = 0
-            for i in day_data["sales"]:
-                sales_value += float(day_data["sales"][i]['value'])
-                sold = self.list_sales.AppendItem(root, day_data["sales"][i]['time'])
-                self.list_sales.SetItemText(sold, day_data["sales"][i]['payment'], 2)
-                self.list_sales.SetItemText(sold, ("R$ " + core.good_show("money", str(day_data["sales"][i]['value']))),
-                                            3)
+
+            day_sales = transactions_db.daily_sales_list(day)
+            for sale_item in day_sales:
+                sales_value += sale_item.value
+                sold = self.list_sales.AppendItem(root, sale_item.record_time)
+                self.list_sales.SetItemText(sold, sale_item.payment, 2)
+                self.list_sales.SetItemText(sold, "R$ " + core.good_show("money", sale_item.value), 3)
                 self.list_sales.SetItemFont(sold, wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+                self.list_sales.SetItemData(sold, wx.TreeItemData(sale_item))
+
                 try:
-                    for n in range(0, len(day_data["sales"][i]['descriptions'])):
-                        pan = (day_data["sales"][i]['descriptions'][n])
-                        a = self.list_sales.AppendItem(sold, pan)
-                        self.list_sales.SetItemText(a, str(day_data["sales"][i]['amounts'][n]), 1)
-                        self.list_sales.SetItemText(a, (
-                            "R$ " + core.good_show("money", str(day_data["sales"][i]['prices'][n]))).replace(".", ","),
-                                                    3)
+                    for i in range(len(sale_item.products_IDs)):
+                        product_id = sale_item.products_IDs[i]
+                        product = inventory_db.inventory_search_id(product_id)
+
+                        a = self.list_sales.AppendItem(sold, product.description)
+                        self.list_sales.SetItemText(a, str(sale_item.amounts[i]), 1)
+                        self.list_sales.SetItemText(a, "R$ " + core.good_show("money", sale_item.prices[i]), 3)
+
+                        self.list_sales.SetItemData(a, wx.TreeItemData(product))
                 except ValueError:
                     pass
-                if day_data["sales"][i]['discount'] != 0:
+                if sale_item.discount:
                     web = self.list_sales.AppendItem(sold, u"Desconto")
-                    self.list_sales.SetItemText(web, (
-                        "R$ " + core.good_show("money", str(day_data["sales"][i]['discount']))).replace(".", ","), 3)
-                if day_data["sales"][i]['tax'] != 0:
+                    self.list_sales.SetItemText(web, "R$ " + core.good_show("money", sale_item.discount), 3)
+                if sale_item.taxes:
                     bew = self.list_sales.AppendItem(sold, u"Taxas adicionais")
-                    self.list_sales.SetItemText(bew,
-                                                ("R$ " + core.good_show("money",
-                                                                        str(day_data["sales"][i]['tax']))).replace(".",
-                                                                                                                   ","),
-                                                3)
+                    self.list_sales.SetItemText(bew, "R$ " + core.good_show("money", sale_item.taxes), 3)
                 sales_amount += 1
-                if day_data["sales"][i]['payment'] == u"Dinheiro":
+                if sale_item.payment == u"Dinheiro":
                     money_amount += 1
-                    money_value += float(day_data["sales"][i]['value'])
-                elif day_data["sales"][i]['payment'] == u"Cartão":
+                    money_value += float(sale_item.value)
+                elif sale_item.payment == u"Cartão":
                     card_amount += 1
-                    card_value += float(day_data["sales"][i]['value'])
+                    card_value += float(sale_item.value)
 
-            self.list_sales.SetItemText(root, str(sales_amount), 1)
-            self.list_sales.SetItemText(root, ("R$ " + core.good_show("money", str(sales_value))).replace(".", ","), 3)
+            self.list_sales.SetItemText(root, str(sales_amount), 2)
+            self.list_sales.SetItemText(root, ("R$ " + core.good_show("money", sales_value)), 3)
             self.list_sales.Expand(root)
 
             raz = self.list_expenses.AddRoot(self.combobox_day_option.GetValue())
             expenses_value = 0.0
             expenses_amount = 0
             self.list_expenses.SetItemFont(raz, wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
-            for i in day_data["spent"]:
-                hour = day_data["spent"][i]['time']
-                val = float(day_data["spent"][i]['value'])
-                des = (day_data["spent"][i]['description'])
+
+            day_expenses = transactions_db.daily_expenses_list(day)
+            for expense_item in day_expenses:
+                value = expense_item.value
+                description = expense_item.description
                 expenses_amount += 1
-                expenses_value += val
-                golf = self.list_expenses.AppendItem(raz, hour)
-                self.list_expenses.SetItemText(golf, des, 1)
-                self.list_expenses.SetItemText(golf, ("R$ " + core.good_show("money", str(val))).replace(".", ","), 3)
+                expenses_value += value
+                golf = self.list_expenses.AppendItem(raz, core.format_date_user(expense_item.record_time))
+                self.list_expenses.SetItemText(golf, description, 1)
+                self.list_expenses.SetItemText(golf, ("R$ " + core.good_show("money", value)), 3)
+
+                self.list_expenses.SetItemData(golf, wx.TreeItemData(expense_item))
+
             self.list_expenses.SetItemText(raz, "Gastos", 1)
             self.list_expenses.SetItemText(raz, str(expenses_amount), 2)
-            self.list_expenses.SetItemText(raz,
-                                           ("R$ " + core.good_show("money", str(expenses_value))).replace(".", ","), 3)
+            self.list_expenses.SetItemText(raz, ("R$ " + core.good_show("money", expenses_value)), 3)
             self.list_expenses.Expand(raz)
 
-            pain = self.list_wastes.AddRoot(u"Desperdícios de " + str(self.combobox_day_option.GetValue()))
+            pain = self.list_wastes.AddRoot(u"Desperdícios de " + self.combobox_day_option.GetValue())
             wastes_value = 0.0
             wastes_amount = 0
             self.list_wastes.SetItemFont(pain, wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
-            for i in day_data["wastes"]:
-                amt = int(day_data["wastes"][i]['amount'])
-                valo = float(day_data["wastes"][i]['unit_price']) * amt
-                desc = (day_data["wastes"][i]['description'])
+
+            day_wastes = transactions_db.daily_wastes_list(day)
+            for wasted in day_wastes:
+                amount = wasted.amount
+                product = inventory_db.inventory_search_id(wasted.product_ID)
+                value = product.price * amount
                 wastes_amount += 1
-                wastes_value += valo
-                king = self.list_wastes.AppendItem(pain, desc)
-                self.list_wastes.SetItemText(king, str(amt), 1)
-                self.list_wastes.SetItemText(king, ("R$ " + core.good_show("money", str(valo))).replace(".", ","), 2)
+                wastes_value += value
+
+                king = self.list_wastes.AppendItem(pain, product.description)
+                self.list_wastes.SetItemText(king, str(amount), 1)
+                self.list_wastes.SetItemText(king, ("R$ " + core.good_show("money", value)), 2)
+
+                self.list_wastes.SetItemData(king, wx.TreeItemData(wasted))
+
             self.list_wastes.SetItemText(pain, str(wastes_amount), 1)
-            self.list_wastes.SetItemText(pain, ("R$ " + core.good_show("money", str(wastes_value))).replace(".", ","),
-                                         2)
+            self.list_wastes.SetItemText(pain, ("R$ " + core.good_show("money", wastes_value)), 2)
             self.list_wastes.Expand(pain)
 
-            self.textbox_day_total.SetValue(
-                core.good_show("money", str(sales_value - expenses_value)).replace(".", ","))
-            self.textbox_sales_value.SetValue(core.good_show("money", str(sales_value)).replace(".", ","))
+            self.textbox_day_total.SetValue(core.good_show("money", sales_value - expenses_value))
+            self.textbox_sales_value.SetValue(core.good_show("money", sales_value))
             self.textbox_sales_amount.SetValue(str(sales_amount))
-            self.textbox_money_value.SetValue(core.good_show("money", str(money_value)).replace(".", ","))
+            self.textbox_money_value.SetValue(core.good_show("money", money_value))
             self.textbox_money_amount.SetValue(str(money_amount))
-            self.textbox_card_value.SetValue(core.good_show("money", str(card_value)).replace(".", ","))
+            self.textbox_card_value.SetValue(core.good_show("money", card_value))
             self.textbox_card_amount.SetValue(str(card_amount))
-            self.textbox_spent_value.SetValue(core.good_show("money", str(expenses_value)).replace(".", ","))
+            self.textbox_spent_value.SetValue(core.good_show("money", expenses_value))
             self.textbox_spent_amount.SetValue(str(expenses_amount))
-            try:
-                if len(day_data["closure"]) == 0:
-                    alpha = self.months_files[self.month_options.index(self.combobox_day_option.GetValue()) + 1]
-                    zetta = shelve.open(core.directory_paths['saves'] + alpha)
-                    self.textbox_cash_previous.SetValue(
-                        core.good_show("money", str(zetta["closure"][0])).replace(".", ","))
-                    zetta.close()
+            # try:
+            #     if len(day_data["closure"]) == 0:
+            #         alpha = self.months_files[self.month_options.index(self.combobox_day_option.GetValue()) + 1]
+            #         zetta = shelve.open(core.directory_paths['saves'] + alpha)
+            #         self.textbox_cash_previous.SetValue(
+            #             core.good_show("money", str(zetta["closure"][0])).replace(".", ","))
+            #         zetta.close()
+            #
+            #     elif day_data["closure"][10] == 0.0:
+            #
+            #         alpha = self.months_files[self.month_options.index(self.combobox_day_option.GetValue()) + 1]
+            #         zetta = shelve.open(core.directory_paths['saves'] + alpha)
+            #         self.textbox_cash_previous.SetValue(core.good_show("money", zetta["closure"][0]))
+            #         zetta.close()
+            #     else:
+            #         self.textbox_cash_previous.SetValue(core.good_show("money", day_data["closure"][10]))
+            # except IndexError:
+            #     self.textbox_cash_previous.SetValue('0,00')
+            # try:
+            #     self.textbox_cash_real.SetValue(core.good_show("money", str(day_data["closure"][12])))
+            # except IndexError:
+            #     self.textbox_cash_real.SetValue('0,00')
+            # try:
+            #     self.textbox_cash_removed.SetValue(
+            #         core.good_show("money", str(day_data["closure"][14])))
+            # except IndexError:
+            #     self.textbox_cash_removed.SetValue('0,00')
 
-                elif day_data["closure"][10] == 0.0:
+            self.textbox_cash_previous.SetValue('0,00')
+            self.textbox_cash_real.SetValue('0,00')
+            self.textbox_cash_removed.SetValue('0,00')
 
-                    alpha = self.months_files[self.month_options.index(self.combobox_day_option.GetValue()) + 1]
-                    zetta = shelve.open(core.directory_paths['saves'] + alpha)
-                    self.textbox_cash_previous.SetValue(
-                        core.good_show("money", str(zetta["closure"][0])).replace(".", ","))
-                    zetta.close()
-                else:
-                    self.textbox_cash_previous.SetValue(
-                        core.good_show("money", str(day_data["closure"][10])).replace(".", ","))
-            except IndexError:
-                self.textbox_cash_previous.SetValue('0,00')
-            try:
-                self.textbox_cash_real.SetValue(core.good_show("money", str(day_data["closure"][12])).replace(".", ","))
-            except IndexError:
-                self.textbox_cash_real.SetValue('0,00')
-            try:
-                self.textbox_cash_removed.SetValue(
-                    core.good_show("money", str(day_data["closure"][14])).replace(".", ","))
-            except IndexError:
-                self.textbox_cash_removed.SetValue('0,00')
-            tyde = float(self.textbox_cash_previous.GetValue().replace(",", ".")) + float(
-                self.textbox_money_value.GetValue().replace(",", ".")) - float(
-                self.textbox_spent_value.GetValue().replace(",", "."))
-            self.textbox_cash_ideal.SetValue(core.good_show("money", str(tyde).replace(".", ",")))
-            if self.textbox_cash_real.GetValue() == "0,00":
-                tide = float(self.textbox_cash_ideal.GetValue().replace(",", ".")) - float(
-                    self.textbox_cash_removed.GetValue().replace(",", "."))
-            else:
-                tide = float(self.textbox_cash_real.GetValue().replace(",", ".")) - float(
-                    self.textbox_cash_removed.GetValue().replace(",", "."))
-            if tide < 0:
-                tide = 0.0
-            self.textbox_cash_tomorrow.SetValue(core.good_show("money", str(tide).replace(".", ",")))
-            day_data.close()
-            self.save()
+            self.update_cash(None)
+
+            transactions_db.close()
+            inventory_db.close()
+
+            # self.save()
             self.combobox_day_option.Enable()
+
+    def update_cash(self, event):
+
+        previous = core.money2float(self.textbox_cash_previous.GetValue())
+        money = core.money2float(self.textbox_money_value.GetValue())
+        spent = core.money2float(self.textbox_spent_value.GetValue())
+        removed = core.money2float(self.textbox_cash_removed.GetValue())
+        cash_real = core.money2float(self.textbox_cash_real.GetValue())
+
+        cash_ideal = previous + money - spent
+
+        self.textbox_cash_ideal.SetValue(core.good_show("money", cash_ideal))
+
+        if not cash_real:
+            cash_tomorrow = cash_ideal - removed
+        else:
+            cash_tomorrow = cash_real - removed
+
+        if cash_tomorrow < 0:
+            cash_tomorrow = 0.0
+
+        self.textbox_cash_tomorrow.SetValue(core.good_show("money", cash_tomorrow))
 
     def clean(self):
         self.list_sales.DeleteAllItems()
@@ -550,59 +540,45 @@ class Report(wx.Frame):
         day_data["closure"] = [a0, a1, b1, c1, d1, e1, f1, g1, h1, i1, j1, k1, l1, m1, n1]
         day_data.close()
 
-    def open_new_sale(self, event):
+    def open_sale_register(self, event):
         sale.Sale(self)
 
-    def open_edit_sale(self, event):
+    def open_sale_edit(self, event):
         red = self.list_sales.GetSelection()
         if self.list_sales.GetRootItem() == red:
             return
-        registry_time = self.list_sales.GetItemText(red, 0)
-        day_data = shelve.open(core.directory_paths['saves'] + self.day_file)
-        for i in day_data["sales"]:
-            if day_data["sales"][i]['time'] == registry_time or day_data["sales"][i][
-                'time'] == self.list_sales.GetItemText(
-                    self.list_sales.GetItemParent(red), 0):
-                key = i
-                sale.Sale(self, argv=[(core.directory_paths['saves'] + self.day_file), key, registry_time])
-        day_data.close()
 
-    def open_new_expense(self, event):
+        data = self.list_sales.GetItemData(red).GetData()
+        if isinstance(data, data_types.ProductData):
+            red = self.list_sales.GetItemParent(red)
+            data = self.list_sales.GetItemData(red).GetData()
+
+        sale.Sale(self, key=data.ID)
+
+    def open_expense_register(self, event):
         transactions.Expense(self)
 
-    def open_edit_expense(self, event):
+    def open_expense_edit(self, event):
         red = self.list_expenses.GetSelection()
         if self.list_expenses.GetRootItem() == red:
             return
-        registry_time = self.list_expenses.GetItemText(red, 0)
-        day_data = shelve.open(core.directory_paths['saves'] + self.day_file)
-        for i in day_data["spent"]:
-            if day_data["spent"][i]['time'] == registry_time:
-                key = i
-                transactions.Expense(self, argv=[(core.directory_paths['saves'] + self.day_file), key, registry_time])
-        day_data.close()
+        data = self.list_expenses.GetItemData(red).GetData()
+
+        transactions.Expense(self, key=data.ID)
 
     def open_record_editor(self, event):
         record_editor.EditionManager(self, record_date=self.combobox_day_option.GetValue())
 
-    def open_new_waste(self, event):
+    def open_waste_register(self, event):
         waste.Waste(self)
 
-    def open_edit_waste(self, event):
-        red = self.list_wastes.GetSelection()
-        if self.list_wastes.GetRootItem() == red:
+    def open_waste_edit(self, event):
+        red = self.list_expenses.GetSelection()
+        if self.list_expenses.GetRootItem() == red:
             return
-        registry = self.list_wastes.GetItemText(red, 0)
-        day_data = shelve.open(core.directory_paths['saves'] + self.day_file)
-        for i in day_data["wastes"]:
-            thor = float(str(self.list_wastes.GetItemText(red, 2)).replace('R$ ', '').replace(',', '.'))
-            if day_data["wastes"][i]['description'] == registry and day_data["wastes"][i]['amount'] == int(
-                    self.list_wastes.GetItemText(red, 1)) and thor == day_data["wastes"][i]['value'] == float(
-                    self.list_wastes.GetItemText(red, 2).replace(',', '.').replace('R$ ', '')):
-                key = i
-                waste.Waste(self,
-                            argv=[(core.directory_paths['saves'] + self.day_file), key, day_data["wastes"][i]['time']])
-        day_data.close()
+        data = self.list_expenses.GetItemData(red).GetData()
+
+        waste.Waste(self, key=data.ID)
 
     def exit(self, event):
         self.Close()

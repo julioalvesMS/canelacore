@@ -654,9 +654,9 @@ def database2sale(database_list):
     data = data_types.SaleData()
 
     data.ID = database_list[0]
-    data.products_IDs = database_list[1].split()
-    data.amounts = database_list[2].split()
-    data.prices = database_list[3].split()
+    data.products_IDs = core.convert_list(database_list[1].split(), int)
+    data.amounts = core.convert_list(database_list[2].split(), float)
+    data.prices = core.convert_list(database_list[3].split(), float)
     data.sold = database_list[4]
     data.discount = database_list[5]
     data.taxes = database_list[6]
@@ -766,8 +766,12 @@ class TransactionsDB:
         :type data: data_types.SaleData
         """
 
+        products_ids = ' '.join(core.convert_list(data.products_IDs, str))
+        amounts = ' '.join(core.convert_list(data.amounts, str))
+        prices = ' '.join(core.convert_list(data.prices, str))
+
         # Transfere os dados recebidos para um tuple
-        _data = (' '.join(data.products_IDs), ' '.join(data.amounts), ' '.join(data.prices), data.sold, data.discount,
+        _data = (products_ids, amounts, prices, data.sold, data.discount,
                  data.taxes, data.value, data.payment, data.client_cpf, data.record_time, data.record_date,
                  1 if data.active else 0)
 

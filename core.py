@@ -19,6 +19,21 @@ data conversion functions
 """
 
 
+def convert_list(list_, new_type):
+    """
+    Converte todos os elementos de uma lista para um novo tipo
+    :param list_: Lista a ser convertida
+    :param new_type: Tipo dos novos elementos da lista
+    :type list_: list
+    :return: Lista com os elementos convertidos
+    :rtype: list[new_type]
+    """
+    new_list = list()
+    for i in range(len(list_)):
+        new_list.append(new_type(list_[i]))
+    return new_list
+
+
 def good_show(types, tex):
     if types == "hour":
         xet = float(tex.replace(":", "."))
@@ -64,6 +79,17 @@ def good_show(types, tex):
             return tex
         else:
             return tex
+
+
+def money2float(value):
+    """
+    Converte uma string para float
+    :param value: String a ser convertida
+    :type value: str
+    :return: O valor em float
+    :rtype: float
+    """
+    return float(value.replace(',', '.').replace('R$ ', ''))
 
 
 def hour2int(value):
