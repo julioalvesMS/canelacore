@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import shelve
 from datetime import datetime
 
 import wx
@@ -10,6 +9,8 @@ from wx.lib.buttons import GenBitmapTextButton
 
 import core
 import dialogs
+import database
+import data_types
 
 __author__ = 'Julio'
 
@@ -18,67 +19,79 @@ class Waste(wx.Frame):
     
     textbox_description = None
     textbox_amount = None
-    textbox_value = None
+    textbox_id = None
 
-    def __init__(self, parent, title=u'Desperdícios', argv=None):
-        wx.Frame.__init__(self, parent, -1, title, size=(500, 200),
+    list_inventory = None
+
+    def __init__(self, parent, title=u'Desperdícios', key=-1, data=None):
+        wx.Frame.__init__(self, parent, -1, title, size=(630, 280),
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN)
-        if not argv:
-            argv = []
         
-        self.argv = argv
-        
+        self.key = key
+        self.data = data
+
         self.setup_gui()
-        
-        if argv:
+
+        self.database_inventory = database.InventoryDB(':memory:')
+
+        if self.key != -1 or data:
+            if not data:
+                db = database.TransactionsDB()
+                self.data = db.wastes_search_id(self.key)
+                db.close()
             self.recover_waste()
+
+        self.database_search(None)
 
         self.Show()
 
     def setup_gui(self):
-        self.SetBackgroundColour(core.default_background_color)
         self.Centre()
         self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
-        
+        self.SetBackgroundColour(core.default_background_color)
         # first
-        first = wx.Panel(self, -1, size=(480, 85), pos=(10, 10), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
+        first = wx.Panel(self, -1, size=(450, 230), pos=(10, 10), style=wx.SIMPLE_BORDER | wx.TAB_TRAVERSAL)
         first.SetBackgroundColour(core.default_background_color)
         
-        self.textbox_description = wx.TextCtrl(first, -1, pos=(10, 25), size=(210, 30))
-        self.textbox_amount = wx.TextCtrl(first, -1, pos=(255, 25), size=(60, 30))
-        self.textbox_value = wx.TextCtrl(first, -1, pos=(375, 25), size=(60, 30))
-        
-        self.textbox_value.Bind(wx.EVT_CHAR, core.check_money)
-        self.textbox_amount.Bind(wx.EVT_CHAR, core.check_number)
-        
-        self.textbox_value.SetValue("0,00")
-        wx.StaticText(first, -1, u'Quantidade:', pos=(255, 5))
-        wx.StaticText(first, -1, u'R$', pos=(360, 32))
-        wx.StaticText(first, -1, u'Valor unitário:', pos=(375, 5))
-        
-        last = wx.Panel(self, -1, size=(480, 60), pos=(10, 105), style=wx.SUNKEN_BORDER)
+        self.textbox_description = wx.SearchCtrl(first, -1, pos=(10, 10), size=(430, 30))
+        self.textbox_description.Bind(wx.EVT_TEXT, self.database_search)
+        self.textbox_description.ShowSearchButton(True)
+        self.textbox_description.SetDescriptiveText(u'Busca de produto')
+
+        self.list_inventory = wx.ListCtrl(first, -1, pos=(10, 45), size=(430, 115),
+                                          style=wx.LC_REPORT | wx.LC_VRULES | wx.LC_HRULES | wx.SIMPLE_BORDER)
+        self.list_inventory.InsertColumn(0, u'ID')
+        self.list_inventory.InsertColumn(1, u'Descrição', width=230)
+        self.list_inventory.InsertColumn(2, u'Preço')
+        self.list_inventory.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.database_select)
+
+        wx.StaticText(first, -1, u"ID: *", pos=(50, 170))
+        self.textbox_id = wx.TextCtrl(first, -1, pos=(50, 190), size=(150, 30))
+        self.textbox_id.Bind(wx.EVT_CHAR, core.check_number)
+
+        wx.StaticText(first, -1, u"Quantidade: *", pos=(250, 170))
+        self.textbox_amount = wx.TextCtrl(first, -1, pos=(250, 190), size=(150, 30))
+
+        # last
+        last = wx.Panel(self, -1, size=(140, 230), pos=(470, 10), style=wx.SIMPLE_BORDER)
         last.SetBackgroundColour(core.default_background_color)
-        last_ = wx.Panel(last, pos=(80, 10), size=(320, 40), style=wx.SIMPLE_BORDER)
+        last_ = wx.Panel(last, pos=(10, 55), size=(120, 120), style=wx.SIMPLE_BORDER)
         finish = GenBitmapTextButton(last_, -1,
                                      wx.Bitmap(core.directory_paths['icons'] + 'Check.png', wx.BITMAP_TYPE_PNG),
-                                     u'Finalizar', pos=(0, 0), size=(100, 40))
+                                     u'Finalizar', pos=(0, 0), size=(120, 40))
         finish.Bind(wx.EVT_BUTTON, self.ask_end)
         restart = GenBitmapTextButton(last_, -1,
                                       wx.Bitmap(core.directory_paths['icons'] + 'Reset.png', wx.BITMAP_TYPE_PNG),
-                                      u'Recomeçar', pos=(100, 0), size=(120, 40))
+                                      u'Recomeçar', pos=(0, 40), size=(120, 40))
         restart.Bind(wx.EVT_BUTTON, self.ask_clean)
         cancel = GenBitmapTextButton(last_, -1,
                                      wx.Bitmap(core.directory_paths['icons'] + 'Exit.png', wx.BITMAP_TYPE_PNG),
-                                     u"sair", pos=(220, 0), size=(100, 40))
-        cancel.Bind(wx.EVT_BUTTON, self.ask_exit) 
+                                     u"sair", pos=(0, 80), size=(120, 40))
+        cancel.Bind(wx.EVT_BUTTON, self.ask_exit)
 
     def recover_waste(self):
-        planet = shelve.open(self.argv[0])
-        self.textbox_description.SetValue(planet["wastes"][self.argv[1]]['description'])
-        self.textbox_value.SetValue(
-            core.good_show("money", str(planet["wastes"][self.argv[1]]['unit_price'])).replace(".", ","))
-        self.textbox_amount.SetValue(str(planet["wastes"][self.argv[1]]['amount']))
-        planet.close()
+        self.textbox_description.SetValue(self.data.product_ID)
+        self.textbox_amount.SetValue(self.data.amount)
 
     def ask_clean(self, event):
         """
@@ -90,7 +103,7 @@ class Waste(wx.Frame):
 
     def ask_exit(self, event):
         pl = str(self.textbox_description.GetValue())
-        po = str(self.textbox_value.GetValue())
+        po = str(self.textbox_id.GetValue())
         pk = str(self.textbox_amount.GetValue())
         if pl == '' and po == '0,00' and (pk == '' or pk == '0'):
             self.Close()
@@ -102,70 +115,50 @@ class Waste(wx.Frame):
 
     def clean(self):
         self.textbox_description.Clear()
-        self.textbox_value.Clear()
-        self.textbox_value.SetValue("0,00")
+        self.textbox_id.Clear()
+        self.textbox_id.SetValue("0,00")
         self.textbox_amount.Clear()
 
+    def database_search(self, event):
+        self.list_inventory.DeleteAllItems()
+        product_list = self.database_inventory.inventory_search_description(self.textbox_description.GetValue())
+        for product in product_list:
+            self.list_inventory.Append((product.ID, product.description,
+                                        'R$ ' + core.good_show('money', product.price)))
+
+    def database_select(self, event):
+        j = self.list_inventory.GetFocusedItem()
+        self.textbox_id.SetValue(self.list_inventory.GetItemText(j, 0))
+        self.textbox_description.SetValue(self.list_inventory.GetItemText(j, 1))
+        self.textbox_amount.SetFocus()
+
     def end(self):
-        description = self.textbox_description.GetValue().capitalize()
-        value = float(self.textbox_value.GetValue().replace(",", "."))
-        amount = self.textbox_amount.GetValue()
-        if len(amount) == 0:
-            amount = 0
-        else:
-            amount = int(amount)
-        total_value = value * amount
-        if len(description) == 0 or value == 0 or amount == 0:
-            a = wx.MessageDialog(self, u'Dados insuficientes!', u'Error 404', style=wx.OK | wx.ICON_ERROR)
-            a.ShowModal()
-            a.Destroy()
-            return
+        _product_id = self.textbox_id.GetValue()
+        _amount = self.textbox_amount.GetValue()
+
+        if not _product_id or not _amount:
+            return dialogs.launch_error(self, u'Dados insuficientes!')
+
         finish_time = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
             datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
         date = str(datetime.now().year) + "-" + core.good_show("o", str(datetime.now().month)) + "-" + core.good_show(
             "o", str(datetime.now().day))
-        info = core.directory_paths['saves'] + date + ".txt"
-        day_data = shelve.open(info)
-        if "sales" not in day_data:
-            day_data["sales"] = {}
-            day_data["secount"] = 0
-            day_data["edit"] = {}
-            day_data["spent"] = {}
-            day_data["spcount"] = 0
-            day_data["closure"] = []
-            day_data["wastes"] = {}
-            day_data["wcount"] = 0
-        if not self.argv:
-            key = day_data["wcount"] + 1
-            asw = day_data["wastes"]
-            asw[key] = {'time': finish_time,
-                        'edit': 0,
-                        'description': description,
-                        'unit_price': value,
-                        'amount': amount,
-                        'value': total_value}
-            day_data["wastes"] = asw
-            day_data["wcount"] = key
+
+        data = data_types.WasteData()
+        data.product_ID = int(_product_id)
+        data.amount = float(_amount)
+        data.record_date = date
+        data.record_time = finish_time
+        data.ID = self.key
+
+        db = database.TransactionsDB()
+        if self.key != -1 or self.data:
+            db.edit_waste(data)
         else:
-            day_data.close()
-            day_data = shelve.open(self.argv[0])
-            key = self.argv[1]
-            hour = self.argv[2]
-            asw = day_data["edit"]
-            asw[finish_time] = day_data["wastes"][key]
-            asw[finish_time]['key'] = key
-            asw[finish_time]['argv'] = 1
-            day_data["edit"] = asw
-            adw = day_data["wastes"]
-            asw[key] = {'time': hour,
-                        'edit': 1,
-                        'description': description,
-                        'unit_price': value,
-                        'amount': amount,
-                        'value': total_value}
-            day_data["wastes"] = adw
+            db.insert_waste(data)
+        db.close()
+
         self.clean()
-        day_data.close()
         dialogs.Confirmation(self, u"Sucesso", 3)
 
     def exit(self, event):
