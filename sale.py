@@ -7,6 +7,7 @@ import wx
 import wx.gizmos
 from wx.lib.buttons import GenBitmapTextButton
 
+import inventory
 import clients
 import core
 import daily_report
@@ -82,13 +83,13 @@ class Sale(wx.Frame):
         self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
 
         self.SetBackgroundColour(core.default_background_color)
+
         # result
         result = wx.Panel(self, -1, pos=(5, 5), size=(450, 605), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
         result.SetBackgroundColour(core.default_background_color)
 
         self.list_sold = wx.ListCtrl(result, -1, pos=(10, 10), size=(430, 400),
                                      style=wx.LC_REPORT | wx.SIMPLE_BORDER | wx.LC_VRULES | wx.LC_HRULES)
-        self.list_sold.InsertColumn(0, u"ID")
         self.list_sold.InsertColumn(1, u"Descrição", width=180)
         self.list_sold.InsertColumn(2, u"Quantidade")
         self.list_sold.InsertColumn(3, u"Preço Unit.")
@@ -136,13 +137,20 @@ class Sale(wx.Frame):
                 self.radio_payment_card.Disable()
             if not self.radio_payment_other.GetValue():
                 self.radio_payment_other.Disable()
+                
         # product
         self.panel_product_data = wx.Panel(self, 22, pos=(460, 5), size=(450, 275),
                                            style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
         self.panel_product_data.SetBackgroundColour(core.default_background_color)
         wx.StaticText(self.panel_product_data, -1, u"Adicionar Produto", pos=(160, 8)).SetFont(
             wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
-        self.textbox_product_description = wx.SearchCtrl(self.panel_product_data, 223, pos=(10, 25), size=(430, 30))
+
+        fin = wx.BitmapButton(self.panel_product_data, -1, wx.Bitmap(core.directory_paths['icons'] + 'Add.png'),
+                              pos=(408, 25), size=(32, 32), style=wx.NO_BORDER)
+        fin.SetBackgroundColour(core.default_background_color)
+        fin.Bind(wx.EVT_BUTTON, self.open_product_register)
+
+        self.textbox_product_description = wx.SearchCtrl(self.panel_product_data, 223, pos=(10, 25), size=(395, 32))
         self.textbox_product_description.Bind(wx.EVT_TEXT, self.database_search, id=223)
         self.textbox_product_description.ShowSearchButton(False)
         self.textbox_product_description.SetDescriptiveText(u'Descrição do produto')
@@ -160,19 +168,13 @@ class Sale(wx.Frame):
         self.textbox_product_price = wx.SearchCtrl(self.panel_product_data, -1, pos=(130, 185), size=(80, -1))
         self.textbox_product_price.ShowSearchButton(False)
         self.textbox_product_price.SetDescriptiveText(u'Preço')
+        self.textbox_product_price.SetValue(u'R$ 0,00')
         self.textbox_product_price.Disable()
 
         self.textbox_product_amount = wx.SearchCtrl(self.panel_product_data, -1, pos=(230, 185), size=(100, -1))
         self.textbox_product_amount.ShowSearchButton(False)
         self.textbox_product_amount.SetDescriptiveText(u'Quantidade')
 
-        # wx.StaticText(self.panel_product_data, -1, u"Preço Unitário: R$", pos=(10, 192))
-        # self.textbox_product_price = wx.TextCtrl(self.panel_product_data, 224, pos=(120, 185), size=(60, 30))
-        # self.textbox_product_price.Bind(wx.EVT_CHAR, core.check_money, id=224)
-        # self.textbox_product_price.SetValue(u"0,00")
-        # wx.StaticText(self.panel_product_data, -1, u"Quantidade:", pos=(225, 192))
-        # self.textbox_product_amount = wx.TextCtrl(self.panel_product_data, 225, pos=(300, 185), size=(40, 30))
-        # self.textbox_product_amount.Bind(wx.EVT_CHAR, core.check_number, id=225)
         if self.editable:
             self.__panel_product = wx.Panel(self.panel_product_data, size=(300, 40), pos=(100, 225),
                                             style=wx.SIMPLE_BORDER)
@@ -221,7 +223,7 @@ class Sale(wx.Frame):
                                       wx.Bitmap(core.directory_paths['icons'] + 'Cancel.png', wx.BITMAP_TYPE_PNG),
                                       u'Limpar', pos=(300, 0), size=(100, 40))
             cold.Bind(wx.EVT_BUTTON, self.open_client_manager)
-            cnew.Bind(wx.EVT_BUTTON, self.open_new_client)
+            cnew.Bind(wx.EVT_BUTTON, self.open_client_register)
             cno.Bind(wx.EVT_BUTTON, self.clean_client)
         self.delivery = wx.CheckBox(client, 213, u"Entrega?", (10, 110))
         self.delivery.Bind(wx.EVT_CHECKBOX, self.setup_delivery)
@@ -282,7 +284,7 @@ class Sale(wx.Frame):
                                        wx.Bitmap(core.directory_paths['icons'] + 'Edit.png', wx.BITMAP_TYPE_PNG),
                                        u"Editar",
                                        pos=(100, 0), size=(100, 40))
-            edit.Bind(wx.EVT_BUTTON, self.open_edit_sale)
+            edit.Bind(wx.EVT_BUTTON, self.open_sale_edit)
 
     def setup(self):
 
@@ -317,7 +319,8 @@ class Sale(wx.Frame):
             amount = data.amounts[i]
             unit_price = "R$ " + core.good_show("money", data.prices[i])
             price = data.amounts[i] * data.prices[i]
-            self.list_sold.Append((product_id, description, amount, unit_price, price))
+            item = self.list_sold.Append((description, amount, unit_price, price))
+            self.list_sold.SetItemData(item, product_id)
 
         # Adiciona os dados finais da venda
         self.textbox_sale_taxes.SetValue(core.good_show("money", data.taxes))
@@ -338,10 +341,13 @@ class Sale(wx.Frame):
     def open_client_manager(self, event):
         clients.ClientManager(self, client_selection_mode=True)
 
-    def open_new_client(self, event):
+    def open_client_register(self, event):
         clients.ClientRegister(self)
 
-    def open_edit_sale(self, event):
+    def open_product_register(self, event):
+        inventory.ProductRegister(self)
+
+    def open_sale_edit(self, event):
         Sale(self.GetParent(), key=self.key)
         self.exit(None)
 
@@ -350,22 +356,23 @@ class Sale(wx.Frame):
         self.textbox_client_cpf.Clear()
 
     def data_insert(self, event):
-        if not self.textbox_product_description.GetValue() or self.textbox_product_price.GetValue() == '0,00' or not \
-                self.textbox_product_amount.GetValue():
+        product_id = int(self.textbox_product_id.GetValue())
+        product = self.database_inventory.inventory_search_id(product_id)
+        if not product:
             return dialogs.launch_error(self, u'Dados Insulficientes!')
+
         amount = self.textbox_product_amount.GetValue()
-        _unit_price = self.textbox_product_price.GetValue().replace(",", ".").replace('R$ ', '')
-        _price = float(amount) * float(_unit_price)
-        unit_price = "R$ " + core.good_show('money', _unit_price)
+        _price = float(amount) * float(product.price)
+        unit_price = "R$ " + core.good_show('money', product.price)
         price = "R$ " + core.good_show('money', _price)
-        product_id = self.textbox_product_id.GetValue()
-        description = self.textbox_product_description.GetValue().capitalize()
-        self.list_sold.Append((product_id, description, amount, unit_price, price))
+        item = self.list_sold.Append((product.description, amount, unit_price, price))
+        self.list_sold.SetItemData(item, product_id)
+
         self.textbox_product_amount.Clear()
-        self.textbox_product_price.Clear()
+        self.textbox_product_id.Clear()
         self.textbox_product_description.Clear()
-        self.update_sale_data(None)
         self.textbox_product_price.SetValue(u"0,00")
+        self.update_sale_data(None)
 
     def data_delete(self, event):
         if self.list_sold.GetFocusedItem() == -1:
@@ -377,7 +384,8 @@ class Sale(wx.Frame):
         self.item = self.list_sold.GetFocusedItem()
         if not self.item == -1:
             self.textbox_product_description.SetValue(self.list_sold.GetItemText(self.item, 0))
-            self.textbox_product_price.SetValue(self.list_sold.GetItemText(self.item, 2).replace('R$ ', ''))
+            self.textbox_product_id.SetValue(str(self.list_sold.GetItemData(self.item)))
+            self.textbox_product_price.SetValue(self.list_sold.GetItemText(self.item, 2))
             self.textbox_product_amount.SetValue(self.list_sold.GetItemText(self.item, 1))
             self.__panel_product.Destroy()
             self.__panel_product = wx.Panel(self.panel_product_data, size=(200, 40), pos=(200, 225),
@@ -392,28 +400,31 @@ class Sale(wx.Frame):
             eremov.Bind(wx.EVT_BUTTON, self.data_editor_disable)
 
     def data_edit(self, event):
-        if not self.textbox_product_description.GetValue() or self.textbox_product_price.GetValue() == '0,00' or not \
-                self.textbox_product_amount.GetValue() or self.list_sold.GetFocusedItem() == -1:
+        product_id = int(self.textbox_product_id.GetValue())
+        product = self.database_inventory.inventory_search_id(product_id)
+        if not product:
             return dialogs.launch_error(self, u'Dados Insulficientes!')
-        else:
-            trem = int(self.textbox_product_amount.GetValue()) * float(
-                self.textbox_product_price.GetValue().replace(',', '.'))
-            hug = "R$ " + core.good_show('money', str(trem))
-            kill = "R$ " + core.good_show('money', self.textbox_product_price.GetValue().replace(',', '.'))
-            self.list_sold.SetStringItem(self.item, 0, self.textbox_product_description.GetValue())
-            self.list_sold.SetStringItem(self.item, 1, self.textbox_product_amount.GetValue())
-            self.list_sold.SetStringItem(self.item, 2, kill)
-            self.list_sold.SetStringItem(self.item, 3, hug)
-            self.textbox_product_amount.Clear()
-            self.textbox_product_price.Clear()
-            self.textbox_product_description.Clear()
-            self.update_sale_data(None)
-            self.data_editor_disable(event)
+
+        amount = self.textbox_product_amount.GetValue()
+        _price = float(amount) * float(product.price)
+        unit_price = "R$ " + core.good_show('money', product.price)
+        price = "R$ " + core.good_show('money', _price)
+
+        self.list_sold.SetStringItem(self.item, 0, product.description)
+        self.list_sold.SetStringItem(self.item, 1, amount)
+        self.list_sold.SetStringItem(self.item, 2, unit_price)
+        self.list_sold.SetStringItem(self.item, 3, price)
+
+        self.list_sold.SetItemData(self.item, product_id)
+
+        self.update_sale_data(None)
+        self.data_editor_disable(event)
 
     def data_editor_disable(self, event):
-        self.textbox_product_description.Clear()
-        self.textbox_product_price.SetValue('0,00')
         self.textbox_product_amount.Clear()
+        self.textbox_product_price.SetValue(u'0,00')
+        self.textbox_product_id.Clear()
+        self.textbox_product_description.Clear()
         self.__panel_product.Destroy()
         self.__panel_product = wx.Panel(self.panel_product_data, size=(300, 40), pos=(100, 225), style=wx.SIMPLE_BORDER)
         button_add_product = GenBitmapTextButton(self.__panel_product, 220,
@@ -454,7 +465,7 @@ class Sale(wx.Frame):
         total_price = float(0)
         w = self.list_sold.GetItemCount()
         for i in range(0, w):
-            product_price = self.list_sold.GetItem(i, 4).GetText()
+            product_price = self.list_sold.GetItem(i, 3).GetText()
             a = product_price.replace(",", ".").replace("R$ ", "")
             total_price += float(a)
         discount = self.textbox_sale_discount.GetValue().replace(",", ".")
@@ -541,10 +552,10 @@ class Sale(wx.Frame):
         products_unitary_prices = []
 
         # Armazena os dados dos produtos em vetores
-        for i in range(0, w):
-            products_id.append(self.list_sold.GetItem(i, 0).GetText())
-            products_amounts.append(self.list_sold.GetItem(i, 2).GetText())
-            aux = self.list_sold.GetItem(i, 3).GetText().replace(",", ".").replace("R$ ", "")
+        for i in range(w):
+            products_id.append(self.list_sold.GetItemData(i))
+            products_amounts.append(float(self.list_sold.GetItem(i, 1).GetText()))
+            aux = float(self.list_sold.GetItem(i, 3).GetText().replace(",", ".").replace("R$ ", ""))
             products_unitary_prices.append(aux)
 
         self.update_sale_data(None)
@@ -583,8 +594,7 @@ class Sale(wx.Frame):
         finish_time = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
             datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
         date = str(datetime.now().year) + "-" + core.good_show("o", str(datetime.now().month)) + "-" + core.good_show(
-            "o", str(
-                datetime.now().day))
+            "o", str(datetime.now().day))
 
         new_sale = data_types.SaleData()
 
