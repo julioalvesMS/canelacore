@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import shelve
 from datetime import datetime
 
 import wx
@@ -290,7 +289,7 @@ class Sale(wx.Frame):
         if self.key == -1:
             return
 
-        db = database.SalesDB()
+        db = database.TransactionsDB()
 
         data = db.sales_search_id(self.key)
 
@@ -354,12 +353,14 @@ class Sale(wx.Frame):
         if not self.textbox_product_description.GetValue() or self.textbox_product_price.GetValue() == '0,00' or not \
                 self.textbox_product_amount.GetValue():
             return dialogs.launch_error(self, u'Dados Insulficientes!')
-        a = self.textbox_product_price.GetValue().replace(",", ".")
-        trem = int(self.textbox_product_amount.GetValue()) * float(a)
-        hug = "R$ " + core.good_show('money', str(trem))
-        kill = "R$ " + core.good_show('money', str(float(a)))
-        self.list_sold.Append(((self.textbox_product_description.GetValue().capitalize()),
-                               self.textbox_product_amount.GetValue(), kill, hug))
+        amount = self.textbox_product_amount.GetValue()
+        _unit_price = self.textbox_product_price.GetValue().replace(",", ".").replace('R$ ', '')
+        _price = float(amount) * float(_unit_price)
+        unit_price = "R$ " + core.good_show('money', _unit_price)
+        price = "R$ " + core.good_show('money', _price)
+        product_id = self.textbox_product_id.GetValue()
+        description = self.textbox_product_description.GetValue().capitalize()
+        self.list_sold.Append((product_id, description, amount, unit_price, price))
         self.textbox_product_amount.Clear()
         self.textbox_product_price.Clear()
         self.textbox_product_description.Clear()
@@ -445,15 +446,15 @@ class Sale(wx.Frame):
     def database_select(self, event):
         j = self.list_inventory.GetFocusedItem()
         self.textbox_product_price.SetValue(self.list_inventory.GetItemText(j, 2))
-        self.textbox_product_description.SetValue(self.list_inventory.GetItemText(j, 1))
         self.textbox_product_id.SetValue(self.list_inventory.GetItemText(j, 0))
+        self.textbox_product_description.SetValue(self.list_inventory.GetItemText(j, 1))
         self.textbox_product_amount.SetFocus()
 
     def update_sale_data(self, event):
         total_price = float(0)
         w = self.list_sold.GetItemCount()
         for i in range(0, w):
-            product_price = self.list_sold.GetItem(i, 3).GetText()
+            product_price = self.list_sold.GetItem(i, 4).GetText()
             a = product_price.replace(",", ".").replace("R$ ", "")
             total_price += float(a)
         discount = self.textbox_sale_discount.GetValue().replace(",", ".")
@@ -542,8 +543,8 @@ class Sale(wx.Frame):
         # Armazena os dados dos produtos em vetores
         for i in range(0, w):
             products_id.append(self.list_sold.GetItem(i, 0).GetText())
-            products_amounts.append(int(self.list_sold.GetItem(i, 2).GetText()))
-            aux = float(self.list_sold.GetItem(i, 3).GetText().replace(",", ".").replace("R$ ", ""))
+            products_amounts.append(self.list_sold.GetItem(i, 2).GetText())
+            aux = self.list_sold.GetItem(i, 3).GetText().replace(",", ".").replace("R$ ", "")
             products_unitary_prices.append(aux)
 
         self.update_sale_data(None)
@@ -564,12 +565,13 @@ class Sale(wx.Frame):
         client_name = self.textbox_client_name.GetValue()
         client_cpf = self.textbox_client_cpf.GetValue().replace('.', '').replace('-', '')
 
-        try:
-            int(client_cpf)
-            if len(client_cpf) != 11:
-                raise ValueError
-        except ValueError:
-            return dialogs.launch_error(self, u'CPF do cliente inválido')
+        if client_cpf:
+            try:
+                int(client_cpf)
+                if len(client_cpf) != 11:
+                    raise ValueError
+            except ValueError:
+                return dialogs.launch_error(self, u'CPF do cliente inválido')
 
         delivery_receiver_name = self.textbox_delivery_receiver.GetValue()
         delivery_address = self.textbox_delivery_address.GetValue()
@@ -601,7 +603,7 @@ class Sale(wx.Frame):
 
         new_sale.ID = self.key
 
-        db = database.SalesDB()
+        db = database.TransactionsDB()
 
         if self.key == -1:
             db.insert_sale(new_sale)

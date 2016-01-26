@@ -155,12 +155,14 @@ class CategoryData(wx.Frame):
         wx.StaticText(first, -1, u"Descrição:", pos=(10, 5))
         self.textbox_description = wx.TextCtrl(first, -1, pos=(10, 25), size=(300, 30))
 
-        wx.StaticText(first, -1, u"CFOP:", pos=(150, 70))
-        self.combobox_cfop = wx.ComboBox(first, -1, pos=(150, 90), size=(160, 30), style=wx.CB_READONLY)
-
         wx.StaticText(first, -1, u"NCM:", pos=(10, 70))
         self.textbox_ncm = wx.TextCtrl(first, -1, pos=(10, 90), size=(80, 30))
         self.textbox_ncm.Bind(wx.EVT_CHAR, core.check_ncm)
+
+        wx.StaticText(first, -1, u"CFOP:", pos=(150, 70))
+        self.combobox_cfop = wx.ComboBox(first, -1, pos=(150, 90), size=(160, 30), style=wx.CB_READONLY)
+        self.combobox_cfop.SetItems(core.cfop_optins)
+        self.combobox_cfop.SetSelection(1)
 
         # last
         last = wx.Panel(self, -1, size=(140, 150), pos=(340, 10), style=wx.SIMPLE_BORDER)
@@ -191,9 +193,9 @@ class CategoryData(wx.Frame):
         dialogs.Ask(self, u"Apagar Tudo", 1)
 
     def ask_exit(self, event):
-        pl = str(self.textbox_description.GetValue())
-        po = str(self.textbox_ncm.GetValue())
-        if pl == '' and po == '':
+        pl = self.textbox_description.GetValue()
+        po = self.textbox_ncm.GetValue()
+        if not pl and not po:
             self.exit(None)
             return
         dialogs.Ask(self, u"Sair", 91)
@@ -226,11 +228,14 @@ class CategoryData(wx.Frame):
     def end(self):
         ncm = self.textbox_ncm.GetValue()
         category = self.textbox_description.GetValue()
+        cfop = core.cfop_values[self.combobox_cfop.GetCurrentSelection()]
         db = database.InventoryDB()
 
         data = data_types.CategoryData()
         data.ncm = ncm
+        data.cfop = cfop
         data.category = category
+        data.ID = self.category_id
 
         if self.category_id == -1:
             db.insert_category(data)

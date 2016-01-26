@@ -125,7 +125,7 @@ class InventoryDB:
             RECORD_DATE CHAR(10) NOT NULL)''')
 
         self.cursor.execute('''CREATE TABLE CATEGORIES(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-            CATEGORY TEXT NOT NULL UNIQUE, NCM CHAR(8), CFOP CHAR(4), IMPOSTO REAL''')
+            CATEGORY TEXT NOT NULL UNIQUE, NCM CHAR(8), CFOP CHAR(4), IMPOSTO REAL)''')
         self.db.commit()
 
     def insert_product(self, data):
@@ -323,7 +323,7 @@ class InventoryDB:
 
         # TODO buscar o imposto
 
-        _data = (data.category, data.ncm, data.cfop)
+        _data = (data.category, data.ncm, data.cfop, data.imposto)
 
         self.cursor.execute('INSERT INTO CATEGORIES (CATEGORY, NCM, CFOP, IMPOSTO) VALUES (?,?,?,?)', _data)
         self.db.commit()
@@ -663,14 +663,54 @@ def database2sale(database_list):
     data.value = database_list[7]
     data.payment = database_list[8]
     data.client_cpf = database_list[9]
-    data.delivery_ID = database_list[10]
-    data.record_time = database_list[11]
-    data.record_date = database_list[12]
+    data.record_time = database_list[10]
+    data.record_date = database_list[11]
+    data.active = database_list[12]
 
     return data
 
 
-class SalesDB:
+def database2expense(database_list):
+    """
+    Converte uma lista obtidada do banco de dados em um objeto gasto
+    :param database_list: lista obtidada do db contendo dados de um gasto
+    :type database_list: tuple
+    :return: Objeto gASTO
+    :rtype: data_types.ExpenseData
+    """
+    data = data_types.ExpenseData()
+
+    data.ID = database_list[0]
+    data.description = database_list[1]
+    data.value = database_list[2]
+    data.record_time = database_list[3]
+    data.record_date = database_list[4]
+    data.active = database_list[5]
+
+    return data
+
+
+def database2waste(database_list):
+    """
+    Converte uma lista obtidada do banco de dados em um objeto desperdicio
+    :param database_list: lista obtidada do db contendo dados de um desperdicio
+    :type database_list: tuple
+    :return: Objeto Desperdicio
+    :rtype: data_types.WasteData
+    """
+    data = data_types.WasteData()
+
+    data.ID = database_list[0]
+    data.product_ID = database_list[1]
+    data.amount = database_list[2]
+    data.record_time = database_list[3]
+    data.record_date = database_list[4]
+    data.active = database_list[5]
+
+    return data
+
+
+class TransactionsDB:
 
     def __init__(self, db_path=None):
         """
@@ -700,14 +740,22 @@ class SalesDB:
 
     def create_table(self):
         """
-        Cria todas as tabelas do Banco de Dados de Produtos> Produtos, Categorias
+        Cria todas as tabelas do Banco de Dados de Transações> Vendas, Gastos
         :return: None
         :rtype: None
         """
         self.cursor.execute('''CREATE TABLE SALES(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
             PRODUCTS TEXT NOT NULL, AMOUNTS TEXT NOT NULL, PRICES TEXT NOT NULL, SOLD REAL,
-            DISCOUNT REAL, TAXES REAL, VALUE REAL, PAYMENTE TEXT, CLIENT_CPF CHAR(11),
-            RECORD_TIME CHAR(8) NOT NULL, RECORD_DATE CHAR(10) NOT NULL)''')
+            DISCOUNT REAL, TAXES REAL, VALUE REAL, PAYMENT TEXT, CLIENT_CPF CHAR(11),
+            RECORD_TIME CHAR(8) NOT NULL, RECORD_DATE CHAR(10) NOT NULL, ACTIVE INTEGER)''')
+
+        self.cursor.execute('''CREATE TABLE EXPENSES(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
+            DESCRIPTION TEXT NOT NULL, VALUE REAL, RECORD_TIME CHAR(8) NOT NULL,
+            RECORD_DATE CHAR(10) NOT NULL, ACTIVE INTEGER)''')
+
+        self.cursor.execute('''CREATE TABLE WASTES(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
+            PRODUCT_ID INTEGER NOT NULL, AMOUNT INTEGER,
+            RECORD_TIME CHAR(8) NOT NULL, RECORD_DATE CHAR(10) NOT NULL, ACTIVE INTEGER)''')
 
         self.db.commit()
 
@@ -720,12 +768,49 @@ class SalesDB:
 
         # Transfere os dados recebidos para um tuple
         _data = (' '.join(data.products_IDs), ' '.join(data.amounts), ' '.join(data.prices), data.sold, data.discount,
-                 data.taxes, data.value, data.payment, data.client_cpf, data.record_time, data.record_date)
+                 data.taxes, data.value, data.payment, data.client_cpf, data.record_time, data.record_date,
+                 1 if data.active else 0)
 
         cmd = 'INSERT INTO SALES (PRODUCTS, AMOUNTS, PRICES, SOLD, DISCOUNT, TAXES, VALUE, PAYMENT, '
-        cmd += 'CLIENT_CPF, RECORD_TIME, RECORD_DATE) VALUES (?,?,?,?,?,?,?,?,?,?,?)'
+        cmd += 'CLIENT_CPF, RECORD_TIME, RECORD_DATE, ACTIVE) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
 
         # Insere a nova venda no BD
+        self.cursor.execute(cmd, _data)
+        self.db.commit()
+
+        data.ID = self.cursor.lastrowid
+
+    def insert_expense(self, data):
+        """
+        Insere uma nova entrada no Banco de Dados de Gastos
+        :param data: dados do novo gasto a ser cadastrado
+        :type data: data_types.ExpenseData
+        """
+
+        # Transfere os dados recebidos para um tuple
+        _data = (data.description, data.value, data.record_time, data.record_date, 1 if data.active else 0)
+
+        cmd = 'INSERT INTO EXPENSES (DESCRIPTION, VALUE, RECORD_TIME, RECORD_DATE, ACTIVE) VALUES (?,?,?,?,?)'
+
+        # Insere o novo gasto no BD
+        self.cursor.execute(cmd, _data)
+        self.db.commit()
+
+        data.ID = self.cursor.lastrowid
+
+    def insert_waste(self, data):
+        """
+        Insere uma nova entrada no Banco de Dados de Desperdicio
+        :param data: dados do novo Desperdicio a ser cadastrado
+        :type data: data_types.WasteData
+        """
+
+        # Transfere os dados recebidos para um tuple
+        _data = (data.product_ID, data.amount, data.record_time, data.record_date, 1 if data.active else 0)
+
+        cmd = 'INSERT INTO WASTES (PRODUCT_ID, AMOUNT, RECORD_TIME, RECORD_DATE, ACTIVE) VALUES (?,?,?,?,?)'
+
+        # Insere o novo gasto no BD
         self.cursor.execute(cmd, _data)
         self.db.commit()
 
@@ -751,6 +836,42 @@ class SalesDB:
         self.cursor.execute(cmd, _data)
         self.db.commit()
 
+    def edit_expense(self, data):
+        """
+        Edita uma entrada do Banco de Dados de Gastos
+        :param data: dados do gasto a ser editado
+        :type data: data_types.ExpenseData
+        """
+
+        # Transfere os dados do dict mandado para um tuple
+        _data = (data.description, data.value, data.ID)
+
+        # Prepara a linha de comando
+
+        cmd = 'UPDATE EXPENSES SET DESCRIPTION=?, VALUE=? WHERE ID=?'
+
+        # Edita o gasto no BD
+        self.cursor.execute(cmd, _data)
+        self.db.commit()
+
+    def edit_waste(self, data):
+        """
+        Edita uma entrada do Banco de Dados de Desperdicio
+        :param data: dados do desperdicio a ser editado
+        :type data: data_types.WasteData
+        """
+
+        # Transfere os dados do dict mandado para um tuple
+        _data = (data.product_ID, data.amount, data.ID)
+
+        # Prepara a linha de comando
+
+        cmd = 'UPDATE WASTES SET PRODUCT_ID=?, AMOUNT=? WHERE ID=?'
+
+        # Edita o desperdicio no BD
+        self.cursor.execute(cmd, _data)
+        self.db.commit()
+
     def delete_sale(self, sale_id):
         """
         Delete uma venda do BD
@@ -761,16 +882,58 @@ class SalesDB:
         self.cursor.execute('DELETE FROM SALES WHERE ID=?', (sale_id, ))
         self.db.commit()
 
+    def delete_expense(self, expense_id):
+        """
+        Delete um gasto do BD
+        :param expense_id: id do gasto a ser deletado
+        :return: None
+        :rtype: None
+        """
+        self.cursor.execute('DELETE FROM EXPENSES WHERE ID=?', (expense_id, ))
+        self.db.commit()
+
+    def delete_waste(self, waste_id):
+        """
+        Delete um Desperdicio do BD
+        :param waste_id: id do desperdicio a ser deletado
+        :return: None
+        :rtype: None
+        """
+        self.cursor.execute('DELETE FROM WASTES WHERE ID=?', (waste_id, ))
+        self.db.commit()
+
     def sales_search_id(self, sale_id):
         """
-        Dados de todas as vendas cadastrados em um determinado dia
+        Encontra a venda com um determinado ID
         :param sale_id: id da venda a ser buscada
         :rtype: data_types.SaleData
-        :return: uma list com todos os produtos do BD
+        :return: uma venda do BD
         """
         self.cursor.execute("""SELECT * FROM SALES WHERE ID=?""", (sale_id, ))
 
         return database2sale(self.cursor.fetchone())
+
+    def expenses_search_id(self, expense_id):
+        """
+        Encontra o Gasto com um determinado ID
+        :param expense_id: id da venda a ser buscada
+        :rtype: data_types.ExpenseData
+        :return: um objeto gasto
+        """
+        self.cursor.execute("""SELECT * FROM EXPENSES WHERE ID=?""", (expense_id, ))
+
+        return database2expense(self.cursor.fetchone())
+
+    def wastes_search_id(self, waste_id):
+        """
+        Encontra o desperdicio com um determinado ID
+        :param waste_id: id da venda a ser buscada
+        :rtype: data_types.WasteData
+        :return: um objeto gasto
+        """
+        self.cursor.execute("""SELECT * FROM WASTES WHERE ID=?""", (waste_id, ))
+
+        return database2waste(self.cursor.fetchone())
 
     def daily_sales_list(self, date):
         """
@@ -788,6 +951,40 @@ class SalesDB:
             sales_list.append(database2sale(sale))
 
         return sales_list
+
+    def daily_expenses_list(self, date):
+        """
+        Dados de todos os gastos cadastrados em um determinado dia
+        :param date: data a ser verificada
+        :rtype: list[data_types.ExpenseData]
+        :return: uma list com todos os gastos do BD na data
+        """
+        self.cursor.execute("""SELECT * FROM EXPENSES WHERE RECORD_DATE=?""", (date, ))
+
+        temp = self.cursor.fetchall()
+        expenses_list = list()
+
+        for expense in temp:
+            expenses_list.append(database2expense(expense))
+
+        return expenses_list
+
+    def daily_wastes_list(self, date):
+        """
+        Dados de todos os desperdicios cadastrados em um determinado dia
+        :param date: data a ser verificada
+        :rtype: list[data_types.WasteData]
+        :return: uma list com todos os desperdicios do BD na data
+        """
+        self.cursor.execute("""SELECT * FROM WASTES WHERE RECORD_DATE=?""", (date, ))
+
+        temp = self.cursor.fetchall()
+        wastes_list = list()
+
+        for waste in temp:
+            wastes_list.append(database2waste(waste))
+
+        return wastes_list
 
     def monthly_sales_list(self, month):
         """
@@ -809,6 +1006,72 @@ class SalesDB:
             sales_list.append(database2sale(sale))
 
         return sales_list
+
+    def monthly_expenses_list(self, month):
+        """
+        Dados de todos os gastos cadastrados em um determinado mes
+        :param month: mes no formato yyyy-mm a ser verificado
+        :type month: str
+        :rtype: list[data_types.ExpenseData]
+        :return: uma list com todos os gastos do BD no mes
+        """
+
+        month += '%'
+
+        self.cursor.execute("""SELECT * FROM EXPENSES WHERE RECORD_DATE LIKE ?""", (month, ))
+
+        temp = self.cursor.fetchall()
+        expenses_list = list()
+
+        for expense in temp:
+            expenses_list.append(database2expense(expense))
+
+        return expenses_list
+
+    def monthly_wastes_list(self, month):
+        """
+        Dados de todos os desperdicios cadastrados em um determinado mes
+        :param month: mes no formato yyyy-mm a ser verificado
+        :type month: str
+        :rtype: list[data_types.WasteData]
+        :return: uma list com todos os desperdicios do BD no mes
+        """
+
+        month += '%'
+
+        self.cursor.execute("""SELECT * FROM WASTES WHERE RECORD_DATE LIKE ?""", (month, ))
+
+        temp = self.cursor.fetchall()
+        wastes_list = list()
+
+        for waste in temp:
+            wastes_list.append(database2waste(waste))
+
+        return wastes_list
+
+    def list_record_dates(self):
+        """
+        Obtém uma lista com todas as datas com dados registrados
+        :return: Lista com todos os dias com movimento registrado
+        :rtype: list[str]
+        """
+        records = list()
+
+        self.cursor.execute('SELECT RECORD_DATE FROM WASTES')
+        records = list(set(records + self.cursor.fetchall()))
+
+        self.cursor.execute('SELECT RECORD_DATE FROM SALES')
+        records = list(set(records + self.cursor.fetchall()))
+
+        self.cursor.execute('SELECT RECORD_DATE FROM EXPENSES')
+        records = list(set(records + self.cursor.fetchall()))
+
+        for i in range(len(records)):
+            records[i] = records[i][0]
+
+        records.sort(reverse=True)
+
+        return records
 
 
 def database2delivery(database_list):

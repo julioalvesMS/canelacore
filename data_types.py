@@ -25,12 +25,58 @@ class SaleData:
     record_time = None
     record_date = None
 
+    active = True
+
     def __init__(self):
         pass
 
     def database_insert(self):
-        db = database.SalesDB(self.record_date)
+        db = database.TransactionsDB(self.record_date)
         db.insert_sale(self)
+        db.close()
+
+
+class ExpenseData:
+
+    ID = -1
+
+    description = None
+
+    value = 0.0
+
+    record_time = None
+    record_date = None
+
+    active = True
+
+    def __init__(self):
+        pass
+
+    def database_insert(self):
+        db = database.TransactionsDB(self.record_date)
+        db.insert_expense(self)
+        db.close()
+
+
+class WasteData:
+
+    ID = -1
+
+    product_ID = None
+
+    amount = 0.0
+
+    record_time = None
+    record_date = None
+
+    active = True
+
+    def __init__(self):
+        pass
+
+    def database_insert(self):
+        db = database.TransactionsDB(self.record_date)
+        db.insert_waste(self)
         db.close()
 
 
@@ -53,6 +99,8 @@ class ProductData:
     record_time = None
     record_date = None
 
+    active = True
+
     def __init__(self):
         pass
 
@@ -68,6 +116,8 @@ class CategoryData:
     cfop = None
 
     imposto = 0.0
+
+    active = True
 
     def __init__(self):
         pass
@@ -96,6 +146,8 @@ class ClientData:
     last_sale = None
     record_date = None
 
+    active = True
+
     def __init__(self):
         pass
 
@@ -120,6 +172,8 @@ class DeliveryData:
     hour = None
 
     obs = None
+
+    active = True
 
     def __init__(self):
         pass
