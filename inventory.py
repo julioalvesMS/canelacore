@@ -16,6 +16,7 @@ import dialogs
 import categories
 import database
 import data_types
+import sale
 
 __author__ = 'Julio'
 
@@ -81,8 +82,9 @@ class InventoryManager(wx.Frame):
         self.textbox_filter.ShowCancelButton(True)
         self.textbox_filter.SetCancelBitmap(wx.Bitmap(core.directory_paths['icons'] + 'Erase2.png', wx.BITMAP_TYPE_PNG))
         fin = wx.BitmapButton(panel_top, -1, wx.Bitmap(core.directory_paths['icons'] + 'edit_find.png'),
-                              pos=(855, 42), size=(35, 35))
+                              pos=(855, 42), size=(35, 35), style=wx.NO_BORDER)
         fin.Bind(wx.EVT_BUTTON, self.database_search)
+        fin.SetBackgroundColour(core.default_background_color)
         self.textbox_filter.Bind(wx.EVT_TEXT_ENTER, self.database_search)
         self.textbox_filter.Bind(wx.EVT_SEARCHCTRL_SEARCH_BTN, self.database_search)
         self.textbox_filter.Bind(wx.EVT_SEARCHCTRL_CANCEL_BTN, self.clean)
@@ -230,10 +232,17 @@ class ProductRegister(wx.Frame):
         self.textbox_barcode.Bind(wx.EVT_CHAR, core.check_number)
         self.textbox_price.Bind(wx.EVT_CHAR, core.check_currency)
 
+        button_category = wx.BitmapButton(self.panel_data, -1,
+                                          wx.Bitmap(core.directory_paths['icons'] + 'Add.png', wx.BITMAP_TYPE_PNG),
+                                          pos=(150, 204), size=(32, 32), style=wx.NO_BORDER)
+        button_category.Bind(wx.EVT_BUTTON, self.open_category_register)
+        button_category.SetBackgroundColour(core.default_background_color)
+
         self.panel_image = wx.Panel(self.panel_data, -1, size=(150, 150), pos=(10, 45), style=wx.SIMPLE_BORDER)
         self.panel_image.SetBackgroundColour('#ffffff')
         wx.EVT_PAINT(self.panel_image, self.OnPaint)
         self.clean()
+
         panel_bottom = wx.Panel(self, -1, pos=(0, 325), size=(500, 50))
         panel_bottom_buttons = wx.Panel(panel_bottom, pos=(90, 5), size=(320, 40), style=wx.SIMPLE_BORDER)
         finish = GenBitmapTextButton(panel_bottom_buttons, -1,
@@ -261,40 +270,50 @@ class ProductRegister(wx.Frame):
         else:
             self.Close()
 
-    def clean(self):
+    def open_category_register(self, event):
+        categories.CategoryData(self)
+
+    def update_categories(self):
         db = database.InventoryDB()
         category_list = db.categories_list()
-        category_options = []
+        category_options = [u'Selecione']
         for category in category_list:
             category_options.append(category.category)
+        self.combobox_category.SetItems(category_options)
+        self.combobox_category.SetSelection(0)
+        db.close()
+
+    def clean(self):
         self.textbox_description.SetValue('')
         self.textbox_price.SetValue('R$ 0,00')
         self.textbox_amount.SetValue('')
         self.textbox_supplier.SetValue('')
         self.textbox_observation.SetValue('')
-        self.combobox_category.SetItems(category_options)
-        db.close()
+        self.update_categories()
 
     def end(self):
         if not self.textbox_description.GetValue():
-            a = wx.MessageDialog(self, u'É necessária uma descrição!', u'Error 404', style=wx.OK | wx.ICON_ERROR)
-            a.ShowModal()
-            a.Destroy()
-            return
+            return dialogs.launch_error(self, u'É necessária uma descrição!')
+        if self.combobox_category.GetSelection() == 0:
+            return dialogs.launch_error(self, u'Selecione uma categoria!')
+
         rtime = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
             datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
         rdate = str(datetime.now().year) + "-" + core.good_show("o", str(datetime.now().month)) + "-" + core.good_show(
-            "o", str(
-                datetime.now().day))
+            "o", str(datetime.now().day))
+
         names = strip(self.textbox_description.GetValue()).split()
         for i in range(0, len(names)):
             names[i] = names[i].capitalize()
         namef = ' '.join(names)
+
         db = database.InventoryDB()
         category = db.category_id(self.combobox_category.GetValue())
 
+        barcode = self.textbox_barcode.GetValue()
         s = data_types.ProductData()
-        s.barcode = self.textbox_barcode.GetValue()
+        if barcode:
+            s.barcode = barcode
         s.description = namef
         s.price = float(self.textbox_price.GetValue().replace(',', '.').replace('R$ ', ''))
         s.amount = int(self.textbox_amount.GetValue())
@@ -305,8 +324,12 @@ class ProductRegister(wx.Frame):
         s.record_date = rdate
         db.insert_product(s)
         db.close()
+        if isinstance(self.parent, sale.Sale):
+            self.parent.database_inventory.insert_product(s)
+            self.parent.database_search(None)
         self.clean()
-        dialogs.Confirmation(self, 'Sucesso', 5)
+
+        dialogs.Confirmation(self, u'Sucesso', 5)
 
     def OnPaint(self, event):
         wx.PaintDC(self.panel_image).DrawBitmap(
@@ -334,9 +357,6 @@ class ProductData(wx.Frame):
         wx.Frame.__init__(self, parent, -1, title,
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION |
                           wx.CLOSE_BOX | wx.CLIP_CHILDREN | wx.TAB_TRAVERSAL)
-        product_id = str(product_id)
-        while len(product_id) < 6:
-            product_id = '0' + product_id
         self.product_id = product_id
         self.editable = editable
         self.parent = parent

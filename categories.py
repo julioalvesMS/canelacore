@@ -13,6 +13,7 @@ import core
 import dialogs
 import database
 import data_types
+import inventory
 
 
 class CategoryManager(wx.Frame):
@@ -138,6 +139,7 @@ class CategoryData(wx.Frame):
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN)
         
         self.category_id = category_id
+        self.parent = parent
 
         self.setup_gui()
         self.setup()
@@ -243,6 +245,10 @@ class CategoryData(wx.Frame):
             db.edit_category(data)
         db.close()
         self.clean()
+
+        if isinstance(self.parent, inventory.ProductRegister):
+            self.parent.update_categories()
+
         dialogs.Confirmation(self, u'Nova Categoria Cadastrada', 8)
 
     def exit(self, event):
