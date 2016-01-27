@@ -133,9 +133,10 @@ class CategoryData(wx.Frame):
     textbox_description = None
     textbox_ncm = None
     combobox_cfop = None
+    combobox_unit = None
 
     def __init__(self, parent, title='Nova Categoria', category_id=-1):
-        wx.Frame.__init__(self, parent, -1, title, size=(490, 200),
+        wx.Frame.__init__(self, parent, -1, title, size=(590, 200),
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN)
         
         self.category_id = category_id
@@ -151,23 +152,28 @@ class CategoryData(wx.Frame):
         self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
         self.SetBackgroundColour(core.default_background_color)
         # first
-        first = wx.Panel(self, -1, size=(320, 150), pos=(10, 10), style=wx.SIMPLE_BORDER | wx.TAB_TRAVERSAL)
+        first = wx.Panel(self, -1, size=(420, 150), pos=(10, 10), style=wx.SIMPLE_BORDER | wx.TAB_TRAVERSAL)
         first.SetBackgroundColour(core.default_background_color)
 
         wx.StaticText(first, -1, u"Descrição:", pos=(10, 5))
-        self.textbox_description = wx.TextCtrl(first, -1, pos=(10, 25), size=(300, 30))
+        self.textbox_description = wx.TextCtrl(first, -1, pos=(10, 25), size=(400, 30))
 
         wx.StaticText(first, -1, u"NCM:", pos=(10, 70))
-        self.textbox_ncm = wx.TextCtrl(first, -1, pos=(10, 90), size=(80, 30))
+        self.textbox_ncm = wx.TextCtrl(first, -1, pos=(10, 90), size=(60, 30))
         self.textbox_ncm.Bind(wx.EVT_CHAR, core.check_ncm)
 
-        wx.StaticText(first, -1, u"CFOP:", pos=(150, 70))
-        self.combobox_cfop = wx.ComboBox(first, -1, pos=(150, 90), size=(160, 30), style=wx.CB_READONLY)
+        wx.StaticText(first, -1, u"CFOP:", pos=(100, 70))
+        self.combobox_cfop = wx.ComboBox(first, -1, pos=(100, 90), size=(150, 30), style=wx.CB_READONLY)
         self.combobox_cfop.SetItems(core.cfop_optins)
         self.combobox_cfop.SetSelection(1)
 
+        wx.StaticText(first, -1, u"Unidade de medida:", pos=(280, 70))
+        self.combobox_unit = wx.ComboBox(first, -1, pos=(280, 90), size=(120, 30), style=wx.CB_READONLY)
+        self.combobox_unit.SetItems(core.unit_options)
+        self.combobox_unit.SetSelection(0)
+
         # last
-        last = wx.Panel(self, -1, size=(140, 150), pos=(340, 10), style=wx.SIMPLE_BORDER)
+        last = wx.Panel(self, -1, size=(140, 150), pos=(440, 10), style=wx.SIMPLE_BORDER)
         last.SetBackgroundColour(core.default_background_color)
         last_ = wx.Panel(last, pos=(10, 15), size=(120, 120), style=wx.SIMPLE_BORDER)
         finish = GenBitmapTextButton(last_, -1,
@@ -189,7 +195,10 @@ class CategoryData(wx.Frame):
         db = database.InventoryDB()
         data = db.categories_search_id(self.category_id)
         self.textbox_description.SetValue(data.category)
-        self.combobox_cfop.SetValue(data.cfop)
+        self.textbox_ncm.SetValue(data.ncm)
+        self.combobox_cfop.SetSelection(core.cfop_values.index(data.cfop))
+        self.combobox_unit.SetValue(data.unit)
+        db.close()
 
     def ask_clean(self, event):
         dialogs.Ask(self, u"Apagar Tudo", 1)
@@ -231,11 +240,14 @@ class CategoryData(wx.Frame):
         ncm = self.textbox_ncm.GetValue()
         category = self.textbox_description.GetValue()
         cfop = core.cfop_values[self.combobox_cfop.GetCurrentSelection()]
+        unit = core.unit_options[self.combobox_unit.GetSelection()]
+
         db = database.InventoryDB()
 
         data = data_types.CategoryData()
         data.ncm = ncm
         data.cfop = cfop
+        data.unit = unit
         data.category = category
         data.ID = self.category_id
 

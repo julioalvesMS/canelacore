@@ -133,7 +133,7 @@ class InventoryDB:
             RECORD_DATE CHAR(10) NOT NULL)''')
 
         self.cursor.execute('''CREATE TABLE CATEGORIES(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-            CATEGORY TEXT NOT NULL UNIQUE, NCM CHAR(8), CFOP CHAR(4), IMPOSTO REAL, UNIT CHAR(6) NOT NULL''')
+            CATEGORY TEXT NOT NULL UNIQUE, NCM CHAR(8), CFOP INTEGER, IMPOSTO REAL, UNIT CHAR(6) NOT NULL)''')
         self.db.commit()
 
     def insert_product(self, data):
@@ -340,7 +340,7 @@ class InventoryDB:
 
         # TODO buscar o imposto
 
-        _data = (data.category, data.ncm, data.cfop, data.imposto)
+        _data = (data.category, data.ncm, data.cfop, data.imposto, data.unit)
 
         self.cursor.execute('INSERT INTO CATEGORIES (CATEGORY, NCM, CFOP, IMPOSTO, UNIT) VALUES (?,?,?,?,?)', _data)
         self.db.commit()
