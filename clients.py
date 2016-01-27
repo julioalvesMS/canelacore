@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
 import shelve
-import shutil
 import threading
 from datetime import datetime
 
@@ -15,6 +13,7 @@ import core
 import dialogs
 import sale
 import database
+import data_types
 
 __author__ = 'Julio'
 
@@ -113,8 +112,8 @@ class ClientManager(wx.Frame):
         db = database.ClientsDB()
         clients = db.clients_list()
         for person in clients:
-            address = person[9] + ' - ' + person[8] + ', ' + person[11]
-            self.list_clients.Append((person[1], person[0], person[5], person[4], address))
+            address = person.state + ' - ' + person.city + ', ' + person.address
+            self.list_clients.Append((person.name, str(person.ID), person.telephone, person.email, address))
         db.close()
 
     def data_delete(self, event):
@@ -131,17 +130,17 @@ class ClientManager(wx.Frame):
         po = self.list_clients.GetFocusedItem()
         if po == -1:
             return
-        lo = self.list_clients.GetItem(po, 1).GetText()
-        ko = self.list_clients.GetItemText(po)
-        ClientData(self, ko, lo, True)
+        client_id = self.list_clients.GetItem(po, 1).GetText()
+        client_name = self.list_clients.GetItemText(po)
+        ClientData(self, client_name, client_id, editable=True)
 
     def data_open(self, event):
         po = self.list_clients.GetFocusedItem()
         if po == -1:
             return
-        lo = self.list_clients.GetItem(po, 1).GetText()
-        ko = self.list_clients.GetItemText(po)
-        ClientData(self, ko, lo, False)
+        client_id = self.list_clients.GetItem(po, 1).GetText()
+        client_name = self.list_clients.GetItemText(po)
+        ClientData(self, client_name, client_id, editable=False)
 
     def data_select(self, event):
         g = self.list_clients.GetFocusedItem()
@@ -159,8 +158,8 @@ class ClientManager(wx.Frame):
         db = database.ClientsDB()
         clients = db.clients_search(self.textbox_filter.GetValue())
         for person in clients:
-            address = person[9] + ' - ' + person[8] + ', ' + person[11]
-            self.list_clients.Append((person[1], person[0], person[5], person[4], address))
+            address = person.state + ' - ' + person.city + ', ' + person.address
+            self.list_clients.Append((person.name, str(person.ID), person.telephone, person.email, address))
         db.close()
         
     def clean(self):
@@ -294,45 +293,41 @@ class ClientRegister(wx.Frame):
 
     def end(self):
         if not self.textbox_client_name.GetValue():
-            dialogs.launch_error(self, u'É necessário o nome, para o cadastro', u'Error 404')
-            return
-        rtime = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
-            datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
+            return dialogs.launch_error(self, u'É necessário o nome, para o cadastro')
         rdate = str(datetime.now().year) + "-" + core.good_show("o", str(datetime.now().month)) + "-" + core.good_show(
             "o", str(datetime.now().day))
 
-        db = database.ClientsDB()
-
-        s = dict()
         xname = self.textbox_client_name.GetValue()
         names = xname.strip().split()
         for i in range(0, len(names)):
             names[i] = names[i].capitalize()
         namef = ' '.join(names)
-        s['name'] = namef
-        s['sex'] = self.textbox_client_sex.GetValue()
-        s['birth'] = core.format_date_internal(self.textbox_client_birth.GetValue())
-        s['email'] = self.textbox_client_email.GetValue()
-        s['cpf'] = self.textbox_client_cpf.GetValue().replace('-', '').replace('.', '')
-        s['tel'] = self.textbox_client_telephone.GetValue().replace('-', '').replace('(', '').replace(')', '')
-        s['cep'] = self.textbox_client_cep.GetValue().replace('-', '')
-        s['state'] = self.textbox_client_state.GetValue()
-        s['city'] = self.textbox_client_city.GetValue()
-        s['district'] = self.textbox_client_district.GetValue()
-        s['adress'] = self.textbox_client_address.GetValue()
-        s['obs'] = self.textbox_client_observations.GetValue()
-        s['time'] = rtime
-        s['date'] = rdate
 
-        client_id = db.insert_client(s)
+        data = data_types.ClientData()
+        data.name = namef
+        data.sex = self.textbox_client_sex.GetValue()
+        data.birth = core.format_date_internal(self.textbox_client_birth.GetValue())
+        data.email = self.textbox_client_email.GetValue()
+        data.cpf = self.textbox_client_cpf.GetValue().replace('-', '').replace('.', '')
+        data.telephone = self.textbox_client_telephone.GetValue().replace('-', '').replace('(', '').replace(')', '')
+        data.cep = self.textbox_client_cep.GetValue().replace('-', '')
+        data.state = self.textbox_client_state.GetValue()
+        data.city = self.textbox_client_city.GetValue()
+        data.district = self.textbox_client_district.GetValue()
+        data.address = self.textbox_client_address.GetValue()
+        data.obs = self.textbox_client_observations.GetValue()
+        data.record_date = rdate
+
+        db = database.ClientsDB()
+        db.insert_client(data)
         db.close()
 
         self.clean()
         parent = self.GetParent()
-        if type(parent) is sale.Sale:
-            parent.client_name.SetValue(namef)
-            parent.client_id.SetValue(client_id)
-            self.Close()
+        if isinstance(parent, sale.Sale):
+            parent.textbox_client_name.SetValue(data.name)
+            parent.textbox_client_cpf.SetValue(core.format_cpf(data.cpf))
+            self.exit(None)
             return
         dialogs.Confirmation(self, u'Sucesso', 4)
 
@@ -365,7 +360,7 @@ class ClientData(wx.Frame):
 
     dict_clients_basic_data = None
 
-    def __init__(self, parent, title, client_id, editable=True):
+    def __init__(self, parent, title, client_id, data=None, editable=True):
         wx.Frame.__init__(self, parent, -1, title,
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU |
                           wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN | wx.TAB_TRAVERSAL)
@@ -374,6 +369,12 @@ class ClientData(wx.Frame):
         self.client_id = client_id
         self.parent = parent
         self.title = title
+        self.data = data
+
+        if not self.data:
+            db = database.ClientsDB()
+            self.data = db.clients_search_id(self.client_id)
+            db.close()
 
         self.setup_gui()
 
@@ -515,7 +516,7 @@ class ClientData(wx.Frame):
         dialogs.Ask(self, u'Desconectar', 40)
 
     def set_editable(self, event):
-        ClientData(self.parent, self.title, self.client_id, True)
+        ClientData(self.parent, self.title, self.client_id, editable=True)
         self.Close()
 
     def sale_view(self, event):
@@ -598,54 +599,51 @@ class ClientData(wx.Frame):
                               str(cv)).replace('.', ',')))
 
     def clean(self):
-        db = database.ClientsDB()
-        client = db.clients_search_id(self.client_id)
-        self.textbox_client_name.SetValue(client[1])
-        self.textbox_client_sex.SetValue(client[2])
-        self.textbox_client_birth.SetValue(core.format_date_user(client[3]))
-        self.textbox_client_telephone.SetValue(client[5])
-        self.textbox_client_email.SetValue(client[4])
-        self.textbox_client_cpf.SetValue(client[6])
-        self.textbox_client_cep.SetValue(client[7])
-        self.textbox_client_state.SetValue(client[8])
-        self.textbox_client_city.SetValue(client[9])
-        self.textbox_client_district.SetValue(client[10])
-        self.textbox_client_address.SetValue(client[11])
-        self.textbox_client_observations.SetValue(client[12])
+        self.textbox_client_name.SetValue(self.data.name)
+        self.textbox_client_sex.SetValue(self.data.sex)
+        self.textbox_client_birth.SetValue(core.format_date_user(self.data.birth))
+        self.textbox_client_telephone.SetValue(self.data.telephone)
+        self.textbox_client_email.SetValue(self.data.email)
+        self.textbox_client_cpf.SetValue(self.data.cpf)
+        self.textbox_client_cep.SetValue(self.data.cep)
+        self.textbox_client_state.SetValue(self.data.state)
+        self.textbox_client_city.SetValue(self.data.city)
+        self.textbox_client_district.SetValue(self.data.district)
+        self.textbox_client_address.SetValue(self.data.address)
+        self.textbox_client_observations.SetValue(self.data.obs)
         # self.sales_list()
 
     def end(self):
         if not self.textbox_client_name.GetValue():
-            a = wx.MessageDialog(self, u'É necessário o nome para o cadastro', u'Error 404',
-                                 style=wx.OK | wx.ICON_ERROR)
-            a.ShowModal()
-            a.Destroy()
-            return
+            return dialogs.launch_error(self, u'É necessário o nome, para o cadastro')
 
-        db = database.ClientsDB()
-
-        s = dict()
         xname = self.textbox_client_name.GetValue()
-
         names = xname.strip().split()
         for i in range(0, len(names)):
             names[i] = names[i].capitalize()
         namef = ' '.join(names)
-        s['name'] = namef
-        s['sex'] = self.textbox_client_sex.GetValue()
-        s['birth'] = core.format_date_internal(self.textbox_client_birth.GetValue())
-        s['email'] = self.textbox_client_email.GetValue()
-        s['tel'] = self.textbox_client_telephone.GetValue().replace('-','' ).replace('(', '').replace(')', '')
-        s['cep'] = self.textbox_client_cep.GetValue().replace('-', '')
-        s['cpf'] = self.textbox_client_cpf.GetValue().replace('-', '').replace('.', '')
-        s['state'] = self.textbox_client_state.GetValue()
-        s['city'] = self.textbox_client_city.GetValue()
-        s['district'] = self.textbox_client_district.GetValue()
-        s['adress'] = self.textbox_client_address.GetValue()
-        s['obs'] = self.textbox_client_observations.GetValue()
 
-        db.edit_client(s, self.client_id)
+        data = data_types.ClientData()
+        data.name = namef
+        data.ID = self.client_id
+        data.sex = self.textbox_client_sex.GetValue()
+        data.birth = core.format_date_internal(self.textbox_client_birth.GetValue())
+        data.email = self.textbox_client_email.GetValue()
+        data.cpf = self.textbox_client_cpf.GetValue().replace('-', '').replace('.', '')
+        data.telephone = self.textbox_client_telephone.GetValue().replace('-', '').replace('(', '').replace(')', '')
+        data.cep = self.textbox_client_cep.GetValue().replace('-', '')
+        data.state = self.textbox_client_state.GetValue()
+        data.city = self.textbox_client_city.GetValue()
+        data.district = self.textbox_client_district.GetValue()
+        data.address = self.textbox_client_address.GetValue()
+        data.obs = self.textbox_client_observations.GetValue()
+
+        db = database.ClientsDB()
+        db.edit_client(data)
         db.close()
+
+        if isinstance(self.parent, ClientManager):
+            self.parent.setup(None)
 
         self.exit(None)
 
