@@ -2,10 +2,13 @@
 
 # TODO Lista a Baixo
 """
-Manter sistema de entraga
+::::TODO::::
 conexão cliente venda para NFe
+Implementar o SAT
+implementar diferentes tipos de unidade de quantidade (Kg, UN, etc)
+Implementar sistema de backup
 
-Trocar campo de ID e Nome para CPF
-
+::::Notas:::
+Manter sistema de entraga
 Sistema para monitoramento de devedores
 """

@@ -78,23 +78,24 @@ class Sale(wx.Frame):
     panel_product_data = None
     __panel_product = None
 
-    def __init__(self, parent, title=u'Vendas', key=-1, data=None, editable=True):
+    def __init__(self, parent, title=u'Vendas', key=-1, data=None, delivery_id=-1, editable=True):
         wx.Frame.__init__(self, parent, -1, title,
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN)
 
         self.key = key
         self.data = data
         self.editable = editable
+        self.delivery_id = delivery_id
 
         self.database_inventory = database.InventoryDB(':memory:')
 
         self.setup_gui()
         self.setup()
-        self.setup_delivery(None)
 
         self.update_sale_data(None)
 
-        self.database_search(None)
+        if self.editable:
+            self.database_search(None)
 
         self.Show()
 
@@ -122,7 +123,7 @@ class Sale(wx.Frame):
         self.radio_payment_other = wx.RadioButton(result, -1, u"Outra", (15, 500))
         self.textbox_payment_other = wx.TextCtrl(result, -1, pos=(80, 500), size=(120, 30))
         self.textbox_payment_other.Disable()
-        self.update_payment_method(1)
+        self.update_payment_method(None)
         self.radio_payment_money.Bind(wx.EVT_RADIOBUTTON, self.update_payment_method)
         self.radio_payment_card.Bind(wx.EVT_RADIOBUTTON, self.update_payment_method)
         self.radio_payment_other.Bind(wx.EVT_RADIOBUTTON, self.update_payment_method)
@@ -146,18 +147,12 @@ class Sale(wx.Frame):
         wx.StaticLine(result, -1, (285, 525), (150, 1))
 
         if not self.editable:
-            self.textbox_sale_taxes.SetBackgroundColour(core.default_disabled_color)
             self.textbox_sale_taxes.Disable()
-            self.textbox_sale_discount.SetBackgroundColour(core.default_disabled_color)
             self.textbox_sale_discount.Disable()
-            self.textbox_payment_other.SetBackgroundColour(core.default_disabled_color)
             self.textbox_payment_other.Disable()
-            if not self.radio_payment_money.GetValue():
-                self.radio_payment_money.Disable()
-            if not self.radio_payment_card.GetValue():
-                self.radio_payment_card.Disable()
-            if not self.radio_payment_other.GetValue():
-                self.radio_payment_other.Disable()
+            self.radio_payment_money.Disable()
+            self.radio_payment_card.Disable()
+            self.radio_payment_other.Disable()
                 
         # product
         self.panel_product_data = wx.Panel(self, 22, pos=(460, 5), size=(450, 275),
@@ -196,32 +191,33 @@ class Sale(wx.Frame):
         self.textbox_product_amount.ShowSearchButton(False)
         self.textbox_product_amount.SetDescriptiveText(u'Quantidade')
 
-        if self.editable:
-            self.__panel_product = wx.Panel(self.panel_product_data, size=(300, 40), pos=(100, 225),
-                                            style=wx.SIMPLE_BORDER)
-            button_add_product = GenBitmapTextButton(self.__panel_product, 220,
-                                                     wx.Bitmap(core.directory_paths['icons'] + 'Add.png',
-                                                               wx.BITMAP_TYPE_PNG),
-                                                     u"Adicionar", pos=(0, 0), size=(100, 40))
-            button_add_product.Bind(wx.EVT_BUTTON, self.data_insert, id=220)
-            button_product_editor = GenBitmapTextButton(self.__panel_product, 221,
-                                                        wx.Bitmap(core.directory_paths['icons'] + 'Edit.png',
-                                                                  wx.BITMAP_TYPE_PNG),
-                                                        u'Editar', pos=(100, 0), size=(100, 40))
-            button_product_editor.Bind(wx.EVT_BUTTON, self.data_editor_enable, id=221)
-            button_remove_product = GenBitmapTextButton(self.__panel_product, 222,
-                                                        wx.Bitmap(core.directory_paths['icons'] + 'Trash.png',
-                                                                  wx.BITMAP_TYPE_PNG),
-                                                        u'Apagar', pos=(200, 0), size=(100, 40))
-            button_remove_product.Bind(wx.EVT_BUTTON, self.data_delete, id=222)
+        self.__panel_product = wx.Panel(self.panel_product_data, size=(300, 40), pos=(100, 225),
+                                        style=wx.SIMPLE_BORDER)
+        button_add_product = GenBitmapTextButton(self.__panel_product, 220,
+                                                 wx.Bitmap(core.directory_paths['icons'] + 'Add.png',
+                                                           wx.BITMAP_TYPE_PNG),
+                                                 u"Adicionar", pos=(0, 0), size=(100, 40))
+        button_add_product.Bind(wx.EVT_BUTTON, self.data_insert, id=220)
+        button_product_editor = GenBitmapTextButton(self.__panel_product, 221,
+                                                    wx.Bitmap(core.directory_paths['icons'] + 'Edit.png',
+                                                              wx.BITMAP_TYPE_PNG),
+                                                    u'Editar', pos=(100, 0), size=(100, 40))
+        button_product_editor.Bind(wx.EVT_BUTTON, self.data_editor_enable, id=221)
+        button_remove_product = GenBitmapTextButton(self.__panel_product, 222,
+                                                    wx.Bitmap(core.directory_paths['icons'] + 'Trash.png',
+                                                              wx.BITMAP_TYPE_PNG),
+                                                    u'Apagar', pos=(200, 0), size=(100, 40))
+        button_remove_product.Bind(wx.EVT_BUTTON, self.data_delete, id=222)
 
-        else:
-            self.list_inventory.SetBackgroundColour('#C6C6C6')
+        if not self.editable:
             self.textbox_product_description.Disable()
-            self.list_inventory.DeleteAllItems()
             self.list_inventory.Disable()
             self.textbox_product_price.Disable()
             self.textbox_product_amount.Disable()
+            button_add_product.Disable()
+            button_product_editor.Disable()
+            button_remove_product.Disable()
+
 
         # client
         client = wx.Panel(self, 23, pos=(460, 285), size=(450, 325), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
@@ -232,20 +228,19 @@ class Sale(wx.Frame):
         self.textbox_client_cpf = wx.TextCtrl(client, -1, pos=(325, 25), size=(100, 25))
         self.textbox_client_cpf.Bind(wx.EVT_CHAR, core.check_cpf)
         self.textbox_client_cpf.SetMaxLength(6)
-        if self.editable:
-            client_ = wx.Panel(client, -1, pos=(10, 60), size=(400, 40), style=wx.SIMPLE_BORDER)
-            cold = GenBitmapTextButton(client_, -1,
-                                       wx.Bitmap(core.directory_paths['icons'] + 'Book.png', wx.BITMAP_TYPE_PNG),
-                                       u'Selecionar Cliente', pos=(0, 0), size=(150, 40))
-            cnew = GenBitmapTextButton(client_, -1,
-                                       wx.Bitmap(core.directory_paths['icons'] + 'Add.png', wx.BITMAP_TYPE_PNG),
-                                       u'Novo Cliente', pos=(150, 0), size=(150, 40))
-            cno = GenBitmapTextButton(client_, -1,
-                                      wx.Bitmap(core.directory_paths['icons'] + 'Cancel.png', wx.BITMAP_TYPE_PNG),
-                                      u'Limpar', pos=(300, 0), size=(100, 40))
-            cold.Bind(wx.EVT_BUTTON, self.open_client_manager)
-            cnew.Bind(wx.EVT_BUTTON, self.open_client_register)
-            cno.Bind(wx.EVT_BUTTON, self.clean_client)
+        client_ = wx.Panel(client, -1, pos=(10, 60), size=(400, 40), style=wx.SIMPLE_BORDER)
+        cold = GenBitmapTextButton(client_, -1,
+                                   wx.Bitmap(core.directory_paths['icons'] + 'Book.png', wx.BITMAP_TYPE_PNG),
+                                   u'Selecionar Cliente', pos=(0, 0), size=(150, 40))
+        cnew = GenBitmapTextButton(client_, -1,
+                                   wx.Bitmap(core.directory_paths['icons'] + 'Add.png', wx.BITMAP_TYPE_PNG),
+                                   u'Novo Cliente', pos=(150, 0), size=(150, 40))
+        cno = GenBitmapTextButton(client_, -1,
+                                  wx.Bitmap(core.directory_paths['icons'] + 'Cancel.png', wx.BITMAP_TYPE_PNG),
+                                  u'Limpar', pos=(300, 0), size=(100, 40))
+        cold.Bind(wx.EVT_BUTTON, self.open_client_manager)
+        cnew.Bind(wx.EVT_BUTTON, self.open_client_register)
+        cno.Bind(wx.EVT_BUTTON, self.clean_client)
         self.delivery = wx.CheckBox(client, 213, u"Entrega?", (10, 110))
         self.delivery.Bind(wx.EVT_CHECKBOX, self.setup_delivery)
         wx.StaticText(client, -1, u"Nome do recebente:", pos=(10, 130))
@@ -262,7 +257,7 @@ class Sale(wx.Frame):
         self.textbox_delivery_hour = wx.TextCtrl(client, -1, pos=(200, 280), size=(60, 25))
 
         self.textbox_delivery_telephone.Bind(wx.EVT_CHAR, core.check_telephone)
-        self.textbox_delivery_date.Bind(wx.EVT_CHAR, core.check_date)
+        self.textbox_delivery_date.Bind(wx.EVT_CHAR, core.check_date_simple)
         self.textbox_delivery_hour.Bind(wx.EVT_CHAR, core.check_hour)
 
         self.textbox_delivery_receiver.Disable()
@@ -275,6 +270,9 @@ class Sale(wx.Frame):
             self.textbox_client_name.Disable()
             self.textbox_client_cpf.Disable()
             self.delivery.Disable()
+            cold.Disable()
+            cnew.Disable()
+            cno.Disable()
 
         # last
         last = wx.Panel(self, 24, pos=(5, 615), size=(905, 50), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
@@ -317,20 +315,30 @@ class Sale(wx.Frame):
             self.data = db.sales_search_id(self.key)
             db.close()
 
+
         # Adiciona os dados do cliente
-        # self.textbox_client_name.SetValue(day_data['sales'][self.argv[1]]['client_name'])
         self.textbox_client_cpf.SetValue(core.format_cpf(self.data.client_cpf))
 
         # Caso haja, adiciona os dados da entrega
-        # if day_data["sales"][self.argv[1]]['delivery']:
-        #     self.delivery.SetValue(True)
-        #     self.setup_delivery(1)
-        #     self.textbox_delivery_receiver.SetValue(day_data["sales"][self.argv[1]]['receiver'])
-        #     self.textbox_delivery_address.SetValue(day_data["sales"][self.argv[1]]['adress'])
-        #     self.textbox_delivery_telephone.SetValue(str(day_data["sales"][self.argv[1]]['tel1']))
-        #     self.textbox_delivery_city.SetValue(day_data["sales"][self.argv[1]]['city'])
-        #     self.textbox_delivery_date.SetValue(str(day_data["sales"][self.argv[1]]['date']))
-        #     self.textbox_delivery_hour.SetValue(str(day_data["sales"][self.argv[1]]['hour']))
+        if self.delivery_id is not -1:
+            db = database.DeliveriesDB()
+            delivery_data = db.deliveries_search_id(self.delivery_id)
+            db.close()
+
+            self.delivery.SetValue(True)
+            if self.editable:
+                self.setup_delivery(None)
+
+            self.textbox_client_name.SetValue(delivery_data.client)
+            self.textbox_delivery_receiver.SetValue(delivery_data.receiver)
+            self.textbox_delivery_address.SetValue(delivery_data.address)
+            self.textbox_delivery_telephone.SetValue(delivery_data.telephone)
+            self.textbox_delivery_city.SetValue(delivery_data.city)
+            self.textbox_delivery_date.SetValue(core.format_date_user(delivery_data.date)[:5])
+            self.textbox_delivery_hour.SetValue(delivery_data.hour)
+
+        else:
+            self.setup_delivery(None)
 
         # Adiciona os dados dos produtos comprados
         for i in range(len(self.data.products_IDs)):
@@ -392,7 +400,7 @@ class Sale(wx.Frame):
         inventory.ProductRegister(self)
 
     def open_sale_edit(self, event):
-        Sale(self.GetParent(), key=self.key)
+        Sale(self.GetParent(), key=self.key, data=self.data, delivery_id=self.delivery_id)
         self.exit(None)
 
     def clean_client(self, event):
@@ -556,7 +564,7 @@ class Sale(wx.Frame):
         self.textbox_sale_discount.SetValue("0,00")
         self.textbox_product_price.SetValue("0,00")
         self.delivery.SetValue(False)
-        self.setup_delivery(False)
+        self.setup_delivery(None)
         self.radio_payment_money.SetValue(True)
         self.update_payment_method(None)
         self.update_sale_data(None)
@@ -604,17 +612,19 @@ class Sale(wx.Frame):
             except ValueError:
                 return dialogs.launch_error(self, u'CPF do cliente inválido')
 
+        date, finish_time = core.datetime_today()
+
         delivery_receiver_name = self.textbox_delivery_receiver.GetValue()
         delivery_address = self.textbox_delivery_address.GetValue()
         delivery_city = self.textbox_delivery_city.GetValue()
         client_telephone = self.textbox_delivery_telephone.GetValue()
-        delivery_date = self.textbox_delivery_date.GetValue()
+        delivery_date = self.textbox_delivery_date.GetValue() + '/' + str(datetime.now().year)
         delivery_hour = self.textbox_delivery_hour.GetValue()
 
-        finish_time = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
-            datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
-        date = str(datetime.now().year) + "-" + core.good_show("o", str(datetime.now().month)) + "-" + core.good_show(
-            "o", str(datetime.now().day))
+        delivery_date = core.format_date_internal(delivery_date)
+
+        if core.date2int(date) < core.date2int(delivery_date):
+            delivery_date = delivery_date[:-1] + str(int(delivery_date[-1:]) + 1)
 
         new_sale = data_types.SaleData()
 

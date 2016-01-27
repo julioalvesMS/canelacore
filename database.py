@@ -1139,6 +1139,7 @@ def database2delivery(database_list):
     data.hour = database_list[9]
 
     data.obs = database_list[10]
+    data.active = database_list[11]
 
     return data
 
@@ -1177,7 +1178,8 @@ class DeliveriesDB:
         """
         self.cursor.execute('''CREATE TABLE DELIVERIES(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
             SALE_ID INTEGER NOT NULL, CLIENT TEXT, RECEIVER TEXT, STATE CHAR(2), CITY TEXT, ADDRESS TEXT,
-            TELEPHONE CHAR(11), DELIVERY_TIME CHAR(8) NOT NULL, DELIVERY_DATE CHAR(10) NOT NULL, OBS TEXT)''')
+            TELEPHONE CHAR(11), DELIVERY_DATE CHAR(10) NOT NULL, DELIVERY_TIME CHAR(8) NOT NULL,
+            OBS TEXT, ACTIVE INT(1) NOT NULL)''')
 
         self.db.commit()
 
@@ -1191,10 +1193,10 @@ class DeliveriesDB:
 
         # Transfere os dados do dict mandado para um tuple
         _data = (data.sale_ID, data.client, data.receiver, data.state, data.city, data.address, data.telephone,
-                 data.date, data.hour, data.obs)
+                 data.date, data.hour, data.obs, 1)
 
         cmd = 'INSERT INTO DELIVERIES (SALE_ID, CLIENT, RECEIVER, STATE, CITY, ADDRESS, TELEPHONE, '
-        cmd += 'DELIVERY_DATE, DELIVERY_TIME, OBS) VALUES (?,?,?,?,?,?,?,?,?,?)'
+        cmd += 'DELIVERY_DATE, DELIVERY_TIME, OBS, ACTIVE) VALUES (?,?,?,?,?,?,?,?,?,?,?)'
 
         # Insere o novo produto no BD
         self.cursor.execute(cmd, _data)
@@ -1232,6 +1234,21 @@ class DeliveriesDB:
         self.cursor.execute("""DELETE FROM DELIVERIES WHERE ID=?""", (delivery_id, ))
         self.db.commit()
 
+    def delivery_activity_change(self, delivery_id, new_status):
+        """
+        Ativar ou desativar uma entrega
+        :param new_status: True para ativar ou False para desativar
+        :param delivery_id: ID da entraga a ser modificada
+        :type new_status: bool
+        :type delivery_id: str
+        """
+
+        status = 1 if new_status else 0
+
+        # Edita o produto no BD
+        self.cursor.execute("""UPDATE DELIVERIES SET ACTIVE=? WHERE ID=?""", (status, delivery_id))
+        self.db.commit()
+
     def deliveries_search_sale(self, sale_id):
         """
         Encontra a entrega de uma determinada venda
@@ -1243,34 +1260,35 @@ class DeliveriesDB:
 
         return database2delivery(self.cursor.fetchone())
 
-    def deliveries_list(self, start=None, end=None):
+    def deliveries_search_id(self, delivery_id):
         """
-        Dados de todas as entregas programadas no periodo especificado
-        :param start: Data inicial
-        :param end: Data final
-        :type start: str
-        :type end: str
+        Encontra a entrega com um determinado ID
+        :param delivery_id: id da entrega a ser buscada
+        :rtype: data_types.DeliveryData
+        :return: uma entrega do BD
+        """
+        self.cursor.execute("""SELECT * FROM DELIVERIES WHERE ID=?""", (delivery_id, ))
+
+        return database2delivery(self.cursor.fetchone())
+
+    def deliveries_list(self, show_all=False):
+        """
+        Dados de todas as entregas programadas
+        :param show_all: Mostrar todas as entregas registradas ou só as ativas
+        :type show_all: bool
         :rtype: list[data_types.DeliveryData]
-        :return: uma list com todas as entregas do BD entre as datas especificadas
+        :return: uma list com todas as entregas do BD
         """
-        if start and end:
-            self.cursor.execute("""SELECT * FROM DELIVERIES WHERE DELIVERY_DATE BETWEEN ? AND ?
-                                ORDER BY DELIVERY_DATA""", (start, end))
 
-        elif start and not end:
-            self.cursor.execute("""SELECT * FROM DELIVERIES WHERE DELIVERY_DATE <= ?
-                                ORDER BY DELIVERY_DATA""", (end, ))
-
-        elif not start and end:
-            self.cursor.execute("""SELECT * FROM DELIVERIES WHERE DELIVERY_DATE BETWEEN >=
-                                ORDER BY DELIVERY_DATA""", (start, ))
+        if not show_all:
+            self.cursor.execute("""SELECT * FROM DELIVERIES WHERE ACTIVE=1 ORDER BY DELIVERY_DATE""")
 
         else:
-            self.cursor.execute("""SELECT * FROM DELIVERIES ORDER BY DELIVERY_DATA""")
+            self.cursor.execute("""SELECT * FROM DELIVERIES ORDER BY DELIVERY_DATE""")
 
         deliveries_list = list()
 
         for delivery in self.cursor.fetchall():
-            deliveries_list.append(database2client(delivery))
+            deliveries_list.append(database2delivery(delivery))
 
         return deliveries_list

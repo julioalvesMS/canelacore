@@ -8,6 +8,7 @@ import pickle
 import platform
 import shutil
 from unicodedata import normalize
+from datetime import datetime
 
 import wx
 import wx.gizmos
@@ -297,7 +298,7 @@ def check_currency(event):
 
 def check_date(event):
     """
-    Verifica se um TextCtrl está com o texto com uma data no formato correto
+    Verifica se um TextCtrl está com o texto com uma data no formato __/__/____
     :param event: Evento gerado pela GUI
     """
     try:
@@ -324,6 +325,37 @@ def check_date(event):
             event.Skip()
     except ValueError:
         event.GetEventObject().SetValue('__/__/____')
+
+
+def check_date_simple(event):
+    """
+    Verifica se um TextCtrl está com o texto com uma data no formato __/__
+    :param event: Evento gerado pela GUI
+    """
+    try:
+        box = event.GetEventObject()
+        value = event.GetKeyCode()
+        num = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 8, 127, 314, 316, 9]
+        if value in num[:10]:
+            text = box.GetValue()
+            text2 = text.replace('/', '').replace('_', '')
+            text2 += str(chr(value))
+            while len(text2) < 4:
+                text2 += '_'
+            text = text2[:2] + '/' + text2[2:4]
+            box.SetValue(text)
+        elif value in num[10:12]:
+            text = box.GetValue()
+            text2 = text.replace('/', '').replace('_', '')
+            text2 = text2[:-1]
+            while len(text2) < 4:
+                text2 += '_'
+            text = text2[:2] + '/' + text2[2:4]
+            box.SetValue(text)
+        elif value in num[12:]:
+            event.Skip()
+    except ValueError:
+        event.GetEventObject().SetValue('__/__')
 
 
 def check_hour(event):
@@ -510,6 +542,21 @@ def setup_environment():
         os.mkdir(directory_paths['databases'])
     if os.path.exists(directory_paths['temporary']):
         shutil.rmtree(directory_paths['temporary'])
+
+
+def datetime_today():
+    """
+    Dá a data e o horário atual no formato ('yyyy-mm-dd', 'hh:mm:ss')
+    :return: (date, time)
+    :rtype: tuple(str)
+    """
+    time = good_show("o", str(datetime.now().hour)) + ":" + good_show("o", str(
+        datetime.now().minute)) + ":" + good_show("o", str(datetime.now().second))
+    date = str(datetime.now().year) + "-" + good_show("o", str(datetime.now().month)) + "-" + good_show(
+        "o", str(datetime.now().day))
+
+    return date, time
+
 
 brazil_states = [u'AL', u'AM', u'PI', u'SP', u'SC', u'RJ', u'DF',
                  u'GO', u'RS', u'MT', u'MS', u'MG', u'PR', u'PA',

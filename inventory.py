@@ -60,6 +60,7 @@ class InventoryManager(wx.Frame):
                                    u'Novo', pos=(100, 0), size=(100, 40))
         plus.SetBackgroundColour(core.default_background_color)
         plus.Bind(wx.EVT_BUTTON, self.open_new_product)
+
         mplus = GenBitmapTextButton(panel_buttons_left, -1,
                                     wx.Bitmap(core.directory_paths['icons'] + 'Box_download.png', wx.BITMAP_TYPE_PNG),
                                     u'Entrada', pos=(200, 0), size=(100, 40))
@@ -67,6 +68,7 @@ class InventoryManager(wx.Frame):
         mplus.Bind(wx.EVT_BUTTON, self.open_update_inventory)
         # Desabilitado por enquanto
         mplus.Disable()
+
         edi = GenBitmapTextButton(panel_buttons_left, -1,
                                   wx.Bitmap(core.directory_paths['icons'] + 'Edit.png', wx.BITMAP_TYPE_PNG), u'Editar',
                                   pos=(300, 0), size=(100, 40))
@@ -106,7 +108,7 @@ class InventoryManager(wx.Frame):
         self.list_products.InsertColumn(1, u'ID', width=50)
         self.list_products.InsertColumn(2, u'Categoria', width=150)
         self.list_products.InsertColumn(3, u'Preço', width=200)
-        self.list_products.InsertColumn(4, u'Estoque', width=100)
+        self.list_products.InsertColumn(4, u'Estoque', width=180)
         self.list_products.InsertColumn(5, u'Vendidos', width=100)
         self.list_products.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.data_open)
 
