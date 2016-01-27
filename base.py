@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import os
-import shelve
 import shutil
 import threading
 import time
@@ -26,6 +25,7 @@ import settings
 import teste
 import transactions
 import waste
+import database
 
 __author__ = 'Julio'
 
@@ -56,10 +56,11 @@ class Base(wx.Frame):
         # desabilitado em faze de desenvolvimento
 
         # # Faz o Backup e verifica entregas
-        # self.wd60 = {}
         # self.bool_b = False
         # self.backup(None)
-        # self.timer_delivery = wx.Timer(self)
+        
+        self.timer_delivery = wx.Timer(self)
+        self.notification_control = {}
         # self.Bind(wx.EVT_TIMER, self.delivery_check, self.timer_delivery)
         # self.delivery_check(None)
         # self.up_on = False
@@ -223,80 +224,63 @@ class Base(wx.Frame):
 
     def delivery_check(self, event):
         self.timer_delivery.Stop()
-        today1 = core.date2int(str(datetime.now().year) + '-' + core.good_show("o", str(
-            datetime.now().month)) + '-' + core.good_show("o", str(datetime.now().day)))
-        today = core.hour2int(core.good_show("o", str(datetime.now().hour)) + core.good_show("o", str(
-            datetime.now().minute)))
-        nextt = 5
-        try:
-            gas = shelve.open(core.directory_paths['saves'] + 'deliverys.txt')
-        except IOError:
-            if os.path.exists(core.directory_paths['saves'] + 'deliverys.txt'):
-                os.remove(core.directory_paths['saves'] + 'deliverys.txt')
-            time.sleep(10)
-            self.delivery_check(event)
-            return
-        for i in gas:
-            dt = i.split()
-            date1 = dt[0]
-            air = shelve.open(core.directory_paths['saves'] + date1 + '.txt')
-            bend = air['sales'][gas[i][0]]
-            date = bend['date']
-            if int(core.date_reverse(date.replace('/', '-')).replace('-', '')) < int(
-                            str(datetime.now().month) + core.good_show("o", str(datetime.now().day))):
-                date = date + '/' + str(datetime.now().year + 1)
+        
+        date_now, time_now = core.datetime_today()
+
+        date_now_int = core.date2int(date_now)
+        time_now_int = core.hour2int(time_now[:5])
+
+        deliveries_db = database.DeliveriesDB()
+        deliveries = deliveries_db.deliveries_list()
+        deliveries_db.close()
+        
+        check_interval = 30
+        for _delivery in deliveries:
+            date_delivery_int = core.date2int(_delivery.date)
+
+            if date_delivery_int < date_now_int:
+                deliveries_db.delivery_activity_change(_delivery.ID, False)
+
+            if _delivery.active is False:
+                del self.notification_control[_delivery.ID]
+
+            if date_delivery_int is not date_now_int or _delivery.active is False:
+                continue
+            if _delivery.ID in self.notification_control:
+                continue
+
+            time_delivery_int = core.hour2int(_delivery.hour)
+
+            self.notification_control[_delivery.ID] = [_delivery, None]
+            timer = wx.Timer(self, _delivery.ID)
+            timer.Bind(wx.EVT_TIMER, self.notify_delivery, timer)
+
+            time_remaining = time_delivery_int - time_now_int
+            if time_remaining < 60:
+                minutes_to_warning = 0.01
             else:
-                date = date + '/' + str(datetime.now().year)
-            try:
-                fire = core.date2int(date)
-                tempo = bend['hour']
-                water = core.hour2int(tempo)
-                if 0 < water - today - 60 < nextt:
-                    nextt = today - water - 60
-                elif 0 < water - today - 30 < nextt:
-                    nextt = today - water - 30
-                elif 0 < water - today - 15 < nextt:
-                    nextt = today - water - 15
-                elif 0 < water - today < nextt:
-                    nextt = today - water
-                elif i not in self.wd60:
-                    self.wd60[i] = [False, False, False]
-                if gas[i][1]:
-                    ter = core.hour2int(int(gas[i][2]))
-                    if today - ter >= 10:
-                        del gas[i]
-                        del self.wd60[i]
-                if fire < today1 or (fire == today1 and today >= (water + 60)) or gas[i][1]:
-                    del gas[i]
-                    del self.wd60[i]
-                elif fire == today1 and water - today <= 15 and not self.wd60[i][2]:
-                    adr = core.accents_remove(bend['city'] + u' - ' + bend['adress'])
-                    rec = core.accents_remove(bend['receiver'])
-                    potter = [time, adr, rec, gas[i][0], date1, 3]
-                    dialogs.Warner(self, u'Aviso!', potter)
-                    self.wd60[i] = [True, True, True]
-                elif fire == today1 and water - today <= 30 and not self.wd60[i][1]:
-                    adr = core.accents_remove(bend['city'] + ' - ' + bend['adress'])
-                    rec = core.accents_remove(bend['receiver'])
-                    potter = [time, adr, rec, gas[i][0], date1, 2]
-                    dialogs.Warner(self, u'Aviso!', potter)
-                    self.wd60[i] = [True, True, False]
-                elif fire == today1 and water - today <= 60 and not self.wd60[i][0]:
-                    adr = core.accents_remove(bend['city'] + ' - ' + bend['adress'])
-                    rec = core.accents_remove(bend['receiver'])
-                    potter = [time, adr, rec, gas[i][0], date1, 1]
-                    dialogs.Warner(self, u'Aviso!', potter)
-                    self.wd60[i] = [True, False, False]
-                air.close()
-            except ValueError:
-                del gas[i]
-                if i in self.wd60:
-                    del self.wd60[i]
-        gas.close()
-        nextt *= 60000
-        if not nextt:
-            nextt = 300000
-        self.timer_delivery.Start(nextt)
+                minutes_to_warning = time_remaining - 60
+            timer.Start(minutes_to_warning)
+
+        check_interval *= 60000
+        if not check_interval:
+            check_interval = 300000
+        self.timer_delivery.Start(check_interval)
+        
+    def notify_delivery(self, event):
+        """
+        Notifica o usuario sobre a existencia de uma entrega a a ser realizada
+        :param event: Evento gerado pelo Timer
+        :type event: wx.TimerEvent
+        :return: None
+        :rtype: None
+        """
+        timer = event.GetTimer()
+        _delivery_ = self.notification_control[timer.GetID()]
+        data = _delivery_[0]
+
+        dialogs.Warner(self, u'Aviso!', data)
+        pass
 
     def hide_to_tray(self, event):
         self.Hide()

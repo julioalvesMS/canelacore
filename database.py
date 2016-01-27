@@ -84,6 +84,7 @@ def database2category(database_list):
     data.ncm = database_list[2]
     data.cfop = database_list[3]
     data.imposto = database_list[4]
+    data.unit = database_list[5]
 
     return data
 
@@ -132,7 +133,7 @@ class InventoryDB:
             RECORD_DATE CHAR(10) NOT NULL)''')
 
         self.cursor.execute('''CREATE TABLE CATEGORIES(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-            CATEGORY TEXT NOT NULL UNIQUE, NCM CHAR(8), CFOP CHAR(4), IMPOSTO REAL)''')
+            CATEGORY TEXT NOT NULL UNIQUE, NCM CHAR(8), CFOP CHAR(4), IMPOSTO REAL, UNIT CHAR(6) NOT NULL''')
         self.db.commit()
 
     def insert_product(self, data):
@@ -341,7 +342,7 @@ class InventoryDB:
 
         _data = (data.category, data.ncm, data.cfop, data.imposto)
 
-        self.cursor.execute('INSERT INTO CATEGORIES (CATEGORY, NCM, CFOP, IMPOSTO) VALUES (?,?,?,?)', _data)
+        self.cursor.execute('INSERT INTO CATEGORIES (CATEGORY, NCM, CFOP, IMPOSTO, UNIT) VALUES (?,?,?,?,?)', _data)
         self.db.commit()
 
     def edit_category(self, data):
@@ -353,7 +354,7 @@ class InventoryDB:
 
         _data = (data.category, data.ncm, data.cfop, data.imposto, data.ID)
 
-        self.cursor.execute('UPDATE CATEGORIES SET CATEGORY=?, NCM=?, CFOP=?, IMPOSTO=? WHERE ID=?', _data)
+        self.cursor.execute('UPDATE CATEGORIES SET CATEGORY=?, NCM=?, CFOP=?, IMPOSTO=?, UNIT=? WHERE ID=?', _data)
         self.db.commit()
 
     def delete_category(self, category_id):

@@ -117,6 +117,8 @@ class CategoryData:
 
     imposto = 0.0
 
+    unit = None
+
     active = True
 
     def __init__(self):

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import shelve
 from datetime import datetime
 
 import wx
@@ -14,6 +13,7 @@ import inventory
 import categories
 import monthly_report
 import sale
+import database
 
 __author__ = 'Julio'
 
@@ -81,10 +81,16 @@ class Confirmation(wx.Dialog):
 
 
 class Warner(wx.Dialog):
-    def __init__(self, parent, title, argv):
+    def __init__(self, parent, title, data):
+        """
+        :type data: data_types.DeliveryData
+        """
         wx.Dialog.__init__(self, parent, -1, title, size=(500, 230))
-        self.argv = argv
+        self.data = data
         self.SetBackgroundColour(core.default_background_color)
+
+        address = data.city + ' - ' + data.address
+        receiver = data.receiver
         blur = u''
         if argv[5] == 1:
             blur = u'Primeiro Aviso'
@@ -115,20 +121,15 @@ class Warner(wx.Dialog):
         self.Close()
 
     def more(self, event):
-        earth = shelve.open(core.directory_paths['saves'] + self.argv[4] + '.txt')
-        brown = earth['sales'][self.argv[3]]['time']
-        sale.Sale(self.GetParent(), argv=[(core.directory_paths['saves'] + self.argv[4] + '.txt'), self.argv[3], brown],
-                  editable=False)
-        earth.close()
+        sale.Sale(self.GetParent(), key=self.data.sale_ID, delivery_id=self.data.ID, editable=False)
+        self.exit(None)
 
     def ready(self, event):
-        buster = shelve.open(core.directory_paths['saves'] + 'deliverys.txt')
-        for i in buster:
-            if buster[i][0] == self.argv[3]:
-                tempo = str(datetime.now().hour) + ':' + str(datetime.now().minute)
-                buster[i] = [self.argv[3], True, tempo]
-        buster.close()
-        self.Close()
+        db = database.DeliveriesDB()
+        self.data.active = False
+        db.delivery_activity_change(self.data.ID, False)
+        db.close()
+        self.exit(None)
 
 
 class PasswordBox(wx.Dialog):
