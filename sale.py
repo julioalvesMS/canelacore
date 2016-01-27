@@ -19,6 +19,26 @@ import data_types
 __author__ = 'Julio'
 
 
+def update_inventory(data, undo=False):
+    """
+    Atualiza o estoque de acordo com uma venda
+    :type data: data_types.SaleData
+    :type undo: bool
+    :param data: dados da venda
+    :param undo: Caso True desfaz as mudanças causadas no BD pela venda
+    :return: None
+    :rtype: None
+    """
+    db = database.InventoryDB()
+    for i in range(len(data.products_IDs)):
+
+        prduct_id = data.products_IDs[i]
+        amount = data.amounts[i] if undo else -data.amounts[i]
+
+        db.update_product_stock(prduct_id, amount)
+    db.close()
+
+
 class Sale(wx.Frame):
     item = None
     delivery_enabled = False
@@ -58,11 +78,12 @@ class Sale(wx.Frame):
     panel_product_data = None
     __panel_product = None
 
-    def __init__(self, parent, title=u'Vendas', key=-1, editable=True):
+    def __init__(self, parent, title=u'Vendas', key=-1, data=None, editable=True):
         wx.Frame.__init__(self, parent, -1, title,
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN)
 
         self.key = key
+        self.data = data
         self.editable = editable
 
         self.database_inventory = database.InventoryDB(':memory:')
@@ -291,15 +312,14 @@ class Sale(wx.Frame):
         if self.key == -1:
             return
 
-        db = database.TransactionsDB()
-
-        data = db.sales_search_id(self.key)
-
-        db.close()
+        if not self.data:
+            db = database.TransactionsDB()
+            self.data = db.sales_search_id(self.key)
+            db.close()
 
         # Adiciona os dados do cliente
         # self.textbox_client_name.SetValue(day_data['sales'][self.argv[1]]['client_name'])
-        self.textbox_client_cpf.SetValue(core.format_cpf(data.client_cpf))
+        self.textbox_client_cpf.SetValue(core.format_cpf(self.data.client_cpf))
 
         # Caso haja, adiciona os dados da entrega
         # if day_data["sales"][self.argv[1]]['delivery']:
@@ -313,30 +333,54 @@ class Sale(wx.Frame):
         #     self.textbox_delivery_hour.SetValue(str(day_data["sales"][self.argv[1]]['hour']))
 
         # Adiciona os dados dos produtos comprados
-        for i in range(len(data.products_IDs)):
-            product_id = data.products_IDs[i]
+        for i in range(len(self.data.products_IDs)):
+            product_id = self.data.products_IDs[i]
             description = self.database_inventory.inventory_search_id(product_id).description
-            amount = data.amounts[i]
-            unit_price = "R$ " + core.good_show("money", data.prices[i])
-            price = data.amounts[i] * data.prices[i]
+            amount = self.data.amounts[i]
+            unit_price = "R$ " + core.good_show("money", self.data.prices[i])
+            price = self.data.amounts[i] * self.data.prices[i]
             item = self.list_sold.Append((description, amount, unit_price, price))
             self.list_sold.SetItemData(item, product_id)
 
         # Adiciona os dados finais da venda
-        self.textbox_sale_taxes.SetValue(core.good_show("money", data.taxes))
-        self.textbox_sale_discount.SetValue(core.good_show("money", data.discount))
+        self.textbox_sale_taxes.SetValue(core.good_show("money", self.data.taxes))
+        self.textbox_sale_discount.SetValue(core.good_show("money", self.data.discount))
 
-        if data.payment == u"Dinheiro":
+        if self.data.payment == u"Dinheiro":
             self.radio_payment_money.SetValue(True)
-        elif data.payment == u"Cartão":
+        elif self.data.payment == u"Cartão":
             self.radio_payment_card.SetValue(True)
         else:
             self.radio_payment_other.SetValue(True)
             self.textbox_payment_other.Enable()
-            self.textbox_payment_other.SetValue(data.payment)
+            self.textbox_payment_other.SetValue(self.data.payment)
 
         # realiza as contas para obter os dados restantes
         self.update_sale_data(None)
+
+    def setup_delivery(self, event):
+        self.delivery_enabled = self.delivery.GetValue()
+        if self.delivery.GetValue():
+            self.textbox_delivery_receiver.Enable()
+            self.textbox_delivery_address.Enable()
+            self.textbox_delivery_telephone.Enable()
+            self.textbox_delivery_city.Enable()
+            self.textbox_delivery_date.Enable()
+            self.textbox_delivery_hour.Enable()
+            self.textbox_delivery_city.SetValue(u"Itatiba")
+            a = str(datetime.now().month)
+            if len(a) == 1:
+                a = '0' + a
+            self.textbox_delivery_date.SetValue(core.good_show("date", ("%s/%s" % (datetime.now().day, a))))
+            self.textbox_delivery_hour.SetValue('00:00')
+
+        else:
+            self.textbox_delivery_receiver.Disable()
+            self.textbox_delivery_address.Disable()
+            self.textbox_delivery_telephone.Disable()
+            self.textbox_delivery_city.Disable()
+            self.textbox_delivery_date.Disable()
+            self.textbox_delivery_hour.Disable()
 
     def open_client_manager(self, event):
         clients.ClientManager(self, client_selection_mode=True)
@@ -482,30 +526,6 @@ class Sale(wx.Frame):
         self.textbox_sale_products_price.SetValue(core.good_show("money", str(total_price).replace(".", ",")))
         self.textbox_sale_value.SetValue(core.good_show("money", str(final_value).replace(".", ",")))
 
-    def setup_delivery(self, event):
-        self.delivery_enabled = self.delivery.GetValue()
-        if self.delivery.GetValue():
-            self.textbox_delivery_receiver.Enable()
-            self.textbox_delivery_address.Enable()
-            self.textbox_delivery_telephone.Enable()
-            self.textbox_delivery_city.Enable()
-            self.textbox_delivery_date.Enable()
-            self.textbox_delivery_hour.Enable()
-            self.textbox_delivery_city.SetValue(u"Itatiba")
-            a = str(datetime.now().month)
-            if len(a) == 1:
-                a = '0' + a
-            self.textbox_delivery_date.SetValue(core.good_show("date", ("%s/%s" % (datetime.now().day, a))))
-            self.textbox_delivery_hour.SetValue('00:00')
-
-        else:
-            self.textbox_delivery_receiver.Disable()
-            self.textbox_delivery_address.Disable()
-            self.textbox_delivery_telephone.Disable()
-            self.textbox_delivery_city.Disable()
-            self.textbox_delivery_date.Disable()
-            self.textbox_delivery_hour.Disable()
-
     def update_payment_method(self, event):
         if self.radio_payment_other.GetValue():
             self.textbox_payment_other.Enable()
@@ -622,6 +642,13 @@ class Sale(wx.Frame):
 
         db.close()
 
+        deliveries_db = database.DeliveriesDB()
+
+        if self.key == -1:
+            delivery = deliveries_db.deliveries_search_sale(new_sale.ID)
+            if delivery:
+                deliveries_db.delete_delivery(delivery.ID)
+
         if self.delivery_enabled:
             for r in delivery_receiver_name, delivery_address, delivery_city, \
                      client_telephone, delivery_date, delivery_hour:
@@ -629,6 +656,8 @@ class Sale(wx.Frame):
                     return dialogs.launch_error(self, u'Dados insulficientes para registro de entrega!')
 
             new_delivery = data_types.DeliveryData()
+            new_delivery.client = client_name
+            new_delivery.telephone = client_telephone
             new_delivery.address = delivery_address
             new_delivery.city = delivery_city
             new_delivery.date = delivery_date
@@ -636,8 +665,14 @@ class Sale(wx.Frame):
             new_delivery.receiver = delivery_receiver_name
             new_delivery.sale_ID = new_sale.ID
 
-            db = database.DeliveriesDB()
-            db.close()
+            deliveries_db.insert_delivery(new_delivery)
+
+        deliveries_db.close()
+
+        # Atualiza os dados da venda no estoque
+        if self.data:
+            update_inventory(self.data, True)
+        update_inventory(new_sale)
 
         self.clean()
         if self.key == -1:

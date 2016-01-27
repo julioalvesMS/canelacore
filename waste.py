@@ -15,6 +15,25 @@ import data_types
 __author__ = 'Julio'
 
 
+def update_inventory(data, undo=False):
+    """
+    Atualiza o estoque de acordo com um registro de desperdicio
+    :type data: data_types.WasteData
+    :type undo: bool
+    :param data: dados do desperdicio
+    :param undo: Caso True desfaz as mudanças causadas no BD pelo registro da perda
+    :return: None
+    :rtype: None
+    """
+    db = database.InventoryDB()
+
+    prduct_id = data.product_ID
+    amount = data.amount if undo else -data.amount
+
+    db.update_product_stock(prduct_id, amount, sold=False)
+    db.close()
+
+
 class Waste(wx.Frame):
     
     textbox_description = None
@@ -90,8 +109,8 @@ class Waste(wx.Frame):
         cancel.Bind(wx.EVT_BUTTON, self.ask_exit)
 
     def recover_waste(self):
-        self.textbox_description.SetValue(self.data.product_ID)
-        self.textbox_amount.SetValue(self.data.amount)
+        self.textbox_id.SetValue(str(self.data.product_ID))
+        self.textbox_amount.SetValue(str(self.data.amount))
 
     def ask_clean(self, event):
         """
@@ -116,7 +135,6 @@ class Waste(wx.Frame):
     def clean(self):
         self.textbox_description.Clear()
         self.textbox_id.Clear()
-        self.textbox_id.SetValue("0,00")
         self.textbox_amount.Clear()
 
     def database_search(self, event):
@@ -154,11 +172,15 @@ class Waste(wx.Frame):
         db = database.TransactionsDB()
         if self.key != -1 or self.data:
             db.edit_waste(data)
+            update_inventory(self.data, undo=True)
         else:
             db.insert_waste(data)
         db.close()
 
+        update_inventory(data)
+
         self.clean()
+
         dialogs.Confirmation(self, u"Sucesso", 3)
 
     def exit(self, event):

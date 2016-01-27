@@ -11,6 +11,7 @@ import core
 import dialogs
 import database
 import data_types
+import daily_report
 
 __author__ = 'Julio'
 
@@ -130,12 +131,15 @@ class Expense(Transaction):
             db.edit_expense(data)
         db.close()
 
-        self.clean()
         if self.key == -1:
+            self.clean()
             dialogs.Confirmation(self, u"Sucesso", 2)
-        else:
-            self.GetParent().run()
-            self.Close()
+            return
+
+        parent = self.GetParent()
+        if isinstance(parent, daily_report.Report):
+            parent.setup(None)
+            self.exit(None)
 
 # class Income(Transaction):
 #     def __init__(self, parent, month, title=u'Ganhos', argv=None):

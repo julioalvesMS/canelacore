@@ -285,12 +285,14 @@ class Report(wx.Frame):
 
         db = database.TransactionsDB()
 
-        switch = {
-            self.list_sales: db.delete_sale,
-            self.list_expenses: db.delete_expense,
-            self.list_wastes: db.delete_waste
-        }
-        func = switch.get(box)
+        if box is self.list_sales:
+            func = db.delete_sale
+            sale.update_inventory(item_data, undo=True)
+        elif box is self.list_expenses:
+            func = db.delete_expense
+        else:
+            func = db.delete_waste
+            waste.update_inventory(item_data, undo=True)
 
         func(item_data.ID)
 
@@ -573,10 +575,10 @@ class Report(wx.Frame):
         waste.Waste(self)
 
     def open_waste_edit(self, event):
-        red = self.list_expenses.GetSelection()
-        if self.list_expenses.GetRootItem() == red:
+        red = self.list_wastes.GetSelection()
+        if self.list_wastes.GetRootItem() == red:
             return
-        data = self.list_expenses.GetItemData(red).GetData()
+        data = self.list_wastes.GetItemData(red).GetData()
 
         waste.Waste(self, key=data.ID)
 
