@@ -416,16 +416,26 @@ class Sale(wx.Frame):
         self.textbox_client_cpf.Clear()
 
     def data_insert(self, event):
-        product_id = int(self.textbox_product_id.GetValue())
+        _product_id = self.textbox_product_id.GetValue()
+        if not _product_id:
+            return dialogs.launch_error(self, u'Eh necessário especificar o ID do produto!')
+
+        product_id = int(_product_id)
         product = self.database_inventory.inventory_search_id(product_id)
         if not product:
-            return dialogs.launch_error(self, u'Dados Insulficientes!')
+            return dialogs.launch_error(self, u'ID inválido!')
 
-        amount = self.textbox_product_amount.GetValue()
+        _amount = self.textbox_product_amount.GetValue().replace(',', '.')
+        try:
+            amount = float(_amount)
+        except ValueError:
+            self.textbox_product_amount.Clear()
+            return dialogs.launch_error(self, u'Quantidade inválida!')
+
         _price = float(amount) * float(product.price)
         unit_price = "R$ " + core.good_show('money', product.price)
         price = "R$ " + core.good_show('money', _price)
-        item = self.list_sold.Append((product.description, amount, unit_price, price))
+        item = self.list_sold.Append((product.description, str(amount).replace('.', ','), unit_price, price))
         self.list_sold.SetItemData(item, product_id)
 
         self.textbox_product_amount.Clear()

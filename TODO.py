@@ -3,6 +3,7 @@
 # TODO Lista a Baixo
 """
 ::::TODO::::
+Terminar o aviso de entrega
 Adicionar novas janelas ao tray - (CategoryManager, CategoryData)
 conexão cliente venda para NFe
 Implementar o SAT
