@@ -569,6 +569,8 @@ week_days = [u'Segunda', u'Terça', u'Quarta', u'Quinta', u'Sexta', u'Sábado', 
 cfop_optins = [u'5101-Produção interna', u'5102-Revenda']
 cfop_values = [5101, 5102]
 
+unit_options = [u'UN', u'KG']
+
 # Senha mestra
 masterPassword = '5600715f42bf51c40dc330d750cd996f58fead4ddea56466ce7498d17801b3a5'
 

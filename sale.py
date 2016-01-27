@@ -15,7 +15,6 @@ import dialogs
 import database
 import data_types
 
-
 __author__ = 'Julio'
 
 
@@ -31,7 +30,6 @@ def update_inventory(data, undo=False):
     """
     db = database.InventoryDB()
     for i in range(len(data.products_IDs)):
-
         prduct_id = data.products_IDs[i]
         amount = data.amounts[i] if undo else -data.amounts[i]
 
@@ -47,7 +45,9 @@ class Sale(wx.Frame):
 
     delivery = None
 
-    radio_payment_card = None
+    radio_payment_check = None
+    radio_payment_credit_card = None
+    radio_payment_debit_card = None
     radio_payment_money = None
     radio_payment_other = None
     textbox_payment_other = None
@@ -119,13 +119,17 @@ class Sale(wx.Frame):
 
         wx.StaticText(result, -1, u"Forma de Pagamento:", (10, 420))
         self.radio_payment_money = wx.RadioButton(result, -1, u"Dinheiro", (15, 440))
-        self.radio_payment_card = wx.RadioButton(result, -1, u"Cartão", (15, 470))
-        self.radio_payment_other = wx.RadioButton(result, -1, u"Outra", (15, 500))
-        self.textbox_payment_other = wx.TextCtrl(result, -1, pos=(80, 500), size=(120, 30))
+        self.radio_payment_credit_card = wx.RadioButton(result, -1, u"Cartão de Crédito", (15, 470))
+        self.radio_payment_debit_card = wx.RadioButton(result, -1, u"Cartão de Débito", (15, 500))
+        self.radio_payment_check = wx.RadioButton(result, -1, u"Cheque", (15, 530))
+        self.radio_payment_other = wx.RadioButton(result, -1, u"Outra", (15, 560))
+        self.textbox_payment_other = wx.TextCtrl(result, -1, pos=(80, 560), size=(120, 25))
         self.textbox_payment_other.Disable()
         self.update_payment_method(None)
         self.radio_payment_money.Bind(wx.EVT_RADIOBUTTON, self.update_payment_method)
-        self.radio_payment_card.Bind(wx.EVT_RADIOBUTTON, self.update_payment_method)
+        self.radio_payment_credit_card.Bind(wx.EVT_RADIOBUTTON, self.update_payment_method)
+        self.radio_payment_debit_card.Bind(wx.EVT_RADIOBUTTON, self.update_payment_method)
+        self.radio_payment_check.Bind(wx.EVT_RADIOBUTTON, self.update_payment_method)
         self.radio_payment_other.Bind(wx.EVT_RADIOBUTTON, self.update_payment_method)
         self.radio_payment_money.SetValue(True)
 
@@ -151,9 +155,11 @@ class Sale(wx.Frame):
             self.textbox_sale_discount.Disable()
             self.textbox_payment_other.Disable()
             self.radio_payment_money.Disable()
-            self.radio_payment_card.Disable()
+            self.radio_payment_credit_card.Disable()
+            self.radio_payment_debit_card.Disable()
+            self.radio_payment_check.Disable()
             self.radio_payment_other.Disable()
-                
+
         # product
         self.panel_product_data = wx.Panel(self, 22, pos=(460, 5), size=(450, 275),
                                            style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
@@ -217,7 +223,6 @@ class Sale(wx.Frame):
             button_add_product.Disable()
             button_product_editor.Disable()
             button_remove_product.Disable()
-
 
         # client
         client = wx.Panel(self, 23, pos=(460, 285), size=(450, 325), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
@@ -315,7 +320,6 @@ class Sale(wx.Frame):
             self.data = db.sales_search_id(self.key)
             db.close()
 
-
         # Adiciona os dados do cliente
         self.textbox_client_cpf.SetValue(core.format_cpf(self.data.client_cpf))
 
@@ -354,11 +358,15 @@ class Sale(wx.Frame):
         self.textbox_sale_taxes.SetValue(core.good_show("money", self.data.taxes))
         self.textbox_sale_discount.SetValue(core.good_show("money", self.data.discount))
 
-        if self.data.payment == u"Dinheiro":
-            self.radio_payment_money.SetValue(True)
-        elif self.data.payment == u"Cartão":
-            self.radio_payment_card.SetValue(True)
-        else:
+        payment_options = {
+            u'Dinheiro': self.radio_payment_money,
+            u'Cartão de Crédito': self.radio_payment_credit_card,
+            u'Cartão de Débito': self.radio_payment_debit_card,
+            u'Cheque': self.radio_payment_check
+        }
+        try:
+            payment_options[self.data.payment].SetValue(True)
+        except KeyError:
             self.radio_payment_other.SetValue(True)
             self.textbox_payment_other.Enable()
             self.textbox_payment_other.SetValue(self.data.payment)
@@ -595,9 +603,13 @@ class Sale(wx.Frame):
         discount = float(self.textbox_sale_discount.GetValue().replace(",", "."))
 
         if self.radio_payment_money.GetValue():
-            payment_method = u"Dinheiro"
-        elif self.radio_payment_card.GetValue():
-            payment_method = u"Cartão"
+            payment_method = u'Dinheiro'
+        elif self.radio_payment_credit_card.GetValue():
+            payment_method = u'Cartão de Crédito'
+        elif self.radio_payment_debit_card.GetValue():
+            payment_method = u'Cartão de Débito'
+        elif self.radio_payment_check.GetValue():
+            payment_method = u'Cheque'
         else:
             payment_method = self.textbox_payment_other.GetValue()
 
@@ -613,18 +625,6 @@ class Sale(wx.Frame):
                 return dialogs.launch_error(self, u'CPF do cliente inválido')
 
         date, finish_time = core.datetime_today()
-
-        delivery_receiver_name = self.textbox_delivery_receiver.GetValue()
-        delivery_address = self.textbox_delivery_address.GetValue()
-        delivery_city = self.textbox_delivery_city.GetValue()
-        client_telephone = self.textbox_delivery_telephone.GetValue()
-        delivery_date = self.textbox_delivery_date.GetValue() + '/' + str(datetime.now().year)
-        delivery_hour = self.textbox_delivery_hour.GetValue()
-
-        delivery_date = core.format_date_internal(delivery_date)
-
-        if core.date2int(date) < core.date2int(delivery_date):
-            delivery_date = delivery_date[:-1] + str(int(delivery_date[-1:]) + 1)
 
         new_sale = data_types.SaleData()
 
@@ -660,10 +660,24 @@ class Sale(wx.Frame):
                 deliveries_db.delete_delivery(delivery.ID)
 
         if self.delivery_enabled:
-            for r in delivery_receiver_name, delivery_address, delivery_city, \
-                     client_telephone, delivery_date, delivery_hour:
-                if len(r) == 0 or r == '00:00':
+
+            delivery_receiver_name = self.textbox_delivery_receiver.GetValue()
+            delivery_address = self.textbox_delivery_address.GetValue()
+            delivery_city = self.textbox_delivery_city.GetValue()
+            client_telephone = self.textbox_delivery_telephone.GetValue()
+            delivery_date = self.textbox_delivery_date.GetValue() + u'/' + str(datetime.now().year)
+            delivery_hour = self.textbox_delivery_hour.GetValue()
+
+            delivery_date = core.format_date_internal(delivery_date)
+
+            for r in (delivery_receiver_name, delivery_address, delivery_city,
+                      client_telephone, delivery_date, delivery_hour):
+
+                if len(r) == 0 or r == u'00:00' or r == u'__/__':
                     return dialogs.launch_error(self, u'Dados insulficientes para registro de entrega!')
+
+            if core.date2int(date) < core.date2int(delivery_date):
+                delivery_date = delivery_date[:-1] + str(int(delivery_date[-1:]) + 1)
 
             new_delivery = data_types.DeliveryData()
             new_delivery.client = client_name

@@ -368,7 +368,7 @@ class Report(wx.Frame):
                 if sale_item.payment == u"Dinheiro":
                     money_amount += 1
                     money_value += float(sale_item.value)
-                elif sale_item.payment == u"Cartão":
+                elif sale_item.payment.split()[0] == u"Cartão":
                     card_amount += 1
                     card_value += float(sale_item.value)
 
