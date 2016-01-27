@@ -123,7 +123,7 @@ class InventoryManager(wx.Frame):
         for product in inventory:
             self.list_products.Append((product.description, product.ID,
                                        db.categories_search_id(product.category_ID).category,
-                                       product.price, product.amount, product.sold))
+                                       'R$ ' + core.good_show('money', product.price), product.amount, product.sold))
         db.close()
 
     def data_delete(self, event):   # TODO Fazer os dados não serem apagados permanentemente
@@ -160,7 +160,7 @@ class InventoryManager(wx.Frame):
         for product in inventory:
             self.list_products.Append((product.description, product.ID,
                                        db.categories_search_id(product.category_ID).category,
-                                       product.price, product.amount, product.sold))
+                                       'R$ ' + core.good_show('money', product.price), product.amount, product.sold))
         db.close()
 
     def clean(self, event):
@@ -481,10 +481,13 @@ class ProductData(wx.Frame):
         namef = ' '.join(names)
         db = database.InventoryDB()
         category = db.category_id(self.combobox_category.GetValue())
+        barcode = self.textbox_barcode.GetValue()
 
         s = data_types.ProductData()
+        if barcode:
+            s.barcode = barcode
+
         s.ID = self.product_id
-        s.barcode = self.textbox_barcode.GetValue()
         s.description = namef
         s.price = float(self.textbox_price.GetValue().replace(',', '.').replace('R$ ', ''))
         s.amount = int(self.textbox_amount.GetValue())
@@ -496,7 +499,9 @@ class ProductData(wx.Frame):
         db.edit_product(s)
         db.close()
 
-        self.clean()
+        if isinstance(self.parent, InventoryManager):
+            self.parent.setup(None)
+
         self.exit(None)
 
     def OnPaint(self, event):
