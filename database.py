@@ -45,10 +45,14 @@ def database2product(database_list):
     :return: Objeto Produto
     :rtype: data_types.ProductData
     """
+
+    if not database_list:
+        return None
+
     data = data_types.ProductData()
 
     data.ID = database_list[0]
-    data.barcode = database_list[1]
+    data.barcode = database_list[1] if database_list[1] else ''
     data.description = database_list[2]
     data.category_ID = database_list[3]
     data.price = database_list[4]
@@ -70,6 +74,9 @@ def database2category(database_list):
     :return: Objeto Categoria
     :rtype: data_types.CategoryData
     """
+    if not database_list:
+        return None
+
     data = data_types.CategoryData()
 
     data.ID = database_list[0]
@@ -184,13 +191,22 @@ class InventoryDB:
         self.cursor.execute('UPDATE INVENTORY SET AMOUNT = ? where ID=?', (data.amount, data.ID))
         self.db.commit()
 
-    def update_product_stock(self, data):
+    def update_product_stock(self, product_id, change, sold=True):
         """
         Atualiza a quantidade de um produto em estoque
-        :type data: data_types.ProductData
-        :param data: dados do produto
+        :type product_id: int
+        :type change: float
+        :type sold: bool
+        :param product_id: ID do produto
+        :param change: variacao no estoque
+        :param sold: True caso o estoque esteja sendo alterado devido a uma venda
         """
-        self.cursor.execute('UPDATE INVENTORY SET AMOUNT=AMOUNT+? where ID=?', (data.amount, data.ID))
+        if sold:
+            self.cursor.execute('UPDATE INVENTORY SET AMOUNT=AMOUNT+?, SOLD=SOLD+? where ID=?',
+                                (change, -change, product_id))
+        else:
+            self.cursor.execute('UPDATE INVENTORY SET AMOUNT=AMOUNT+? where ID=?',
+                                (change, product_id))
         self.db.commit()
 
     def inventory_search_barcode(self, barcode):
@@ -438,6 +454,9 @@ def database2client(database_list):
     :return: Objeto Cliente
     :rtype: data_types.ClientData
     """
+    if not database_list:
+        return None
+
     data = data_types.ClientData()
 
     data.ID = database_list[0]
@@ -542,7 +561,8 @@ class ClientsDB:
         """
         Deleta um cliente do BD
         :param product_id: id do produto a ser deletado
-        :return:
+        :return: None
+        :rtype: None
         """
         self.cursor.execute('DELETE FROM CLIENTS WHERE ID=?', (product_id, ))
         self.db.commit()
@@ -553,6 +573,7 @@ class ClientsDB:
         Dada uma String busca por correspondecia por descrições, ids, categoria, fornecedores e NCM
         :param info: String com o dado a ser buscado
         :return: List com todos os produtos compativeis com a busca
+        :rtype: list[data_types.ClientData]
         """
         # Lista para armazenar todos os produtos compativeis com a busca
         filtered_list = []
@@ -612,6 +633,7 @@ class ClientsDB:
         Faz uma busca por um cpf especifico no Banco de dados
         :param cpf: cpf do cliente a ser buscado
         :return: dados do cliente com o cpf especificado
+        :rtype: data_types.ClientData
         """
         self.cursor.execute("""SELECT * FROM CLIENTS WHERE CPF=?""", (cpf, ))
         return database2client(self.cursor.fetchone())
@@ -621,6 +643,7 @@ class ClientsDB:
         Faz uma busca por um id especifico no Banco de dados
         :param client_id: id do cliente a ser buscado
         :return: dados do cliente com o id especificado
+        :rtype: data_types.ClientData
         """
         self.cursor.execute("""SELECT * FROM CLIENTS WHERE ID=?""", (client_id, ))
         return database2client(self.cursor.fetchone())
@@ -628,7 +651,7 @@ class ClientsDB:
     def clients_list(self):
         """
         Dados de todos os produtos cadastrados
-        :rtype: list
+        :rtype: list[data_types.ClientData]
         :return: uma list com todos os produtos do BD
         """
         self.cursor.execute("""SELECT * FROM CLIENTS ORDER BY NAME""")
@@ -651,6 +674,9 @@ def database2sale(database_list):
     :return: Objeto Venda
     :rtype: data_types.SaleData
     """
+    if not database_list:
+        return None
+
     data = data_types.SaleData()
 
     data.ID = database_list[0]
@@ -678,6 +704,9 @@ def database2expense(database_list):
     :return: Objeto gASTO
     :rtype: data_types.ExpenseData
     """
+    if not database_list:
+        return None
+
     data = data_types.ExpenseData()
 
     data.ID = database_list[0]
@@ -698,6 +727,9 @@ def database2waste(database_list):
     :return: Objeto Desperdicio
     :rtype: data_types.WasteData
     """
+    if not database_list:
+        return None
+
     data = data_types.WasteData()
 
     data.ID = database_list[0]
@@ -1086,6 +1118,9 @@ def database2delivery(database_list):
     :return: Objeto Venda
     :rtype: data_types.DeliveryData
     """
+    if not database_list:
+        return None
+
     data = data_types.DeliveryData()
 
     data.ID = database_list[0]
@@ -1158,8 +1193,8 @@ class DeliveriesDB:
         _data = (data.sale_ID, data.client, data.receiver, data.state, data.city, data.address, data.telephone,
                  data.date, data.hour, data.obs)
 
-        cmd = 'INSERT INTO DELIVERIES (SALE_ID, CLIENT, RECEIVER, SATATE, CITY, ADDRESS, TELEPHONE'
-        cmd += 'DELIVERY_DATE, DELIVERY_HOUR, OBS) VALUES (?,?,?,?,?,?,?,?,?,?)'
+        cmd = 'INSERT INTO DELIVERIES (SALE_ID, CLIENT, RECEIVER, STATE, CITY, ADDRESS, TELEPHONE, '
+        cmd += 'DELIVERY_DATE, DELIVERY_TIME, OBS) VALUES (?,?,?,?,?,?,?,?,?,?)'
 
         # Insere o novo produto no BD
         self.cursor.execute(cmd, _data)
@@ -1197,7 +1232,18 @@ class DeliveriesDB:
         self.cursor.execute("""DELETE FROM DELIVERIES WHERE ID=?""", (delivery_id, ))
         self.db.commit()
 
-    def deliverys_list(self, start=None, end=None):
+    def deliveries_search_sale(self, sale_id):
+        """
+        Encontra a entrega de uma determinada venda
+        :param sale_id: id da venda a ser buscada
+        :rtype: data_types.DeliveryData
+        :return: uma entrega do BD
+        """
+        self.cursor.execute("""SELECT * FROM DELIVERIES WHERE SALE_ID=?""", (sale_id, ))
+
+        return database2delivery(self.cursor.fetchone())
+
+    def deliveries_list(self, start=None, end=None):
         """
         Dados de todas as entregas programadas no periodo especificado
         :param start: Data inicial
