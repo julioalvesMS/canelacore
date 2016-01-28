@@ -25,6 +25,7 @@ import teste
 import transactions
 import waste
 import database
+import categories
 
 __author__ = 'Julio'
 
@@ -342,31 +343,27 @@ class Base(wx.Frame):
         teste.Teste(self)
 
 
-"""
-    def open_programed_sales(self, event):
-        programed_sale.ProgramedSales(self)
-"""
-
-
 class BaseTray(wx.TaskBarIcon):
     def __init__(self, frame):
         wx.TaskBarIcon.__init__(self)
         self.frame = frame
         self.SetIcon(wx.Icon(core.tray_icon, wx.BITMAP_TYPE_ICO), u'Canela Santa')
-        self.Bind(wx.EVT_MENU, self.open_new_sale, id=1031)
-        self.Bind(wx.EVT_MENU, self.open_new_expense, id=1032)
-        self.Bind(wx.EVT_MENU, self.open_client_manager, id=1042)
-        self.Bind(wx.EVT_MENU, self.open_daily_report, id=1043)
-        self.Bind(wx.EVT_MENU, self.open_edition_manager, id=1045)
-        self.Bind(wx.EVT_MENU, self.open_new_waste, id=1033)
-        self.Bind(wx.EVT_MENU, self.open_new_product, id=1035)
-        self.Bind(wx.EVT_MENU, self.open_update_inventory, id=1036)
-        self.Bind(wx.EVT_MENU, self.open_delivery_manager, id=1046)
-        self.Bind(wx.EVT_MENU, self.open_inventory_manager, id=1041)
-        self.Bind(wx.EVT_MENU, self.open_new_client, id=1034)
-        self.Bind(wx.EVT_MENU, self.verify_credentials, id=1044)
         self.Bind(wx.EVT_MENU, self.bshow, id=101)
         self.Bind(wx.EVT_MENU, self.bhide, id=102)
+        self.Bind(wx.EVT_MENU, self.open_new_sale, id=1031)
+        self.Bind(wx.EVT_MENU, self.open_new_expense, id=1032)
+        self.Bind(wx.EVT_MENU, self.open_new_waste, id=1033)
+        self.Bind(wx.EVT_MENU, self.open_new_client, id=1034)
+        self.Bind(wx.EVT_MENU, self.open_new_product, id=1035)
+        self.Bind(wx.EVT_MENU, self.open_new_category, id=1036)
+        self.Bind(wx.EVT_MENU, self.open_update_inventory, id=1037)
+        self.Bind(wx.EVT_MENU, self.open_inventory_manager, id=1041)
+        self.Bind(wx.EVT_MENU, self.open_category_manager, id=1042)
+        self.Bind(wx.EVT_MENU, self.open_client_manager, id=1043)
+        self.Bind(wx.EVT_MENU, self.open_daily_report, id=1044)
+        self.Bind(wx.EVT_MENU, self.verify_credentials, id=1045)
+        self.Bind(wx.EVT_MENU, self.open_edition_manager, id=1046)
+        self.Bind(wx.EVT_MENU, self.open_delivery_manager, id=1047)
         self.Bind(wx.EVT_MENU, self.open_settings, id=108)
         self.Bind(wx.EVT_MENU, self.ask_exit, id=109)
         self.Bind(wx.EVT_TASKBAR_LEFT_DOWN, self.bshow)
@@ -377,19 +374,21 @@ class BaseTray(wx.TaskBarIcon):
         menu.Append(102, u'Esconder')
         menu.AppendSeparator()
         menu2 = wx.Menu()
-        menu2.Append(1031, u'Registrar venda')
-        menu2.Append(1032, u'Registrar gasto')
-        menu2.Append(1033, u'Registrar desperdício')
-        menu2.Append(1034, u'Cadastrar cliente')
-        menu2.Append(1035, u'Cadastrar produto')
-        menu2.Append(1036, u'Entrada de produtos')
+        menu2.Append(1031, u'Venda')
+        menu2.Append(1032, u'Gasto')
+        menu2.Append(1033, u'Desperdício')
+        menu2.Append(1034, u'Cliente')
+        menu2.Append(1035, u'Produto')
+        menu2.Append(1036, u'Categoria')
+        menu2.Append(1037, u'Entrada de Produtos')
         menu.AppendMenu(103, u'Registrar', menu2)
         menu.Append(1041, u'Estoque')
-        menu.Append(1042, u'Clientes')
-        menu.Append(1043, u'Fechamento do Caixa')
-        menu.Append(1044, u'Resumo mensal')
-        menu.Append(1045, u'Recuperação de registros')
-        menu.Append(1046, u'Entregas')
+        menu.Append(1042, u'Categorias de Produtos')
+        menu.Append(1043, u'Clientes')
+        menu.Append(1044, u'Fechamento do Caixa')
+        menu.Append(1045, u'Resumo Mensal')
+        menu.Append(1046, u'Recuperação de Registros')
+        menu.Append(1047, u'Entregas')
         menu.AppendSeparator()
         menu.Append(108, u'Configurações')
         menu.Append(109, u'Sair')
@@ -431,6 +430,12 @@ class BaseTray(wx.TaskBarIcon):
     def open_new_product(self, event):
         inventory.ProductRegister(self.frame)
 
+    def open_new_category(self, event):
+        categories.CategoryData(self.frame)
+
+    def open_category_manager(self, event):
+        categories.CategoryManager(self.frame)
+
     def open_update_inventory(self, event):
         inventory.UpdateInventory(self.frame)
 
@@ -453,13 +458,8 @@ class BaseTray(wx.TaskBarIcon):
 ###TOP PRIORITY###
 criar venda programada
 na venda programada, se for entrega, já deixar a entrega programada
-salvar para que =m será entregue como cliente também
-
-Otimizar a função serch do clientes e do stocks (para de rodar o hd e armazenar em um outro vetor o que está sendo visto no search)
-
 
 categoria no relatório de produtos
-fechamento e resumo não conseguem comparar a forma de pagamento se escrito a mão
 v2.0
 fazer instalador
 recuperação de __backup__,

@@ -4,7 +4,6 @@
 """
 ::::TODO::::
 Colocar Unidades na venda
-Adicionar novas janelas ao tray - (CategoryManager, CategoryData)
 conexão cliente venda para NFe
 Implementar o SAT
 implementar diferentes tipos de unidade de quantidade (Kg, UN, etc)
@@ -15,4 +14,5 @@ Fazer o Software arredondar o valor da venda
 Verificar se em todos os lugares as vendas estão usando float como quantidade
 Deixar o Dialog de aviso de entrega mais bonito
 Sistema para monitoramento de devedores
+Vendas programadas
 """
