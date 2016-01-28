@@ -81,7 +81,7 @@ class Confirmation(wx.Dialog):
 
 
 class Warner(wx.Dialog):
-    def __init__(self, parent, title, data):
+    def __init__(self, parent, data, title=u'Aviso de Entrega!'):
         """
         :type data: data_types.DeliveryData
         """
@@ -89,23 +89,16 @@ class Warner(wx.Dialog):
         self.data = data
         self.SetBackgroundColour(core.default_background_color)
 
-        address = data.city + ' - ' + data.address
-        receiver = data.receiver
-        blur = u''
-        if argv[5] == 1:
-            blur = u'Primeiro Aviso'
-        elif argv[5] == 2:
-            blur = u'Segundo Aviso'
-        elif argv[5] == 3:
-            blur = u'Aviso Final'
+        address = data.city + u' - ' + data.address
+        blur = u'Lembrete'
         tempo = str(datetime.now().hour) + ':' + str(datetime.now().minute)
-        minor = core.hour2int(argv[0]) - core.hour2int(tempo)
+        minor = core.hour2int(data.hour) - core.hour2int(tempo)
         if minor >= 0:
             y = u"%s! Falta menos de %s minutos para a entrega para o(a) Sr(a) %s\n" \
-                u"em %s, a qual esta marcada para as %s." % (blur, str(minor), argv[2], argv[1], argv[0])
+                u"em %s, a qual esta marcada para as %s." % (blur, str(minor), data.receiver, address, data.hour)
         else:
             y = u"%s! Passou-se %s minutos da hora da entrega para o(a) Sr(a) %s\n" \
-                u"em %s, a qual estava marcada para as %s." % (blur, str(-minor), argv[2], argv[1], argv[0])
+                u"em %s, a qual estava marcada para as %s." % (blur, str(-minor), data.receiver, address, data.hour)
         wx.StaticText(self, -1, y, pos=(10, 50))
         self.Centre()
         ok = wx.Button(self, -1, u"Ver Mais", pos=(100, 150))
@@ -146,7 +139,7 @@ class PasswordBox(wx.Dialog):
         cancel.Bind(wx.EVT_BUTTON, self.exit)
         contin.Bind(wx.EVT_BUTTON, self.go_on)
         self.denied_message = wx.StaticText(self, -1, u'Acesso Negado!', pos=(170, 130))
-        self.denied_message.SetForegroundColour('argv')
+        self.denied_message.SetForegroundColour(wx.RED)
         self.denied_message.Hide()
         self.ShowModal()
         self.Destroy()

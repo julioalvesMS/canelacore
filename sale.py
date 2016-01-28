@@ -600,7 +600,7 @@ class Sale(wx.Frame):
         # Armazena os dados dos produtos em vetores
         for i in range(w):
             products_id.append(self.list_sold.GetItemData(i))
-            products_amounts.append(float(self.list_sold.GetItem(i, 1).GetText()))
+            products_amounts.append(float(self.list_sold.GetItem(i, 1).GetText().replace(',', '.')))
             aux = float(self.list_sold.GetItem(i, 3).GetText().replace(",", ".").replace("R$ ", ""))
             products_unitary_prices.append(aux)
 

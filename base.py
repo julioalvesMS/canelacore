@@ -4,7 +4,6 @@
 import os
 import shutil
 import threading
-import time
 from datetime import datetime
 from random import randint
 
@@ -61,9 +60,8 @@ class Base(wx.Frame):
         
         self.timer_delivery = wx.Timer(self)
         self.notification_control = {}
-        # self.Bind(wx.EVT_TIMER, self.delivery_check, self.timer_delivery)
-        # self.delivery_check(None)
-        # self.up_on = False
+        self.Bind(wx.EVT_TIMER, self.delivery_check, self.timer_delivery)
+        self.delivery_check(None)
 
         self.Show()
         self.tray = BaseTray(self)
@@ -218,13 +216,13 @@ class Base(wx.Frame):
             return
 
     def backup_confirmation(self):
-        a = wx.MessageDialog(self, u'Backup salvo com sucesso!', 'Backup', style=wx.OK | wx.ICON_INFORMATION)
+        a = wx.MessageDialog(self, u'Backup salvo com sucesso!', u'Backup', style=wx.OK | wx.ICON_INFORMATION)
         a.ShowModal()
         a.Destroy()
 
     def delivery_check(self, event):
         self.timer_delivery.Stop()
-        
+
         date_now, time_now = core.datetime_today()
 
         date_now_int = core.date2int(date_now)
@@ -233,7 +231,7 @@ class Base(wx.Frame):
         deliveries_db = database.DeliveriesDB()
         deliveries = deliveries_db.deliveries_list()
         deliveries_db.close()
-        
+
         check_interval = 30
         for _delivery in deliveries:
             date_delivery_int = core.date2int(_delivery.date)
@@ -244,43 +242,54 @@ class Base(wx.Frame):
             if _delivery.active is False:
                 del self.notification_control[_delivery.ID]
 
-            if date_delivery_int is not date_now_int or _delivery.active is False:
+            if date_delivery_int != date_now_int or _delivery.active is False:
                 continue
+
             if _delivery.ID in self.notification_control:
                 continue
 
             time_delivery_int = core.hour2int(_delivery.hour)
-
-            self.notification_control[_delivery.ID] = [_delivery, None]
-            timer = wx.Timer(self, _delivery.ID)
-            timer.Bind(wx.EVT_TIMER, self.notify_delivery, timer)
-
             time_remaining = time_delivery_int - time_now_int
             if time_remaining < 60:
-                minutes_to_warning = 0.01
+                minutes_to_warning = 0
             else:
                 minutes_to_warning = time_remaining - 60
-            timer.Start(minutes_to_warning)
+
+            self.notification_control[_delivery.ID] = _delivery
+
+            timer = threading.Timer(60*minutes_to_warning + 1, self.notify_delivery, args=[_delivery])
+            timer.start()
 
         check_interval *= 60000
         if not check_interval:
             check_interval = 300000
         self.timer_delivery.Start(check_interval)
         
-    def notify_delivery(self, event):
+    def notify_delivery(self, data):
         """
         Notifica o usuario sobre a existencia de uma entrega a a ser realizada
-        :param event: Evento gerado pelo Timer
-        :type event: wx.TimerEvent
+        :param data: Dados da entrega
+        :type data: data_types.DeliveryData
         :return: None
         :rtype: None
         """
-        timer = event.GetTimer()
-        _delivery_ = self.notification_control[timer.GetID()]
-        data = _delivery_[0]
 
-        dialogs.Warner(self, u'Aviso!', data)
-        pass
+        breaks = [60, 30, 15]
+
+        time_now = core.datetime_today()[1][:5]
+        time_now_int = core.hour2int(time_now)
+
+        time_delivery_int = core.hour2int(data.hour)
+
+        remaining = time_delivery_int - time_now_int
+
+        for i in breaks:
+            if remaining > i:
+                timer = threading.Timer(60*i, self.notify_delivery, args=[data])
+                timer.start()
+                break
+
+        dialogs.Warner(self, data)
 
     def hide_to_tray(self, event):
         self.Hide()
