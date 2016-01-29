@@ -58,6 +58,7 @@ class Waste(wx.Frame):
                 db = database.TransactionsDB()
                 self.data = db.wastes_search_id(self.key)
                 db.close()
+                self.key = self.data.ID
             self.recover_waste()
 
         self.database_search(None)

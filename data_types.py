@@ -3,6 +3,7 @@
 
 
 import database
+from transaction import EXPENSE, INCOME
 
 
 class SaleData:
@@ -22,8 +23,12 @@ class SaleData:
 
     client_cpf = None
 
+    delivery = False
+
     record_time = None
     record_date = None
+
+    payment_pendant = False
 
     active = True
 
@@ -31,7 +36,7 @@ class SaleData:
         pass
 
     def database_insert(self):
-        db = database.TransactionsDB(self.record_date)
+        db = database.TransactionsDB()
         db.insert_sale(self)
         db.close()
 
@@ -44,6 +49,8 @@ class ExpenseData:
 
     value = 0.0
 
+    category = None
+
     record_time = None
     record_date = None
 
@@ -53,7 +60,7 @@ class ExpenseData:
         pass
 
     def database_insert(self):
-        db = database.TransactionsDB(self.record_date)
+        db = database.TransactionsDB()
         db.insert_expense(self)
         db.close()
 
@@ -75,8 +82,38 @@ class WasteData:
         pass
 
     def database_insert(self):
-        db = database.TransactionsDB(self.record_date)
+        db = database.TransactionsDB()
         db.insert_waste(self)
+        db.close()
+
+
+class TransactionData:
+
+    ID = -1
+
+    description = None
+
+    value = 0.0
+
+    transaction_date = None
+
+    category = None
+
+    type = EXPENSE
+
+    record_time = None
+    record_date = None
+
+    payment_pendant = False
+
+    active = True
+
+    def __init__(self):
+        pass
+
+    def database_insert(self):
+        db = database.TransactionsDB()
+        db.insert_transaction(self)
         db.close()
 
 
@@ -147,6 +184,20 @@ class ClientData:
 
     last_sale = None
     record_date = None
+
+    active = True
+
+    def __init__(self):
+        pass
+
+
+class ClientSaleData:
+
+    ID = -1
+
+    client = -1
+
+    sale = -1
 
     active = True
 

@@ -310,7 +310,7 @@ class ProductRegister(wx.Frame):
         namef = ' '.join(names)
 
         db = database.InventoryDB()
-        category = db.category_id(self.combobox_category.GetValue())
+        category = db.category_search_name(self.combobox_category.GetValue())
 
         barcode = self.textbox_barcode.GetValue()
         s = data_types.ProductData()
@@ -355,11 +355,12 @@ class ProductData(wx.Frame):
 
     combobox_category = None
 
-    def __init__(self, parent, title, product_id, editable=True):
+    def __init__(self, parent, title, product_id=-1, data=None, editable=True):
         wx.Frame.__init__(self, parent, -1, title,
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION |
                           wx.CLOSE_BOX | wx.CLIP_CHILDREN | wx.TAB_TRAVERSAL)
         self.product_id = product_id
+        self.data = data
         self.editable = editable
         self.parent = parent
         self.title = title
@@ -450,17 +451,23 @@ class ProductData(wx.Frame):
         category_options = []
         for category in category_list:
             category_options.append(category.category)
-        product = db.inventory_search_id(self.product_id)
-        self.textbox_description.SetValue(product.description)
-        self.textbox_barcode.SetValue(product.barcode)
-        self.textbox_price.SetValue('R$ ' + core.good_show('money', product.price))
-        self.textbox_amount.SetValue(str(product.amount))
-        self.textbox_supplier.SetValue(product.supplier)
-        self.textbox_observation.SetValue(product.obs)
+        if self.data:
+            self.product_id = self.data.ID
+        elif self.product_id != -1:
+            self.data = db.inventory_search_id(self.product_id)
+        else:
+            return self.exit(None)
+
+        self.textbox_description.SetValue(self.data.description)
+        self.textbox_barcode.SetValue(self.data.barcode)
+        self.textbox_price.SetValue(core.format_cash_user(self.data.price, currency=True))
+        self.textbox_amount.SetValue(core.format_amount_user(self.data.amount))
+        self.textbox_supplier.SetValue(self.data.supplier)
+        self.textbox_observation.SetValue(self.data.obs)
 
         if self.editable:
             self.combobox_category.SetItems(category_options)
-        self.combobox_category.SetValue(db.categories_search_id(product.category_ID).category)
+        self.combobox_category.SetValue(db.categories_search_id(self.data.category_ID).category)
 
         db.close()
 
@@ -482,7 +489,7 @@ class ProductData(wx.Frame):
             names[i] = names[i].capitalize()
         namef = ' '.join(names)
         db = database.InventoryDB()
-        category = db.category_id(self.combobox_category.GetValue())
+        category = db.category_search_name(self.combobox_category.GetValue())
         barcode = self.textbox_barcode.GetValue()
 
         s = data_types.ProductData()

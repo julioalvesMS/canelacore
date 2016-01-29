@@ -3,7 +3,6 @@
 
 import calendar
 import os
-import shelve
 import threading
 import time
 from datetime import datetime
@@ -14,7 +13,13 @@ from wx.lib.buttons import GenBitmapTextButton
 
 import core
 import dialogs
-import transactions
+import transaction
+import database
+import data_types
+import sale
+import inventory
+import waste
+import expense
 
 __author__ = 'Julio'
 
@@ -24,7 +29,7 @@ class Report(wx.Frame):
     months_files = []
     database_incomes = {}
     database_expenses = {}
-    combobox_day_displayed = None
+    combobox_month_displayed = None
     list_incomes = None
     list_expenses = None
     list_left = None
@@ -45,133 +50,8 @@ class Report(wx.Frame):
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN)
 
         self.setup_gui()
+        self.setup(None)
         self.Show()
-
-    def clean(self):
-        self.list_left.DeleteAllItems()
-        self.list_right.DeleteAllItems()
-
-    def setup(self, event):
-        rest = threading.Thread(target=self.__setup__)
-        rest.daemon = True
-        rest.start()
-
-    def __setup__(self):
-        self.clean()
-        if not os.path.exists('saves'):
-            os.mkdir('saves')
-        t0 = 0.0
-        t1 = 0.0
-        t2 = 0.0
-        t3 = 0.0
-        t4 = 0.0
-        t5 = 0.0
-        t6 = 0.0
-        t7 = ''
-        t8 = ''
-        count = 0
-        pr = {}
-        we = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        for root, dirs, files in os.walk(core.directory_paths['saves']):
-            if root != core.directory_paths['saves']:
-                return
-            for i in files:
-                try:
-                    if len(i) == 14 and int(i[:10].replace('-', '')) and \
-                                    i[:7] == self.months_files[
-                                self.month_options.index(self.combobox_day_displayed.GetValue())]:
-                        s = shelve.open(core.directory_paths['saves'] + i)
-                        ol = i[:10]
-                        ol = ol.split('-')
-                        wd = calendar.weekday(int(ol[0]), int(ol[1]), int(ol[2]))
-                        for v in s['sales']:
-                            k = s['sales'][v]
-                            t2 += k['value']
-                            if k['payment'] == u'Dinheiro':
-                                t6 += k['value']
-                            elif k['payment'] == u'Cartão':
-                                t5 += k['value']
-                            we[wd] += k['value']
-                            for p in k['descriptions']:
-                                if p not in pr:
-                                    pr[p] = [0, 0.0]
-                                pr[p][0] += k['amounts'][k['descriptions'].index(p)]
-                                pr[p][1] += k['prices'][k['descriptions'].index(p)]
-                        for u in s['spent']:
-                            k = s['spent'][u]
-                            t1 += k['value']
-                        for y in s['wastes']:
-                            k = s['wastes'][y]
-                            t3 += k['value']
-                        count += 1
-                        s.close()
-                    elif len(i) == 11 and int(i[:7].replace('-', '')) and i[:7] == self.months_files[
-                            self.month_options.index(self.combobox_day_displayed.GetValue())]:
-                        s = shelve.open(core.directory_paths['saves'] + i)
-                        for v in s['winning']:
-                            k = s['winning'][v]
-                            t2 += k['value']
-                        for u in s['spent']:
-                            k = s['spent'][u]
-                            t1 += k['value']
-                        s.close()
-                        # TODO - Arrumar as exceções. Para testar deletar a linha abaixo.Acontece quando carrega as informações da janela dessa função.
-                except ValueError or KeyError:
-                    pass
-        pr1 = []
-        pr2 = []
-        lp1 = []
-        lp2 = []
-        for t in range(0, 11):
-            m = ['', 0, 0.0]
-            for w in pr:
-                if pr[w][1] > m[2] and w not in pr1:
-                    m = [w, pr[w][0], pr[w][1]]
-            n = ['', 0, 0.0]
-            for z in pr:
-                if pr[z][0] > n[1] and z not in pr2:
-                    n = [z, pr[z][0], pr[z][1]]
-            if m[2]:
-                lp1.append(m)
-                pr1.append(m[0])
-            if n[1]:
-                lp2.append(n)
-                pr2.append(n[0])
-        for e in lp1:
-            self.list_left.Append((e[0], e[1], core.good_show('money', e[2])))
-        for f in lp2:
-            self.list_right.Append((f[0], f[1], core.good_show('money', f[2])))
-        t0 = (t2 - t1)
-        try:
-            t4 = (t2 - t1) / count
-        except ZeroDivisionError:
-            t4 = 0.0
-        if max(we):
-            t7 = core.week_days[we.index(max(we))]
-        else:
-            t7 = '-------'
-        if min(we):
-            t8 = core.week_days[we.index(min(we))]
-        else:
-            try:
-                while not min(we):
-                    we.remove(0.0)
-                t8 = core.week_days[we.index(min(we))]
-                if t7 == t8:
-                    t8 = '-------'
-            except ValueError:
-                t8 = '-------'
-        self.text_profit.SetValue('R$ ' + core.good_show('money', t0))
-        self.text_spent.SetValue('R$ ' + core.good_show('money', t1))
-        self.text_income.SetValue('R$ ' + core.good_show('money', t2))
-        self.text_wasted.SetValue('R$ ' + core.good_show('money', t3))
-        self.text_daily_income.SetValue('R$ ' + core.good_show('money', t4))
-        self.text_credit_card_income.SetValue('R$ ' + core.good_show('money', t5))
-        self.text_money_income.SetValue('R$ ' + core.good_show('money', t6))
-        self.text_worst_week_day.SetValue(t7)
-        self.text_better_week_day.SetValue(t8)
-        self.setup_monthly_incomes(-1)
-        self.setup_monthly_expenses(-1)
 
     def setup_gui(self):
         self.SetBackgroundColour(core.default_background_color)
@@ -211,15 +91,7 @@ class Report(wx.Frame):
             wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
         wx.StaticText(part1, -1, u'Produtos Mais Vendidos', pos=(900, 10)).SetFont(
             wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
-        self.text_profit.SetBackgroundColour('#C6C6C6')
-        self.text_spent.SetBackgroundColour('#C6C6C6')
-        self.text_income.SetBackgroundColour('#C6C6C6')
-        self.text_wasted.SetBackgroundColour('#C6C6C6')
-        self.text_daily_income.SetBackgroundColour('#C6C6C6')
-        self.text_credit_card_income.SetBackgroundColour('#C6C6C6')
-        self.text_money_income.SetBackgroundColour('#C6C6C6')
-        self.text_worst_week_day.SetBackgroundColour('#C6C6C6')
-        self.text_better_week_day.SetBackgroundColour('#C6C6C6')
+
         part2 = wx.Panel(self, -1, pos=(10, 295), size=(1180, 60), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
         part21 = wx.Panel(part2, -1, pos=(10, 5), size=(620, 50), style=wx.SIMPLE_BORDER)
         part22 = wx.Panel(part2, -1, pos=(790, 5), size=(380, 50), style=wx.SIMPLE_BORDER)
@@ -255,13 +127,13 @@ class Report(wx.Frame):
         button4.Bind(wx.EVT_BUTTON, self.open_new_monthly_expense)
         button5.Bind(wx.EVT_BUTTON, self.open_new_monthly_income)
         button6.Bind(wx.EVT_BUTTON, self.open_text_box)
-        button1.SetBackgroundColour('#FFDF85')
-        button2.SetBackgroundColour('#FFDF85')
-        button3.SetBackgroundColour('#FFDF85')
-        button7.SetBackgroundColour('#FFDF85')
-        button4.SetBackgroundColour('#C2E6F8')
-        button5.SetBackgroundColour('#C2E6F8')
-        button6.SetBackgroundColour('#C2E6F8')
+        button1.SetBackgroundColour(core.COLOR_LIGHT_YELLOW)
+        button2.SetBackgroundColour(core.COLOR_LIGHT_YELLOW)
+        button3.SetBackgroundColour(core.COLOR_LIGHT_YELLOW)
+        button7.SetBackgroundColour(core.COLOR_LIGHT_YELLOW)
+        button4.SetBackgroundColour(core.COLOR_LIGHT_BLUE)
+        button5.SetBackgroundColour(core.COLOR_LIGHT_BLUE)
+        button6.SetBackgroundColour(core.COLOR_LIGHT_BLUE)
 
         part3 = wx.Panel(self, pos=(10, 360), size=(1180, 280), style=wx.SIMPLE_BORDER)
 
@@ -269,10 +141,10 @@ class Report(wx.Frame):
         part31.SetBackgroundColour(core.default_background_color)
         self.list_incomes = wx.gizmos.TreeListCtrl(part31, -1, pos=(10, 10), size=(400, 240),
                                                    style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE |
-                                                         wx.TR_FULL_ROW_HIGHLIGHT)
+                                                   wx.TR_FULL_ROW_HIGHLIGHT)
         self.list_incomes.AddColumn(u"Data", width=110)
         self.list_incomes.AddColumn(u"Descrição", width=180)
-        self.list_incomes.AddColumn(u"Valor", width=110)
+        self.list_incomes.AddColumn(u"Valor", width=100)
         self.list_incomes.SetMainColumn(0)
         dr = wx.StaticText(part31, -1, u'Ganhos\nMensais', pos=(420, 10))
         dr.SetFont(wx.Font(14, wx.SWISS, wx.NORMAL, wx.BOLD))
@@ -301,7 +173,7 @@ class Report(wx.Frame):
                                                     style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE | wx.TR_FULL_ROW_HIGHLIGHT)
         self.list_expenses.AddColumn(u"Data", width=110)
         self.list_expenses.AddColumn(u"Descrição", width=180)
-        self.list_expenses.AddColumn(u"Valor", width=110)
+        self.list_expenses.AddColumn(u"Valor", width=100)
         self.list_expenses.SetMainColumn(0)
         dr = wx.StaticText(part32, -1, u'Gastos\nMensais', pos=(420, 10))
         dr.SetFont(wx.Font(14, wx.SWISS, wx.NORMAL, wx.BOLD))
@@ -324,110 +196,217 @@ class Report(wx.Frame):
         button43.Bind(wx.EVT_BUTTON, self.ask_delete_expense)
         button44.Bind(wx.EVT_BUTTON, self.setup_monthly_expenses)
 
-        for root, dirs, files in os.walk("saves"):
-            if root != "saves":
-                break
-            files.sort()
-            files.reverse()
-            d = str(datetime.now().year) + '-' + core.good_show('o', str(datetime.now().month))
-            self.month_options.append(core.date_reverse(d).replace('-', '/'))
-            self.months_files.append(d)
-            for i in files:
-                try:
-                    if int(i[:7].replace("-", '')) and (i[:7] not in self.months_files):
-                        ab = i[5:7] + "/" + i[0:4]
-                        self.month_options.append(ab)
-                        self.months_files.append(i[:7])
-                except ValueError:
-                    pass
-        self.combobox_day_displayed = wx.ComboBox(part1, -1, choices=self.month_options, size=(100, 30), pos=(200, 15),
-                                                  style=wx.CB_READONLY)
-        self.combobox_day_displayed.Bind(wx.EVT_COMBOBOX, self.setup)
-        if len(self.month_options) != 0:
-            self.combobox_day_displayed.SetValue(self.month_options[0])
-        self.setup(None)
+        db = database.TransactionsDB()
+        dates = db.list_record_dates()
+        db.close()
+
+        month_options = list()
+
+        for date in dates:
+            date_ = core.format_date_user(date[:7])
+            if date_ not in month_options:
+                month_options.append(date_)
+
+        self.combobox_month_displayed = wx.ComboBox(part1, -1, choices=month_options, size=(100, 30), pos=(200, 15),
+                                                    style=wx.CB_READONLY)
+        self.combobox_month_displayed.Bind(wx.EVT_COMBOBOX, self.setup)
+        if len(month_options) != 0:
+            self.combobox_month_displayed.SetValue(month_options[0])
+
+    def clean(self):
+        self.list_left.DeleteAllItems()
+        self.list_right.DeleteAllItems()
+
+    def setup(self, event):
+        rest = threading.Thread(target=self.__setup__)
+        rest.daemon = True
+        rest.start()
+
+    def __setup__(self):
+        self.clean()
+        
+        month = core.format_date_internal(self.combobox_month_displayed.GetValue())
+        
+        db = database.TransactionsDB()
+        sales = db.monthly_sales_list(month)
+        expenses = db.monthly_expenses_list(month)
+        wastes = db.monthly_wastes_list(month)
+        db.close()
+
+        inventory = database.InventoryDB()
+
+        total_expense = 0.0
+        total_income = 0.0
+        total_waste = 0.0
+        total_card_income = 0.0
+        total_money_income = 0.0
+        count = 0
+        dict_products = {}
+        week_sold = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+        for sale_ in sales:
+            date_ = sale_.record_date.split('-')
+            week_day = calendar.weekday(int(date_[0]), int(date_[1]), int(date_[2]))
+            total_income += sale_.value
+            if sale_.payment == u'Dinheiro':
+                total_money_income += sale_.value
+            elif sale_.payment.split()[0] == u'Cartão':
+                total_card_income += sale_.value
+            week_sold[week_day] += sale_.value
+            for i in range(len(sale_.products_IDs)):
+                product_id = sale_.products_IDs[i]
+                if product_id not in dict_products:
+                    dict_products[product_id] = [0, 0.0]
+                dict_products[product_id][0] += sale_.amounts[i]
+                dict_products[product_id][1] += sale_.prices[i] * sale_.amounts[i]
+
+        for expense_ in expenses:
+            total_expense += expense_.value
+
+        for waste in wastes:
+            product = inventory.inventory_search_id(waste.product_ID)
+            total_waste += product.price * waste.amount
+            count += waste.amount
+
+        lp1 = []
+        lp2 = []
+
+        for item in range(0, 11):
+
+            product_item_left = [u'', 0, 0.0, -1]
+            for product_id in dict_products:
+                if dict_products[product_id][1] > product_item_left[2]:
+                    product_item_left = [inventory.inventory_search_id(product_id).description,
+                                         dict_products[product_id][0], dict_products[product_id][1], product_id]
+
+            product_item_right = [u'', 0, 0.0, -1]
+            for product_id in dict_products:
+                if dict_products[product_id][0] > product_item_right[1]:
+                    product_item_right = [inventory.inventory_search_id(product_id).description,
+                                          dict_products[product_id][0], dict_products[product_id][1], product_id]
+            if product_item_left[2] and product_item_left not in lp1:
+                lp1.append(product_item_left)
+            if product_item_right[1] and product_item_right not in lp2:
+                lp2.append(product_item_right)
+
+        for item in lp1:
+            item_id = self.list_left.Append((item[0], item[1], core.format_cash_user(item[2], currency=True)))
+            self.list_left.SetItemData(item_id, item[3])
+        for item in lp2:
+            item_id = self.list_right.Append((item[0], item[1], core.format_cash_user(item[2], currency=True)))
+            self.list_right.SetItemData(item_id, item[3])
+
+        total_balance = (total_income - total_expense)
+
+        try:
+            average_daily_balance = (total_income - total_expense) / count
+        except ZeroDivisionError:
+            average_daily_balance = 0.0
+
+        if max(week_sold):
+            weekday_best = core.week_days[week_sold.index(max(week_sold))]
+        else:
+            weekday_best = '-------'
+
+        if min(week_sold):
+            weekday_worse = core.week_days[week_sold.index(min(week_sold))]
+        else:
+            try:
+                while not min(week_sold):
+                    week_sold.remove(0.0)
+                weekday_worse = core.week_days[week_sold.index(min(week_sold))]
+                if weekday_best == weekday_worse:
+                    weekday_worse = '-------'
+            except ValueError:
+                weekday_worse = '-------'
+
+        self.text_profit.SetValue(core.format_cash_user(total_balance, currency=True))
+        self.text_spent.SetValue(core.format_cash_user(total_expense, currency=True))
+        self.text_income.SetValue(core.format_cash_user(total_income, currency=True))
+        self.text_wasted.SetValue(core.format_cash_user(total_waste, currency=True))
+        self.text_daily_income.SetValue(core.format_cash_user(average_daily_balance, currency=True))
+        self.text_credit_card_income.SetValue(core.format_cash_user(total_card_income, currency=True))
+        self.text_money_income.SetValue(core.format_cash_user(total_money_income, currency=True))
+        self.text_worst_week_day.SetValue(weekday_best)
+        self.text_better_week_day.SetValue(weekday_worse)
+        self.setup_monthly_incomes(None)
+        self.setup_monthly_expenses(None)
 
     def setup_monthly_incomes(self, event):
         self.list_incomes.DeleteAllItems()
-        month = self.months_files[self.combobox_day_displayed.GetSelection()]
-        f = shelve.open(core.directory_paths['saves'] + month + '.txt')
-        days = {}
-        root = self.list_incomes.AddRoot(self.combobox_day_displayed.GetValue())
+        month = core.format_date_internal(self.combobox_month_displayed.GetValue())
+
+        db = database.TransactionsDB()
+        incomes = db.monthly_transactions_list(month, transaction.INCOME)
+        db.close()
+
+        root = self.list_incomes.AddRoot(self.combobox_month_displayed.GetValue())
         self.list_incomes.SetItemText(root, u'Ganhos Mensais', 1)
         self.list_incomes.SetItemFont(root, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
+
         total = 0.0
-        if len(f):
-            for dd in f['winning']:
-                i = f['winning'][dd]
-                if i['date'] not in days:
-                    days[i['date']] = [self.list_incomes.AppendItem(root, i['date']), 0.0]
-                x = self.list_incomes.AppendItem(days[i['date']][0], i['time'][:5])
-                self.list_incomes.SetItemText(x, i['description'], 1)
-                self.list_incomes.SetItemText(x, 'R$ ' + core.good_show('money', i['value']), 2)
-                self.database_incomes[x] = dd
-                total += i['value']
-                days[i['date']][1] += i['value']
-            self.list_incomes.SetItemText(root, 'R$ ' + core.good_show('money', total), 2)
-            for k in days:
-                self.list_incomes.SetItemText(days[k][0], 'R$ ' + core.good_show('money', days[k][1]), 2)
-                self.list_incomes.SetItemFont(days[k][0], wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
-            self.list_incomes.ExpandAll(root)
-        f.close()
+        for income in incomes:
+            x = self.list_incomes.AppendItem(root, core.format_date_user(income.transaction_date))
+            self.list_incomes.SetItemText(x, income.description, 1)
+            self.list_incomes.SetItemText(x, core.format_cash_user(income.value, currency=True), 2)
+
+            self.list_incomes.SetItemData(x, wx.TreeItemData(income))
+
+            total += income.value
+        self.list_incomes.SetItemText(root, core.format_cash_user(total, currency=True), 2)
+        self.list_incomes.ExpandAll(root)
 
     def setup_monthly_expenses(self, event):
         self.list_expenses.DeleteAllItems()
-        month = self.months_files[self.combobox_day_displayed.GetSelection()]
-        f = shelve.open(core.directory_paths['saves'] + month + '.txt')
-        days = {}
-        root = self.list_expenses.AddRoot(self.combobox_day_displayed.GetValue())
+        month = core.format_date_internal(self.combobox_month_displayed.GetValue())
+
+        db = database.TransactionsDB()
+        expenses = db.monthly_transactions_list(month, transaction.EXPENSE)
+        db.close()
+
+        root = self.list_expenses.AddRoot(self.combobox_month_displayed.GetValue())
         self.list_expenses.SetItemText(root, u'Gastos Mensais', 1)
         self.list_expenses.SetItemFont(root, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
+
         total = 0.0
-        if len(f):
-            for dd in f['spent']:
-                i = f['spent'][dd]
-                if i['date'] not in days:
-                    days[i['date']] = [self.list_expenses.AppendItem(root, i['date']), 0.0]
-                x = self.list_expenses.AppendItem(days[i['date']][0], i['time'][:5])
-                self.list_expenses.SetItemText(x, i['description'], 1)
-                self.list_expenses.SetItemText(x, 'R$ ' + core.good_show('money', i['value']), 2)
-                self.database_expenses[x] = dd
-                total += i['value']
-                days[i['date']][1] += i['value']
-            self.list_expenses.SetItemText(root, 'R$ ' + core.good_show('money', total), 2)
-            for k in days:
-                self.list_expenses.SetItemText(days[k][0], 'R$ ' + core.good_show('money', days[k][1]), 2)
-                self.list_expenses.SetItemFont(days[k][0], wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
-            self.list_expenses.ExpandAll(root)
-        f.close()
+        for expense_ in expenses:
+            x = self.list_expenses.AppendItem(root, core.format_date_user(expense_.transaction_date))
+            self.list_expenses.SetItemText(x, expense_.description, 1)
+            self.list_expenses.SetItemText(x, core.format_cash_user(expense_.value, currency=True), 2)
+
+            self.list_expenses.SetItemData(x, wx.TreeItemData(expense_))
+
+            total += expense_.value
+        self.list_expenses.SetItemText(root, core.format_cash_user(total, currency=True), 2)
+        self.list_expenses.ExpandAll(root)
 
     def open_text_box(self, event):
-        month = self.months_files[self.month_options.index(self.combobox_day_displayed.GetValue())]
+        month = self.months_files[self.month_options.index(self.combobox_month_displayed.GetValue())]
         TextBox(self, month)
 
     def open_sheets_sales(self, event):
-        month = self.months_files[self.combobox_day_displayed.GetSelection()]
+        month = core.format_date_internal(self.combobox_month_displayed.GetValue())
         DataSheets(self, sheet_to_focus=1, month=month)
 
     def open_sheets_expenses(self, event):
-        month = self.months_files[self.combobox_day_displayed.GetSelection()]
+        month = core.format_date_internal(self.combobox_month_displayed.GetValue())
         DataSheets(self, sheet_to_focus=2, month=month)
 
     def open_sheets_products(self, event):
-        month = self.months_files[self.combobox_day_displayed.GetSelection()]
+        month = core.format_date_internal(self.combobox_month_displayed.GetValue())
         DataSheets(self, sheet_to_focus=3, month=month)
 
     def open_sheets_wastes(self, event):
-        month = self.months_files[self.combobox_day_displayed.GetSelection()]
+        month = core.format_date_internal(self.combobox_month_displayed.GetValue())
         DataSheets(self, sheet_to_focus=4, month=month)
 
     def open_new_monthly_expense(self, event):
-        month = self.months_files[self.combobox_day_displayed.GetSelection()]
-        transactions.Expense(self, month=month)
+        month = core.format_date_internal(self.combobox_month_displayed.GetValue())
+        transaction.Expense(self, month=month)
 
     def open_edit_monthly_expense(self, event):
         red = self.list_expenses.GetSelection()
-        month = self.months_files[self.combobox_day_displayed.GetSelection()]
+        month = core.format_date_internal(self.combobox_month_displayed.GetValue())
         temporary_key = -1
         if red == self.list_expenses.GetRootItem() or self.list_expenses.GetItemParent(
                 red) is self.list_expenses.GetRootItem():
@@ -439,17 +418,17 @@ class Report(wx.Frame):
         key = self.database_expenses[temporary_key]
         bravo = shelve.open(core.directory_paths['saves'] + month + '.txt')
         original_hour = bravo['spent'][key]['time']
-        transactions.Expense(self, u"Editar Gasto n°" + str(key), month,
+        transaction.Expense(self, u"Editar Gasto n°" + str(key), month,
                              [(core.directory_paths['saves'] + month + '.txt'), key, original_hour])
         bravo.close()
 
     def open_new_monthly_income(self, event):
-        month = self.months_files[self.combobox_day_displayed.GetSelection()]
-        transactions.Expense(self, -1, u'Ganhos', month)
+        month = self.months_files[self.combobox_month_displayed.GetSelection()]
+        transaction.Expense(self, -1, u'Ganhos', month)
 
     def open_edit_monthly_income(self, event):
         red = self.list_incomes.GetSelection()
-        month = self.months_files[self.combobox_day_displayed.GetSelection()]
+        month = self.months_files[self.combobox_month_displayed.GetSelection()]
         temporary_key = -1
         if red == self.list_incomes.GetRootItem() or self.list_incomes.GetItemParent(
                 red) is self.list_incomes.GetRootItem():
@@ -461,7 +440,7 @@ class Report(wx.Frame):
         key = self.database_incomes[temporary_key]
         bravo = shelve.open(core.directory_paths['saves'] + month + '.txt')
         original_hour = bravo['winning'][key]['time']
-        transactions.Expense(self, u"Editar Ganho n°" + str(key), month,
+        transaction.Expense(self, u"Editar Ganho n°" + str(key), month,
                              [(core.directory_paths['saves'] + month + '.txt'), key, original_hour])
         bravo.close()
 
@@ -481,7 +460,7 @@ class Report(wx.Frame):
         temporary_key = -1
         if box == 11:
             red = self.list_incomes.GetSelection()
-            month = self.months_files[self.combobox_day_displayed.GetSelection()]
+            month = self.months_files[self.combobox_month_displayed.GetSelection()]
             if red == self.list_incomes.GetRootItem() or self.list_incomes.GetItemParent(
                     red) is self.list_incomes.GetRootItem():
                 return
@@ -506,7 +485,7 @@ class Report(wx.Frame):
             return
         elif box == 12:
             red = self.list_expenses.GetSelection()
-            month = self.months_files[self.combobox_day_displayed.GetSelection()]
+            month = self.months_files[self.combobox_month_displayed.GetSelection()]
             if red == self.list_expenses.GetRootItem() or self.list_expenses.GetItemParent(
                     red) is self.list_expenses.GetRootItem():
                 return
@@ -679,8 +658,8 @@ class DataSheets(wx.Frame):
         note.AddPage(self.main2, u'Gastos')
         note.AddPage(self.main3, u'Produtos')
         note.AddPage(self.main4, u'Desperdícios')
-        button_exit = GenBitmapTextButton(self, -1, wx.Bitmap(core.directory_paths['icons'] + 'Exit.png', wx.BITMAP_TYPE_PNG),
-                                          u'Sair', pos=(600, -1), style=wx.SIMPLE_BORDER)
+        button_exit = GenBitmapTextButton(self, -1, wx.Bitmap(core.directory_paths['icons'] + 'Exit.png',
+                                          wx.BITMAP_TYPE_PNG), u'Sair', pos=(600, -1), style=wx.SIMPLE_BORDER)
         button_exit.Bind(wx.EVT_BUTTON, self.exit)
         box.Add(note, 1, wx.EXPAND | wx.ALL, 5)
         box.Add(button_exit, 0, wx.ALL | wx.ALIGN_RIGHT, 15)
@@ -699,237 +678,313 @@ class Sheet(wx.gizmos.TreeListCtrl):
         wx.gizmos.TreeListCtrl.__init__(self, parent, -1, style=wx.TR_DEFAULT_STYLE | wx.TR_FULL_ROW_HIGHLIGHT)
         self.content = content
         self.parent = parent.GetParent()
-        prepaire = threading.Thread(target=self.setup)
-        prepaire.daemon = True
-        prepaire.start()
+        self.month = self.parent.month
+        setup_thead = threading.Thread(target=self.setup)
+        setup_thead.daemon = True
+        setup_thead.start()
+        
+        self.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.process_click)
+        
         self.Show()
 
     def setup(self):
-        month = self.parent.month
-        if self.content is 'prod':
-            plist = {}
-            for root, dirs, files in os.walk(core.directory_paths['saves']):
-                if root is core.directory_paths['saves']:
-                    for i in files:
-                        if i[:7] == month and len(i) is 14:
-                            s = shelve.open(core.directory_paths['saves'] + i)
-                            for a in s['sales']:
-                                for x in range(0, len(s['sales'][a]['descriptions'])):
-                                    key = s['sales'][a]['descriptions'][x] + '\\_/' + str(
-                                        s['sales'][a]['unit_prices'][x])
-                                    if key in plist:
-                                        plist[key][0] += s['sales'][a]['amounts'][x]
-                                        plist[key][1] += s['sales'][a]['prices'][x]
-                                        plist[key][2] += 1
-                                    else:
-                                        plist[key] = [s['sales'][a]['amounts'][x], s['sales'][a]['prices'][x], 1]
-            self.AddColumn(u'Produto', 300)
-            self.AddColumn(u'Preço Unitário', 100)
-            self.AddColumn(u'Quantidade vendida', 150)
-            self.AddColumn(u'Quantidade de vezes vendido', 200)
-            self.AddColumn(u'Valor', 150)
-            root = self.AddRoot(u'Produtos Vendidos em %s' % core.date_reverse(month).replace('-', '/'))
-            self.SetItemFont(root, wx.Font(14, wx.SWISS, wx.NORMAL, wx.BOLD))
-            a = 0.0
-            b = 0
-            for i in plist:
-                e = i.split('\\_/')
-                item = self.AppendItem(root, e[0])
-                self.SetItemText(item, 'R$ ' + core.good_show('money', e[1]), 1)
-                self.SetItemText(item, str(plist[i][0]), 2)
-                self.SetItemText(item, str(plist[i][2]), 3)
-                self.SetItemText(item, 'R$ ' + core.good_show('money', str(plist[i][1])), 4)
-                a += plist[i][1]
-                b += plist[i][0]
-            self.SetItemText(root, str(b), 2)
-            self.SetItemText(root, 'R$ ' + core.good_show('money', a), 4)
-            self.Expand(root)
-            self.SortChildren(root)
-        elif self.content is 'won':
-            wlist = []
-            for root, dirs, files in os.walk(core.directory_paths['saves']):
-                if root is core.directory_paths['saves']:
-                    for i in files:
-                        if i[:7] == month and len(i) is 11:
-                            s = shelve.open(core.directory_paths['saves'] + i)
-                            for a in s['winning']:
-                                wlist = [[core.date_reverse(month),
-                                          core.date_reverse(s['winning'][a]['date']).replace('-', '/'),
-                                          s['winning'][a]['value'], '-------', s['winning'][a]['description']]] + wlist
-                        if i[:7] == month and len(i) is 14:
-                            s = shelve.open(core.directory_paths['saves'] + i)
-                            for a in s['sales']:
-                                loo = []
-                                for x in range(0, len(s['sales'][a]['descriptions'])):
-                                    loo.append([s['sales'][a]['descriptions'][x], str(s['sales'][a]['amounts'][x]),
-                                                str(s['sales'][a]['prices'][x])])
-                                wlist.append([core.date_reverse(i[:10]), s['sales'][a]['time'], s['sales'][a]['value'],
-                                              s['sales'][a]['payment'], loo])
-            self.AddColumn(u'Data/Horário', 250)
-            self.AddColumn(u'Forma de Pagamento', 150)
-            self.AddColumn(u'Descrição', 250)
-            self.AddColumn(u'Quantidade', 100)
-            self.AddColumn(u'Valor', 150)
-            root = self.AddRoot(u'Ganhos de %s' % core.date_reverse(month).replace('-', '/'))
-            self.SetItemFont(root, wx.Font(14, wx.SWISS, wx.NORMAL, wx.BOLD))
-            a = 0.0
-            b = 0
-            days = {}
-            sat = core.week_end(month)
-            weeks = {}
-            for i in range(0, len(wlist)):
-                for pol in sat:
-                    if pol >= int(wlist[i][0][:2]):
-                        k = sat.index(pol) + 1
-                        break
-                if k not in weeks and type(wlist[i][4]) is list:
-                    we = self.AppendItem(root, u'%i° Semana' % k)
-                    self.SetItemFont(we, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
-                    weeks[k] = [we, 0.0, 0]
-                if wlist[i][0] not in days:
-                    if type(wlist[i][4]) is list:
-                        item = self.AppendItem(weeks[k][0], wlist[i][0].replace('-', '/'))
-                    else:
-                        item = self.AppendItem(root, wlist[i][0].replace('-', '/'))
-                    self.SetItemFont(item, wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
-                    days[wlist[i][0]] = [item, 0.0, 0]
-                boss = days[wlist[i][0]][0]
-                if type(wlist[i][4]) is list:
-                    x = '-----------'
-                    y = str(len(wlist[i][4]))
-                    weeks[k][1] += wlist[i][2]
-                    weeks[k][2] += 1
+
+        _setup_ = {
+            'prod': self.setup_products,
+            'won': self.setup_incomes,
+            'loss': self.setup_expenses,
+            'was': self.setup_wastes
+        }
+
+        _setup_[self.content]()
+
+    def setup_products(self):
+        inventory_db = database.InventoryDB()
+
+        sales_db = database.TransactionsDB()
+        sale_list = sales_db.monthly_sales_list(self.month)
+        sales_db.close()
+
+        plist = {}
+        for sale_ in sale_list:
+            for i in range(len(sale_.products_IDs)):
+                key = sale_.products_IDs[i]
+                value = sale_.prices[i] * sale_.amounts[i]
+                if key in plist:
+                    plist[key][0] += sale_.amounts[i]
+                    plist[key][1] += value
+                    plist[key][2] += 1
                 else:
-                    x = wlist[i][4]
-                    y = '--'
-                father = self.AppendItem(boss, wlist[i][1])
+                    product = inventory_db.inventory_search_id(key)
+                    plist[key] = [sale_.amounts[i], value, 1, product.description, product.price, product]
+            
+        inventory_db.close()
+        self.AddColumn(u'ID', 100)
+        self.AddColumn(u'Produto', 300)
+        self.AddColumn(u'Preço Unitário', 100)
+        self.AddColumn(u'Quantidade vendida', 135)
+        self.AddColumn(u'Quantidade de vezes vendido', 180)
+        self.AddColumn(u'Valor', 115)
+        root = self.AddRoot(u'------')
+        self.SetItemText(root, u'Produtos Vendidos em %s' % core.format_date_user(self.month), 1)
+        self.SetItemFont(root, wx.Font(14, wx.SWISS, wx.NORMAL, wx.BOLD))
+        a = 0.0
+        b = 0
+        counter = 0
+        for product_id in plist:
+            item = self.AppendItem(root, str(product_id))
+            self.SetItemText(item, plist[product_id][3], 1)
+            self.SetItemText(item, core.format_cash_user(plist[product_id][4], currency=True), 2)
+            self.SetItemText(item, core.format_amount_user(plist[product_id][0]), 3)
+            self.SetItemText(item, str(plist[product_id][2]), 4)
+            self.SetItemText(item, core.format_cash_user(plist[product_id][1], currency=True), 5)
+
+            self.SetItemData(item, wx.TreeItemData(plist[product_id][5]))
+
+            a += plist[product_id][1]
+            b += plist[product_id][0]
+            counter += 1
+        self.SetItemText(root, core.format_amount_user(b), 3)
+        self.SetItemText(root, str(counter), 4)
+        self.SetItemText(root, core.format_cash_user(a, currency=True), 5)
+        self.Expand(root)
+        self.SortChildren(root)
+
+    def setup_incomes(self):
+        sales_db = database.TransactionsDB()
+        sales = sales_db.monthly_sales_list(self.month)
+        incomes = sales_db.monthly_transactions_list(self.month, transaction.INCOME)
+        sales_db.close()
+
+        self.AddColumn(u'Data/Horário', 250)
+        self.AddColumn(u'Pagamento', 150)
+        self.AddColumn(u'Descrição', 250)
+        self.AddColumn(u'Quantidade', 100)
+        self.AddColumn(u'Valor', 150)
+        root = self.AddRoot(u'Ganhos de %s' % core.date_reverse(self.month).replace('-', '/'))
+        self.SetItemFont(root, wx.Font(14, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+        a = 0.0
+        b = 0
+        days = {}
+        saturdays = core.week_end(self.month)
+        weeks = {}
+
+        for sale_ in sales:
+            for day in saturdays:
+                if day >= int(sale_.record_date.split('-')[2]):
+                    week = saturdays.index(day) + 1
+                    break
+            if week not in weeks:
+                we = self.AppendItem(root, u'%iª Semana' % week)
+                self.SetItemFont(we, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
+                weeks[week] = [we, 0.0, 0]
+            if sale_.record_date not in days:
+                item = self.AppendItem(weeks[week][0], core.format_date_user(sale_.record_date))
+                self.SetItemFont(item, wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
+                days[sale_.record_date] = [item, 0.0, 0]
+
+            b += 1
+            a += sale_.value
+            weeks[week][1] += sale_.value
+            weeks[week][2] += 1
+            days[sale_.record_date][1] += sale_.value
+            days[sale_.record_date][2] += 1
+
+            father = self.AppendItem(days[sale_.record_date][0], sale_.record_time)
+            self.SetItemFont(father, wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
+            self.SetItemText(father, sale_.payment, 1)
+            self.SetItemText(father, u'-----------', 2)
+            self.SetItemText(father, str(len(sale_.products_IDs)), 3)
+            self.SetItemText(father, core.format_cash_user(sale_.value, currency=True), 4)
+
+            self.SetItemData(father, wx.TreeItemData(sale_))
+
+            for i in range(len(sale_.products_IDs)):
+                kid = self.AppendItem(father, u'-----------')
+                self.SetItemText(kid, u'-----------', 1)
+                self.SetItemText(kid, core.format_id_user(sale_.products_IDs[i]), 2)
+                self.SetItemText(kid, core.format_amount_user(sale_.amounts[i]), 3)
+                self.SetItemText(kid, core.format_cash_user(sale_.amounts[i] * sale_.prices[i], currency=True), 4)
+
+                self.SetItemData(kid, wx.TreeItemData(str(sale_.products_IDs[i])))
+
+        for j in weeks:
+            self.SetItemText(weeks[j][0], str(weeks[j][2]), 3)
+            self.SetItemText(weeks[j][0], core.format_cash_user(weeks[j][1], currency=True), 4)
+        for j in days:
+            self.SetItemText(days[j][0], str(days[j][2]), 3)
+            self.SetItemText(days[j][0], core.format_cash_user(days[j][1], currency=True), 4)
+            self.SortChildren(days[j][0])
+
+        if len(incomes):
+            parent = self.AppendItem(root, u'Outras entradas de dinheiro')
+            self.SetItemFont(parent, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
+            for income in incomes:
+                b += 1
+                a += income.value
+
+                payment = u'RECEBIDO'
+                payment = payment if not income.payment_pendant else u'AINDA NÃO ' + payment
+
+                father = self.AppendItem(parent, core.format_date_user(income.transaction_date))
                 self.SetItemFont(father, wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
-                self.SetItemText(father, wlist[i][3], 1)
-                self.SetItemText(father, x, 2)
-                self.SetItemText(father, y, 3)
-                self.SetItemText(father, 'R$ ' + core.good_show('money', str(wlist[i][2])), 4)
+                self.SetItemText(father, payment, 1)
+                self.SetItemText(father, income.description, 2)
+                self.SetItemText(father, core.format_cash_user(income.value, currency=True), 4)
+
+                self.SetItemData(father, wx.TreeItemData(income))
+
+        self.SetItemText(root, str(b), 3)
+        self.SetItemText(root, core.format_cash_user(a, currency=True), 4)
+        self.Expand(root)
+        self.SortChildren(root)
+
+    def setup_expenses(self):
+        expenses_db = database.TransactionsDB()
+        expenses = expenses_db.monthly_expenses_list(self.month)
+        money_exits = expenses_db.monthly_transactions_list(self.month, transaction.EXPENSE)
+        expenses_db.close()
+
+        self.AddColumn(u'Data/Horário', 250)
+        self.AddColumn(u'Pagamento', 150)
+        self.AddColumn(u'Descrição', 250)
+        self.AddColumn(u'Quantidade', 100)
+        self.AddColumn(u'Valor', 150)
+        root = self.AddRoot(u'Gastos de %s' % core.date_reverse(self.month).replace('-', '/'))
+        self.SetItemFont(root, wx.Font(14, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+        a = 0.0
+        b = 0
+        days = {}
+        saturdays = core.week_end(self.month)
+        weeks = {}
+
+        for expense_ in expenses:
+            for day in saturdays:
+                if day >= int(expense_.record_date.split('-')[2]):
+                    week = saturdays.index(day) + 1
+                    break
+            if week not in weeks:
+                we = self.AppendItem(root, u'%iª Semana' % week)
+                self.SetItemFont(we, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
+                weeks[week] = [we, 0.0, 0]
+            if expense_.record_date not in days:
+                item = self.AppendItem(weeks[week][0], core.format_date_user(expense_.record_date))
+                self.SetItemFont(item, wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
+                days[expense_.record_date] = [item, 0.0, 0]
+
+            b += 1
+            a += expense_.value
+            weeks[week][1] += expense_.value
+            weeks[week][2] += 1
+            days[expense_.record_date][1] += expense_.value
+            days[expense_.record_date][2] += 1
+
+            father = self.AppendItem(days[expense_.record_date][0], expense_.record_time)
+            self.SetItemFont(father, wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
+            self.SetItemText(father, expense_.description, 2)
+            self.SetItemText(father, core.format_cash_user(expense_.value, currency=True), 4)
+
+            self.SetItemData(father, wx.TreeItemData(expense_))
+
+        for j in weeks:
+            self.SetItemText(weeks[j][0], str(weeks[j][2]), 3)
+            self.SetItemText(weeks[j][0], core.format_cash_user(weeks[j][1], currency=True), 4)
+        for j in days:
+            self.SetItemText(days[j][0], str(days[j][2]), 3)
+            self.SetItemText(days[j][0], core.format_cash_user(days[j][1], currency=True), 4)
+            self.SortChildren(days[j][0])
+
+        if len(money_exits):
+            parent = self.AppendItem(root, u'Outros Gastos')
+            self.SetItemFont(parent, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
+            for money_exit in money_exits:
                 b += 1
-                a += wlist[i][2]
-                days[wlist[i][0]][1] += wlist[i][2]
-                days[wlist[i][0]][2] += 1
-                if type(wlist[i][4]) is list:
-                    for z in wlist[i][4]:
-                        kid = self.AppendItem(father, '-------')
-                        self.SetItemText(kid, '-------', 1)
-                        self.SetItemText(kid, z[0], 2)
-                        self.SetItemText(kid, z[1], 3)
-                        self.SetItemText(kid, 'R$ ' + core.good_show('money', str(z[2])), 4)
-            for j in weeks:
-                self.SetItemText(weeks[j][0], str(weeks[j][2]), 3)
-                self.SetItemText(weeks[j][0], 'R$ ' + core.good_show('money', weeks[j][1]), 4)
-                self.SortChildren(weeks[j][0])
-            for j in days:
-                self.SetItemText(days[j][0], str(days[j][2]), 3)
-                self.SetItemText(days[j][0], 'R$ ' + core.good_show('money', days[j][1]), 4)
-                self.SortChildren(days[j][0])
-            self.SetItemText(root, str(b), 3)
-            self.SetItemText(root, 'R$ ' + core.good_show('money', a), 4)
-            self.Expand(root)
-            self.SortChildren(root)
-        elif self.content is 'loss':
-            llist = []
-            for root, dirs, files in os.walk(core.directory_paths['saves']):
-                if root is core.directory_paths['saves']:
-                    for i in files:
-                        if i[:7] == month and len(i) is 11:
-                            s = shelve.open(core.directory_paths['saves'] + i)
-                            for a in s['spent']:
-                                llist.append([core.date_reverse(i[:7]).replace('-', '/'), s['spent'][a]['time'],
-                                              s['spent'][a]['value'], s['spent'][a]['description']])
-                        if i[:7] == month and len(i) is 14:
-                            s = shelve.open(core.directory_paths['saves'] + i)
-                            for a in s['spent']:
-                                llist.append([core.date_reverse(i[:10]).replace('-', '/'), s['spent'][a]['time'],
-                                              s['spent'][a]['value'], s['spent'][a]['description']])
-            self.AddColumn(u'Data/Horário', 250)
-            self.AddColumn(u'Descrição', 400)
-            self.AddColumn(u'Quantidade', 100)
-            self.AddColumn(u'Valor', 150)
-            root = self.AddRoot(u'Gastos de %s' % core.date_reverse(month).replace('-', '/'))
-            self.SetItemFont(root, wx.Font(14, wx.SWISS, wx.NORMAL, wx.BOLD))
-            a = 0.0
-            b = 0
-            days = {}
-            sat = core.week_end(month)
-            weeks = {}
-            for i in range(0, len(llist)):
-                for pol in sat:
-                    if pol >= int(llist[i][0][:2]):
-                        k = sat.index(pol) + 1
-                        break
-                if k not in weeks and len(llist[i][0]) == 10:
-                    we = self.AppendItem(root, u'%i° Semana' % k)
-                    self.SetItemFont(we, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
-                    weeks[k] = [we, 0.0, 0]
-                if llist[i][0] not in days:
-                    if len(llist[i][0]) == 10:
-                        item = self.AppendItem(weeks[k][0], llist[i][0].replace('-', '/'))
-                    else:
-                        item = self.AppendItem(root, llist[i][0].replace('-', '/'))
-                    self.SetItemFont(item, wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
-                    days[llist[i][0]] = [item, 0.0, 0]
-                boss = days[llist[i][0]][0]
-                father = self.AppendItem(boss, llist[i][1])
-                self.SetItemText(father, llist[i][3], 1)
-                self.SetItemText(father, 'R$ ' + core.good_show('money', str(llist[i][2])), 3)
-                b += 1
-                a += llist[i][2]
-                days[llist[i][0]][2] += 1
-                days[llist[i][0]][1] += llist[i][2]
-                if len(llist[i][0]) == 10:
-                    weeks[k][1] += llist[i][2]
-                    weeks[k][2] += 1
-            for key in days:
-                self.SetItemText(days[key][0], str(days[key][2]), 2)
-                self.SetItemText(days[key][0], 'R$ ' + core.good_show('money', days[key][1]), 3)
-                self.SortChildren(days[key][0])
-            for j in weeks:
-                self.SetItemText(weeks[j][0], str(weeks[j][2]), 2)
-                self.SetItemText(weeks[j][0], 'R$ ' + core.good_show('money', weeks[j][1]), 3)
-                self.SortChildren(weeks[j][0])
-            self.SetItemText(root, str(b), 2)
-            self.SetItemText(root, 'R$ ' + core.good_show('money', a), 3)
-            self.Expand(root)
-            self.SortChildren(root)
-        elif self.content is 'was':
-            walist = {}
-            for root, dirs, files in os.walk(core.directory_paths['saves']):
-                if root is core.directory_paths['saves']:
-                    for i in files:
-                        if i[:7] == month and len(i) is 14:
-                            s = shelve.open(core.directory_paths['saves'] + i)
-                            for a in s['wastes']:
-                                key = s['wastes'][a]['description'] + '\\_/' + str(s['wastes'][a]['unit_price'])
-                                if key in walist:
-                                    walist[key][0] += s['wastes'][a]['amount']
-                                    walist[key][1] += s['wastes'][a]['value']
-                                    walist[key][2] += 1
-                                else:
-                                    walist[key] = [s['wastes'][a]['amount'], s['wastes'][a]['value'], 1]
-            self.AddColumn(u'Descrição', 300)
-            self.AddColumn(u'Preço Unitário', 150)
-            self.AddColumn(u'Quantidade', 100)
-            self.AddColumn(u'Quantidade de vezes', 200)
-            self.AddColumn(u'Valor', 150)
-            root = self.AddRoot(u'Desperdícios de %s' % core.date_reverse(month).replace('-', '/'))
-            self.SetItemFont(root, wx.Font(14, wx.SWISS, wx.NORMAL, wx.BOLD))
-            a = 0.0
-            b = 0
-            for i in walist:
-                e = i.split('\\_/')
-                item = self.AppendItem(root, e[0])
-                self.SetItemText(item, 'R$ ' + core.good_show('money', e[1]), 1)
-                self.SetItemText(item, str(walist[i][0]), 2)
-                self.SetItemText(item, str(walist[i][2]), 3)
-                self.SetItemText(item, 'R$ ' + core.good_show('money', str(walist[i][1])), 4)
-                a += walist[i][1]
-                b += walist[i][0]
-            self.SetItemText(root, str(b), 2)
-            self.SetItemText(root, 'R$ ' + core.good_show('money', a), 4)
-            self.Expand(root)
-            self.SortChildren(root)
+                a += money_exit.value
+
+                payment = u'RECEBIDO'
+                payment = payment if not money_exit.payment_pendant else u'AINDA NÃO ' + payment
+
+                father = self.AppendItem(parent, core.format_date_user(money_exit.transaction_date))
+                self.SetItemFont(father, wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
+                self.SetItemText(father, payment, 1)
+                self.SetItemText(father, money_exit.description, 2)
+                self.SetItemText(father, core.format_cash_user(money_exit.value, currency=True), 4)
+
+                self.SetItemData(father, wx.TreeItemData(money_exit))
+
+        self.SetItemText(root, str(b), 3)
+        self.SetItemText(root, core.format_cash_user(a, currency=True), 4)
+        self.Expand(root)
+        self.SortChildren(root)
+
+    def setup_wastes(self):
+
+        inventory_db = database.InventoryDB()
+
+        wastes_db = database.TransactionsDB()
+        waste_list = wastes_db.monthly_wastes_list(self.month)
+        wastes_db.close()
+
+        walist = {}
+        for waste in waste_list:
+            if waste.product_ID in walist:
+                walist[waste.product_ID][0] += waste.amount
+                walist[waste.product_ID][1] += 1
+            else:
+                product = inventory_db.inventory_search_id(waste.product_ID)
+                walist[waste.product_ID] = [waste.amount, 1, product.description, product.price, waste]
+
+        self.AddColumn(u'ID', 100)
+        self.AddColumn(u'Descrição', 300)
+        self.AddColumn(u'Preço Unitário', 100)
+        self.AddColumn(u'Quantidade', 100)
+        self.AddColumn(u'Quantidade de vezes', 150)
+        self.AddColumn(u'Valor', 200)
+        root = self.AddRoot(u'------')
+        self.SetItemText(root, u'Desperdícios de %s' % core.format_date_user(self.month), 1)
+        self.SetItemFont(root, wx.Font(14, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+        a = 0.0
+        b = 0
+        counter = 0
+
+        for product_id in walist:
+            value = walist[product_id][3]*walist[product_id][0]
+            item = self.AppendItem(root, str(product_id))
+            self.SetItemText(item, walist[product_id][2], 1)
+            self.SetItemText(item, core.format_cash_user(walist[product_id][3], currency=True), 2)
+            self.SetItemText(item, core.format_amount_user(walist[product_id][0]), 3)
+            self.SetItemText(item, str(walist[product_id][1]), 4)
+            self.SetItemText(item, core.format_cash_user(value, currency=True), 5)
+
+            self.SetItemData(item, wx.TreeItemData(walist[product_id][4]))
+
+            a += value
+            b += walist[product_id][0]
+            counter += 1
+        self.SetItemText(root, core.format_amount_user(b), 3)
+        self.SetItemText(root, str(counter), 4)
+        self.SetItemText(root, core.format_cash_user(a, currency=True), 5)
+        self.Expand(root)
+        self.SortChildren(root)
+
+    def process_click(self, event):
+        selection = self.GetSelection()
+        tree_data = self.GetItemData(selection)
+        if not tree_data:
+            event.Skip()
+            return 
+        data = tree_data.GetData()
+
+        if isinstance(data, data_types.SaleData):
+            sale.Sale(self.parent, data=data, editable=False)
+        elif isinstance(data, data_types.ProductData):
+            inventory.ProductData(self.parent, data.description, data=data, editable=False)
+        elif isinstance(data, str):
+            inventory.ProductData(self.parent, data, product_id=int(data), editable=False)
+        elif isinstance(data, data_types.WasteData):
+            waste.Waste(self.parent, data=data)
+        elif isinstance(data, data_types.ExpenseData):
+            expense.Expense(self.parent, data=data)

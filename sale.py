@@ -104,10 +104,10 @@ class Sale(wx.Frame):
         self.SetSize(wx.Size(925, 700))
         self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
 
-        self.SetBackgroundColour(core.default_background_color)
+        self.SetBackgroundColour('#ffffff')
 
         # result
-        result = wx.Panel(self, -1, pos=(5, 5), size=(450, 605), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
+        result = wx.Panel(self, -1, pos=(5, 5), size=(450, 605), style=wx.DOUBLE_BORDER | wx.TAB_TRAVERSAL)
         result.SetBackgroundColour(core.default_background_color)
 
         self.list_sold = wx.ListCtrl(result, -1, pos=(10, 10), size=(430, 400),
@@ -162,7 +162,7 @@ class Sale(wx.Frame):
 
         # product
         self.panel_product_data = wx.Panel(self, 22, pos=(460, 5), size=(450, 275),
-                                           style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
+                                           style=wx.DOUBLE_BORDER | wx.TAB_TRAVERSAL)
         self.panel_product_data.SetBackgroundColour(core.default_background_color)
         wx.StaticText(self.panel_product_data, -1, u"Adicionar Produto", pos=(160, 8)).SetFont(
             wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
@@ -225,7 +225,7 @@ class Sale(wx.Frame):
             button_remove_product.Disable()
 
         # client
-        client = wx.Panel(self, 23, pos=(460, 285), size=(450, 325), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
+        client = wx.Panel(self, 23, pos=(460, 285), size=(450, 325), style=wx.DOUBLE_BORDER | wx.TAB_TRAVERSAL)
         client.SetBackgroundColour(core.default_background_color)
         wx.StaticText(client, -1, u"Nome do cliente: ", pos=(25, 5))
         wx.StaticText(client, -1, u"CPF: ", pos=(325, 5))
@@ -280,7 +280,7 @@ class Sale(wx.Frame):
             cno.Disable()
 
         # last
-        last = wx.Panel(self, 24, pos=(5, 615), size=(905, 50), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
+        last = wx.Panel(self, 24, pos=(5, 615), size=(905, 50), style=wx.DOUBLE_BORDER | wx.TAB_TRAVERSAL)
         last.SetBackgroundColour(core.default_background_color)
         if self.editable:
             last_ = wx.Panel(last, pos=(292, 5), size=(320, 40), style=wx.SIMPLE_BORDER)
@@ -312,13 +312,14 @@ class Sale(wx.Frame):
 
     def setup(self):
 
-        if self.key == -1:
-            return
-
-        if not self.data:
+        if self.data:
+            self.key = self.data.ID
+        elif self.key != -1:
             db = database.TransactionsDB()
             self.data = db.sales_search_id(self.key)
             db.close()
+        else:
+            return
 
         # Adiciona os dados do cliente
         self.textbox_client_cpf.SetValue(core.format_cpf(self.data.client_cpf))
@@ -470,12 +471,22 @@ class Sale(wx.Frame):
             eremov.Bind(wx.EVT_BUTTON, self.data_editor_disable)
 
     def data_edit(self, event):
-        product_id = int(self.textbox_product_id.GetValue())
+        _product_id = self.textbox_product_id.GetValue()
+        if not _product_id:
+            return dialogs.launch_error(self, u'Eh necessário especificar o ID do produto!')
+
+        product_id = int(_product_id)
         product = self.database_inventory.inventory_search_id(product_id)
         if not product:
-            return dialogs.launch_error(self, u'Dados Insulficientes!')
+            return dialogs.launch_error(self, u'ID inválido!')
 
-        amount = self.textbox_product_amount.GetValue()
+        _amount = self.textbox_product_amount.GetValue().replace(',', '.')
+        try:
+            amount = float(_amount)
+        except ValueError:
+            self.textbox_product_amount.Clear()
+            return dialogs.launch_error(self, u'Quantidade inválida!')
+        
         _price = float(amount) * float(product.price)
         unit_price = "R$ " + core.good_show('money', product.price)
         price = "R$ " + core.good_show('money', _price)
@@ -536,8 +547,7 @@ class Sale(wx.Frame):
         w = self.list_sold.GetItemCount()
         for i in range(0, w):
             product_price = self.list_sold.GetItem(i, 3).GetText()
-            a = product_price.replace(",", ".").replace("R$ ", "")
-            total_price += float(a)
+            total_price += core.money2float(product_price)
         discount = self.textbox_sale_discount.GetValue().replace(",", ".")
         if discount == "":
             discount = float(0)
@@ -549,8 +559,8 @@ class Sale(wx.Frame):
         else:
             additional_taxes = float(additional_taxes)
         final_value = max(float(total_price + additional_taxes - discount), 0.0)
-        self.textbox_sale_products_price.SetValue(core.good_show("money", str(total_price).replace(".", ",")))
-        self.textbox_sale_value.SetValue(core.good_show("money", str(final_value).replace(".", ",")))
+        self.textbox_sale_products_price.SetValue(core.good_show("money", total_price))
+        self.textbox_sale_value.SetValue(core.good_show("money", final_value))
 
     def update_payment_method(self, event):
         if self.radio_payment_other.GetValue():
@@ -626,6 +636,21 @@ class Sale(wx.Frame):
         client_name = self.textbox_client_name.GetValue()
         client_cpf = self.textbox_client_cpf.GetValue().replace('.', '').replace('-', '')
 
+        delivery_receiver_name = self.textbox_delivery_receiver.GetValue()
+        delivery_address = self.textbox_delivery_address.GetValue()
+        delivery_city = self.textbox_delivery_city.GetValue()
+        client_telephone = self.textbox_delivery_telephone.GetValue()
+        delivery_date = self.textbox_delivery_date.GetValue() + u'/' + str(datetime.now().year)
+        delivery_hour = self.textbox_delivery_hour.GetValue()
+
+        delivery_date = core.format_date_internal(delivery_date)
+        if self.delivery_enabled:
+            for r in (delivery_receiver_name, delivery_address, delivery_city,
+                      client_telephone, delivery_date, delivery_hour):
+
+                if len(r) == 0 or r == u'00:00' or r == u'__/__':
+                    return dialogs.launch_error(self, u'Dados insulficientes para registro de entrega!')
+
         if client_cpf:
             try:
                 int(client_cpf)
@@ -667,24 +692,9 @@ class Sale(wx.Frame):
         if self.key == -1:
             delivery = deliveries_db.deliveries_search_sale(new_sale.ID)
             if delivery:
-                deliveries_db.delete_delivery(delivery.ID)
+                deliveries_db.delete_delivery_permanently(delivery.ID)
 
         if self.delivery_enabled:
-
-            delivery_receiver_name = self.textbox_delivery_receiver.GetValue()
-            delivery_address = self.textbox_delivery_address.GetValue()
-            delivery_city = self.textbox_delivery_city.GetValue()
-            client_telephone = self.textbox_delivery_telephone.GetValue()
-            delivery_date = self.textbox_delivery_date.GetValue() + u'/' + str(datetime.now().year)
-            delivery_hour = self.textbox_delivery_hour.GetValue()
-
-            delivery_date = core.format_date_internal(delivery_date)
-
-            for r in (delivery_receiver_name, delivery_address, delivery_city,
-                      client_telephone, delivery_date, delivery_hour):
-
-                if len(r) == 0 or r == u'00:00' or r == u'__/__':
-                    return dialogs.launch_error(self, u'Dados insulficientes para registro de entrega!')
 
             if core.date2int(date) < core.date2int(delivery_date):
                 delivery_date = delivery_date[:-1] + str(int(delivery_date[-1:]) + 1)
