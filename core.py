@@ -166,6 +166,49 @@ def date_reverse(text):
     return '-'.join(text_)
 
 
+def format_id_user(id_value):
+    """
+    Prepara uma quantidade para ser mostrada para o usuario
+    :param id_value: Quantidade de um produto
+    :return:
+    """
+    id_str = str(id_value)
+    while len(id_str) < 6:
+        id_str = u'0' + id_str
+    return id_str
+
+
+def format_cash_user(value, currency=False):
+    """
+    Recebe um valor em float e o deixa na forma "R$ x,xx" ou "x,xx"
+    :param value: valor a ser preparado
+    :param currency: Mostrar o R$ antes do valor
+    :type currency: bool
+    :return: String para identificar o valor
+    :rtype: str
+    """
+    tex = str(value).replace('.', ',')
+    x = len(tex.split(',')[1])
+    if x == 1:
+        tex += "0"
+    elif x > 2:
+        tex = tex[:-x + 2]
+
+    if currency:
+        tex = u'R$ ' + tex
+
+    return tex
+
+
+def format_amount_user(amount):
+    """
+    Prepara uma quantidade para ser mostrada para o usuario
+    :param amount: Quantidade de um produto
+    :return:
+    """
+    return str(amount).replace('.', ',')
+
+
 def format_date_internal(date):
     date = date.replace('/', '-').split('-')
     if len(date[0]) == 2:
@@ -568,7 +611,6 @@ week_days = [u'Segunda', u'Terça', u'Quarta', u'Quinta', u'Sexta', u'Sábado', 
 
 cfop_optins = [u'5101-Produção interna', u'5102-Revenda']
 cfop_values = [5101, 5102]
-
 unit_options = [u'UN', u'KG']
 
 # Senha mestra
@@ -598,5 +640,9 @@ directory_paths = {
 general_icon = current_dir + "bronze.ico"
 tray_icon = current_dir + "bronze2.ico"
 
-default_background_color = '#D6D6D6'
+default_background_color = '#B4CDCD'
 default_disabled_color = '#C0C0C0'
+
+COLOR_LIGHT_BLUE = '#C2E6F8'
+COLOR_LIGHT_GREEN = '#6EFF70'
+COLOR_LIGHT_YELLOW = '#FFDF85'
