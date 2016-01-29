@@ -9,6 +9,7 @@ import core
 import sale
 import database
 import data_types
+import internet
 
 __author__ = 'Julio'
 
@@ -19,7 +20,7 @@ class DeliveryManager(wx.Frame):
     combobox_show_option = None
 
     def __init__(self, parent, frame_id=-1, title=u'Sistema de entregas'):
-        wx.Frame.__init__(self, parent, frame_id, title, size=(900, 430), pos=(250, 100),
+        wx.Frame.__init__(self, parent, frame_id, title, size=(965, 430), pos=(250, 100),
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN)
 
         self.setup_gui()
@@ -28,9 +29,10 @@ class DeliveryManager(wx.Frame):
         self.Show()
 
     def setup_gui(self):
-        self.SetBackgroundColour(core.default_background_color)
+        self.SetBackgroundColour('#383838')
         self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
-        panel_deliveries = wx.Panel(self, -1, size=(730, 380), pos=(10, 10), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
+        panel_deliveries = wx.Panel(self, -1, size=(730, 380), pos=(10, 10), style=wx.DOUBLE_BORDER | wx.TAB_TRAVERSAL)
+        panel_deliveries.SetBackgroundColour(core.COLOR_LIGHT_GREEN)
 
         self.list_deliveries = wx.gizmos.TreeListCtrl(panel_deliveries, -1, pos=(10, 10), size=(710, 360),
                                                       style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE |
@@ -42,19 +44,24 @@ class DeliveryManager(wx.Frame):
 
         self.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.open_view_sale, self.list_deliveries)
 
-        panel_right = wx.Panel(self, -1, size=(140, 380), pos=(750, 10), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
+        panel_right = wx.Panel(self, -1, size=(200, 380), pos=(750, 10), style=wx.DOUBLE_BORDER | wx.TAB_TRAVERSAL)
+        panel_right.SetBackgroundColour(core.COLOR_LIGHT_GREEN)
 
         show_options = [u'Apenas entregas ativas', u'Todas as entregas cadastradas']
-
-        self.combobox_show_option = wx.ComboBox(panel_right, choices=show_options, size=(130, -1), pos=(5, 90),
+        self.combobox_show_option = wx.ComboBox(panel_right, choices=show_options, size=(190, -1), pos=(2, 20),
                                                 style=wx.CB_READONLY | wx.TE_MULTILINE)
         self.combobox_show_option.SetValue(show_options[0])
         self.combobox_show_option.Bind(wx.EVT_COMBOBOX, self.setup)
 
-        tell = wx.Button(panel_right, -1, u'Mostrar mais', pos=(20, 150), size=(100, 30))
+        maps = wx.BitmapButton(panel_right, -1, wx.Bitmap(core.directory_paths['icons'] + 'map_icon_48.png'),
+                               pos=(76, 76), size=(48, 48), style=wx.NO_BORDER)
+        maps.SetBackgroundColour(core.default_background_color)
+        maps.Bind(wx.EVT_BUTTON, self.open_maps)
+
+        tell = wx.Button(panel_right, -1, u'Mostrar mais', pos=(50, 150), size=(100, 30))
         tell.Bind(wx.EVT_BUTTON, self.open_view_sale)
 
-        panel_side_buttons = wx.Panel(panel_right, pos=(10, 220), size=(120, 120), style=wx.SIMPLE_BORDER)
+        panel_side_buttons = wx.Panel(panel_right, pos=(40, 220), size=(120, 120), style=wx.SIMPLE_BORDER)
         change_delivery_status = GenBitmapTextButton(panel_side_buttons, -1,
                                                      wx.Bitmap(core.directory_paths['icons'] + 'Check.png'),
                                                      u"Concluída", pos=(0, 0), size=(120, 40))
@@ -65,6 +72,19 @@ class DeliveryManager(wx.Frame):
         down = GenBitmapTextButton(panel_side_buttons, -1, wx.Bitmap(core.directory_paths['icons'] + 'Exit.png'),
                                    u'Sair', pos=(0, 80), size=(120, 40))
         down.Bind(wx.EVT_BUTTON, self.exit)
+
+    def open_maps(self, event):
+        red = self.list_deliveries.GetSelection()
+        if self.list_deliveries.GetRootItem() == red:
+            return
+        data = self.list_deliveries.GetItemData(red)
+        if not data:
+            return
+        delivery_data = data.GetData()
+        if not isinstance(delivery_data, data_types.DeliveryData):
+            return
+        address = delivery_data.city + ', ' + delivery_data.address
+        internet.search_in_maps(address)
 
     def open_view_sale(self, event):
         red = self.list_deliveries.GetSelection()
@@ -99,7 +119,7 @@ class DeliveryManager(wx.Frame):
         delivery_data.active = not delivery_data.active
 
         deliveries_db = database.DeliveriesDB()
-        deliveries_db.delivery_activity_change(delivery_data.ID, delivery_data.active)
+        deliveries_db.delete_delivery(delivery_data.ID, undo=delivery_data.active)
         deliveries_db.close()
 
         if not delivery_data.active:
@@ -121,7 +141,8 @@ class DeliveryManager(wx.Frame):
             date_delivery_int = core.date2int(delivery.date)
 
             if date_delivery_int < date_today_int:
-                deliveries_db.delivery_activity_change(delivery.ID, False)
+                delivery.active = False
+                deliveries_db.delete_delivery(delivery.ID)
                 continue
             if delivery.date not in deliveries_dates:
                 deliveries_dates[delivery.date] = []

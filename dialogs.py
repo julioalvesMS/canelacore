@@ -120,7 +120,7 @@ class Warner(wx.Dialog):
     def ready(self, event):
         db = database.DeliveriesDB()
         self.data.active = False
-        db.delivery_activity_change(self.data.ID, False)
+        db.delete_delivery(self.data.ID)
         db.close()
         self.exit(None)
 
