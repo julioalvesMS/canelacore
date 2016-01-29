@@ -11,7 +11,7 @@ import core
 import dialogs
 import record_editor
 import sale
-import transactions
+import expense
 import waste
 import database
 import data_types
@@ -558,7 +558,7 @@ class Report(wx.Frame):
         sale.Sale(self, key=data.ID)
 
     def open_expense_register(self, event):
-        transactions.Expense(self)
+        expense.Expense(self)
 
     def open_expense_edit(self, event):
         red = self.list_expenses.GetSelection()
@@ -566,7 +566,7 @@ class Report(wx.Frame):
             return
         data = self.list_expenses.GetItemData(red).GetData()
 
-        transactions.Expense(self, key=data.ID)
+        expense.Expense(self, key=data.ID)
 
     def open_record_editor(self, event):
         record_editor.EditionManager(self, record_date=self.combobox_day_option.GetValue())

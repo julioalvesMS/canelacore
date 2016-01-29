@@ -22,7 +22,7 @@ import record_editor
 import sale
 import settings
 import teste
-import transactions
+import expense
 import waste
 import database
 import categories
@@ -238,7 +238,8 @@ class Base(wx.Frame):
             date_delivery_int = core.date2int(_delivery.date)
 
             if date_delivery_int < date_now_int:
-                deliveries_db.delivery_activity_change(_delivery.ID, False)
+                _delivery.active = False
+                deliveries_db.delete_delivery(_delivery.ID)
 
             if _delivery.active is False:
                 del self.notification_control[_delivery.ID]
@@ -316,7 +317,7 @@ class Base(wx.Frame):
         clients.ClientManager(self)
 
     def open_new_expense(self, event):
-        transactions.Expense(self)
+        expense.Expense(self)
 
     def open_daily_report(self, event):
         daily_report.Report(self)
@@ -404,7 +405,7 @@ class BaseTray(wx.TaskBarIcon):
         clients.ClientManager(self.frame)
 
     def open_new_expense(self, event):
-        transactions.Expense(self.frame)
+        expense.Expense(self.frame)
 
     def open_daily_report(self, event):
         daily_report.Report(self.frame)
