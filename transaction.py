@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from datetime import datetime
-
 import wx
 import wx.gizmos
+import wx.calendar
 from wx.lib.buttons import GenBitmapTextButton
 
 import core
 import dialogs
 import database
 import data_types
-import daily_report
+import monthly_report
 
 __author__ = 'Julio'
 
@@ -24,6 +23,12 @@ class Transaction(wx.Frame):
     textbox_description = None
     textbox_value = None
 
+    combobox_category = None
+
+    checkbox_payed = None
+
+    calendar_date = None
+
     def __init__(self, parent, transaction_type, key=-1, data=None):
 
         title_options = {
@@ -32,16 +37,16 @@ class Transaction(wx.Frame):
         }
         title = title_options.get(transaction_type, u'Transação')
 
-        wx.Frame.__init__(self, parent, -1, title, size=(500, 200),
+        wx.Frame.__init__(self, parent, -1, title, size=(660, 300),
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN)
 
         self.key = key
         self.data = data
+        self.transaction_type = transaction_type
 
         self.setup_gui()
 
-        if self.key != -1 or self.data:
-            self.setup()
+        self.setup()
 
         self.Show()
 
@@ -50,41 +55,66 @@ class Transaction(wx.Frame):
         self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
         self.SetBackgroundColour(core.default_background_color)
         # first
-        first = wx.Panel(self, -1, size=(480, 85), pos=(10, 10), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
+        first = wx.Panel(self, -1, size=(495, 250), pos=(10, 10), style=wx.SIMPLE_BORDER | wx.TAB_TRAVERSAL)
         first.SetBackgroundColour(core.default_background_color)
-        wx.StaticText(first, -1, u"Descrição:", pos=(10, 5))
-        self.textbox_description = wx.TextCtrl(first, -1, pos=(10, 25), size=(300, 30))
-        wx.StaticText(first, -1, u"Valor:", pos=(370, 5))
-        wx.StaticText(first, -1, u"R$", pos=(355, 32))
-        self.textbox_value = wx.TextCtrl(first, -1, pos=(370, 25), size=(80, 30))
-        self.textbox_value.Bind(wx.EVT_CHAR, core.check_money)
-        self.textbox_value.SetValue(u"0,00")
+
+        wx.StaticText(first, -1, u"Descrição: *", pos=(20, 20))
+        self.textbox_description = wx.TextCtrl(first, -1, pos=(20, 40), size=(200, 30))
+
+        wx.StaticText(first, -1, u"Categoria: *", pos=(20, 90))
+        self.combobox_category = wx.ComboBox(first, -1, pos=(20, 110), size=(200, 30), style=wx.CB_READONLY)
+
+        wx.StaticText(first, -1, u"Valor: *", pos=(20, 160))
+        self.textbox_value = wx.TextCtrl(first, -1, pos=(20, 180), size=(200, 30))
+        self.textbox_value.Bind(wx.EVT_CHAR, core.check_currency)
+        self.textbox_value.SetValue(u'R$ 0,00')
+
+        wx.StaticText(first, -1, u"Data da Transação: *", pos=(240, 35))
+        self.calendar_date = wx.calendar.CalendarCtrl(first, -1, wx.DateTime_Now(), pos=(240, 55),
+                                                      style=wx.calendar.CAL_SHOW_HOLIDAYS |
+                                                      wx.calendar.CAL_SEQUENTIAL_MONTH_SELECTION |
+                                                      wx.calendar.CAL_BORDER_ROUND | wx.SIMPLE_BORDER)
+
+        self.checkbox_payed = wx.CheckBox(first, -1, u'Pagamento Realizado? ', pos=(200, 220), size=(-1, -1),
+                                          style=wx.ALIGN_LEFT)
+        self.checkbox_payed.SetFont(wx.Font(-1, wx.SWISS, wx.NORMAL, wx.BOLD))
+        self.Bind(wx.EVT_CHECKBOX, self.checkbox_change, self.checkbox_payed)
+        self.checkbox_payed.SetForegroundColour(wx.BLUE)
+        self.checkbox_payed.SetValue(True)
+        self.checkbox_payed.SetSize((160, -1))
+
         # last
-        last = wx.Panel(self, -1, size=(480, 60), pos=(10, 105), style=wx.SUNKEN_BORDER)
+        last = wx.Panel(self, -1, size=(130, 250), pos=(515, 10), style=wx.SIMPLE_BORDER)
         last.SetBackgroundColour(core.default_background_color)
-        last_ = wx.Panel(last, pos=(80, 10), size=(320, 40), style=wx.SIMPLE_BORDER)
+        last_ = wx.Panel(last, pos=(5, 65), size=(120, 120), style=wx.SIMPLE_BORDER)
         finish = GenBitmapTextButton(last_, -1,
                                      wx.Bitmap(core.directory_paths['icons'] + 'Check.png', wx.BITMAP_TYPE_PNG),
-                                     u'Finalizar', pos=(0, 0), size=(100, 40))
+                                     u'Finalizar', pos=(0, 0), size=(120, 40))
         finish.Bind(wx.EVT_BUTTON, self.ask_end)
         restart = GenBitmapTextButton(last_, -1,
                                       wx.Bitmap(core.directory_paths['icons'] + 'Reset.png', wx.BITMAP_TYPE_PNG),
-                                      u'Recomeçar', pos=(100, 0), size=(120, 40))
+                                      u'Recomeçar', pos=(0, 40), size=(120, 40))
         restart.Bind(wx.EVT_BUTTON, self.ask_clean)
         cancel = GenBitmapTextButton(last_, -1,
                                      wx.Bitmap(core.directory_paths['icons'] + 'Exit.png', wx.BITMAP_TYPE_PNG),
-                                     u"sair", pos=(220, 0), size=(100, 40))
+                                     u"sair", pos=(0, 80), size=(120, 40))
         cancel.Bind(wx.EVT_BUTTON, self.ask_exit)
 
     def setup(self):
-        if self.key == -1:
+        if self.data:
+            self.key = self.data.ID
+        elif self.key != -1:
+            db = database.TransactionsDB()
+            self.data = db.transactions_search_id(self.key)
+            db.close()
+        else:
             return
-        db = database.TransactionsDB()
-        data = db.expenses_search_id(self.key)
-        self.textbox_description.SetValue(data.description)
-        self.textbox_value.SetValue(core.good_show("money", data.value))
-
-        db.close()
+        self.textbox_description.SetValue(self.data.description)
+        self.textbox_value.SetValue(core.format_cash_user(self.data.value, currency=True))
+        date = self.data.transaction_date.split('-')
+        wx_date = wx.DateTime()
+        wx_date.Set(int(date[2]), int(date[1]) - 1, int(date[0]))
+        self.calendar_date.SetDate(wx_date)
 
     def ask_clean(self, event):
         dialogs.Ask(self, u"Apagar Tudo", 1)
@@ -92,55 +122,80 @@ class Transaction(wx.Frame):
     def ask_exit(self, event):
         pl = str(self.textbox_description.GetValue())
         po = str(self.textbox_value.GetValue())
-        if pl == u'' and po == u'0,00':
-            self.Close()
+        if pl == u'' and po == u'R$ 0,00':
+            self.exit(None)
             return
         dialogs.Ask(self, u"Sair", 91)
 
     def ask_end(self, event):
-        dialogs.Ask(self, u"Registrar Gasto", 12)
+
+        ask_option = -1
+        if self.transaction_type is EXPENSE:
+            ask_option = 12
+        elif self.transaction_type is INCOME:
+            ask_option = 16
+
+        dialogs.Ask(self, u"Registrar Transação", ask_option)
+
+    def checkbox_change(self, event):
+        if self.checkbox_payed.GetValue():
+            self.checkbox_payed.SetForegroundColour(wx.BLUE)
+        else:
+            self.checkbox_payed.SetForegroundColour(wx.RED)
 
     def clean(self):
         self.textbox_description.Clear()
-        self.textbox_value.Clear()
-        self.textbox_value.SetValue(u"0,00")
+        self.textbox_value.SetValue(u"R$ 0,00")
+        self.calendar_date.SetDate(wx.DateTime_Now())
 
     def exit(self, event):
         self.Close()
 
     def end(self):
         description = self.textbox_description.GetValue().capitalize()
-        val = float(self.textbox_value.GetValue().replace(",", "."))
+        val = core.money2float(self.textbox_value.GetValue())
         if len(description) == 0 or val == 0:
-            a = wx.MessageDialog(self, u'Dados insuficientes!', u'Error 404', style=wx.OK | wx.ICON_ERROR)
-            a.ShowModal()
-            a.Destroy()
-            return
-        finish_time = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
-            datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
-        date = str(datetime.now().year) + "-" + core.good_show("o", str(datetime.now().month)) + "-" + core.good_show(
-            "o", str(datetime.now().day))
+            return dialogs.launch_error(self, u'Dados insulficientes')
+        date, finish_time = core.datetime_today()
 
-        data = data_types.ExpenseData()
+        wx_date = self.calendar_date.GetDate()
+        transaction_date = u'%i-%s-%i' % (wx_date.GetYear(), core.good_show('o', str(wx_date.GetMonth() + 1)),
+                                          wx_date.GetDay())
+
+        data = data_types.TransactionData()
         data.ID = self.key
         data.description = description
         data.value = val
         data.record_date = date
         data.record_time = finish_time
+        data.transaction_date = transaction_date
+        data.type = self.transaction_type
+        data.payment_pendant = not self.checkbox_payed.GetValue()
 
         db = database.TransactionsDB()
         if self.key == -1:
-            db.insert_expense(data)
+            db.insert_transaction(data)
         else:
-            db.edit_expense(data)
+            db.edit_transaction(data)
         db.close()
+
+        parent = self.GetParent()
+        if isinstance(parent, monthly_report.Report):
+            funcs = {
+                EXPENSE: parent.setup_monthly_expenses,
+                INCOME: parent.setup_monthly_incomes
+            }
+            setup = funcs[self.transaction_type]
+            setup(None)
 
         if self.key == -1:
             self.clean()
-            dialogs.Confirmation(self, u"Sucesso", 2)
-            return
+            confirmation_option = -1
+            if self.transaction_type is EXPENSE:
+                confirmation_option = 2
+            elif self.transaction_type is INCOME:
+                confirmation_option = 7
+            dialogs.Confirmation(self, u"Sucesso", confirmation_option)
 
-        parent = self.GetParent()
-        if isinstance(parent, daily_report.Report):
-            parent.setup(None)
+        else:
             self.exit(None)
