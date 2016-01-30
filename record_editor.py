@@ -1,23 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
-import shelve
-import shutil
 import threading
-import time
 
 import wx
 import wx.gizmos
+from wx.lib.buttons import GenBitmapTextButton
 
 import core
 import dialogs
+import data_types
+import database
 
 __author__ = 'Julio'
 
 
 class EditionManager(wx.Frame):
     combobox_day_option = None
+    combobox_month_option = None
     combobox_entry_type = None
 
     list_edited_data = None
@@ -38,7 +38,7 @@ class EditionManager(wx.Frame):
         self.setup_gui()
 
         self.setup_options()
-        self.setup(None)
+        self.data_update(None)
         self.Show()
 
     def setup_gui(self):
@@ -50,16 +50,25 @@ class EditionManager(wx.Frame):
                                                        style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE |
                                                        wx.TR_FULL_ROW_HIGHLIGHT)
         self.list_edited_data.AddColumn(u"Horário", width=120)
-        self.list_edited_data.AddColumn(u"Tipo de mud.", width=95)
-        self.list_edited_data.AddColumn(u"Tipo de reg.", width=90)
+        self.list_edited_data.AddColumn(u"ID", width=95)
         self.list_edited_data.AddColumn(u"Descrição", width=210)
         self.list_edited_data.AddColumn(u"Quantidade", width=90)
         self.list_edited_data.AddColumn(u"Valor", width=100)
         self.list_edited_data.SetMainColumn(0)
+        self.list_edited_data.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.process_click)
+
         self.panel_control = wx.Panel(self, -1, size=(240, 380), pos=(750, 10),
                                       style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
         wx.StaticText(self.panel_control, -1, u"Registros de", pos=(5, 80))
-        rec = wx.Button(self.panel_control, -1, u"Recuperar registro", pos=(5, 200))
+
+        see = GenBitmapTextButton(self.panel_control, -1,
+                                  wx.Bitmap(core.directory_paths['icons'] + 'Report.png', wx.BITMAP_TYPE_PNG),
+                                  u"Ver mais sobre o registro", pos=(5, 180), size=(230, 50), style=wx.SIMPLE_BORDER)
+        see.Bind(wx.EVT_BUTTON, self.process_click)
+
+        rec = GenBitmapTextButton(self.panel_control, -1,
+                                  wx.Bitmap(core.directory_paths['icons'] + 'Reset.png', wx.BITMAP_TYPE_PNG),
+                                  u"Recuperar registro", pos=(5, 230), size=(230, 50), style=wx.SIMPLE_BORDER)
         rec.Bind(wx.EVT_BUTTON, self.ask_remove)
 
     def setup(self, event):
@@ -68,161 +77,267 @@ class EditionManager(wx.Frame):
         two.start()
 
     def setup_options(self):
-        self.day_options = []
-        self.days_files = []
-        for root, dirs, files in os.walk(core.directory_paths['saves']):
-            if root != core.directory_paths['saves']:
-                break
-            files.sort()
-            files.reverse()
-            for i in files:
-                try:
-                    if len(str(int(i.replace("-", '').replace(".txt", "")))) == 8:
-                        ab = i[8:10]
-                        ab = ab + "/" + i[5:7]
-                        ab = ab + "/" + i[0:4]
-                        self.day_options.append(ab)
-                        self.days_files.append(i)
-                except ValueError:
-                    pass
-        self.combobox_day_option = wx.ComboBox(self.panel_control, -1, choices=self.day_options, size=(130, -1),
-                                               pos=(5, 100), style=wx.CB_READONLY)
-        self.combobox_day_option.Bind(wx.EVT_COMBOBOX, self.setup)
-        self.combobox_day_option.Bind(wx.EVT_TEXT_ENTER, self.setup)
-        if len(self.day_options) != 0 and self.record_date == "":
-            self.combobox_day_option.SetValue(self.day_options[0])
-        elif self.record_date != "":
-            self.combobox_day_option.SetValue(self.record_date)
-        entry_types = [u'Gastos, Vendas e Desperdícios', u'Produtos e Clientes']
+        db = database.TransactionsDB()
+        record_dates = db.list_record_dates(deleted=True)
+        transactions_dates = db.list_transactions_dates(deleted=True)
+        db.close()
+
+        day_options = core.convert_list(record_dates, core.format_date_user)
+        month_options = list()
+        for date in transactions_dates:
+            month = core.format_date_user(date[:-3])
+            if month not in month_options:
+                month_options.append(month)
+
+        entry_types = [u'Gastos, Vendas e Desperdícios', u'Clientes, Produtos e Categorias', u'Transações e Categorias']
+
         self.combobox_entry_type = wx.ComboBox(self.panel_control, choices=entry_types, size=(230, -1), pos=(5, 30),
                                                style=wx.CB_READONLY | wx.TE_MULTILINE)
-        self.combobox_entry_type.SetValue(entry_types[0])
         self.combobox_entry_type.Bind(wx.EVT_COMBOBOX, self.data_update)
-        self.combobox_entry_type.Bind(wx.EVT_TEXT_ENTER, self.data_update)
+
+        self.combobox_month_option = wx.ComboBox(self.panel_control, -1, choices=month_options, size=(130, -1),
+                                                 pos=(5, 100), style=wx.CB_READONLY)
+        self.combobox_month_option.Bind(wx.EVT_COMBOBOX, self.setup)
+
+        self.combobox_day_option = wx.ComboBox(self.panel_control, -1, choices=day_options, size=(130, -1),
+                                               pos=(5, 100), style=wx.CB_READONLY)
+        self.combobox_day_option.Bind(wx.EVT_COMBOBOX, self.setup)
+
+        self.combobox_entry_type.SetSelection(1)
+        if len(month_options):
+            self.combobox_month_option.SetSelection(0)
+        if len(day_options):
+            self.combobox_day_option.SetSelection(0)
+            self.combobox_entry_type.SetSelection(0)
 
     def data_update(self, event):
         char = self.combobox_entry_type.GetSelection()
         if char == 0:
             self.combobox_day_option.Enable()
-            self.setup(None)
+            self.combobox_month_option.Hide()
+            self.combobox_day_option.Show()
         elif char == 1:
             self.combobox_day_option.Disable()
-            self.setup(None)
+            self.combobox_month_option.Disable()
+        elif char == 2:
+            self.combobox_month_option.Enable()
+            self.combobox_day_option.Hide()
+            self.combobox_month_option.Show()
+        self.setup(None)
 
     def __setup__(self):
-        if str(self.combobox_day_option.GetValue()) != '' and self.combobox_entry_type.GetSelection() == 0:
-            self.clean()
-            self.file_name = self.days_files[self.day_options.index(self.combobox_day_option.GetValue())]
-            day_data = shelve.open(core.directory_paths['saves'] + self.file_name)
-            red = day_data["edit"]
-            goal = self.list_edited_data.AddRoot(self.combobox_day_option.GetValue())
-            self.list_edited_data.SetItemText(goal, u"Registros modificados", 3)
-            count = 0
-            for i in red:
-                count += 1
-                a = self.list_edited_data.AppendItem(goal, i)
-                self.list_edited_data.SetItemFont(a, wx.Font(9, wx.SWISS, wx.NORMAL, wx.BOLD))
-                if red[i]['mode'] == 1:
-                    self.list_edited_data.SetItemText(a, u"Editado", 1)
-                elif red[i]['mode'] == 2:
-                    self.list_edited_data.SetItemText(a, u"Apagado", 1)
-                if len(red[i]) == 6:
-                    self.list_edited_data.SetItemText(a, u"Gasto", 2)
-                    self.list_edited_data.SetItemText(a, red[i]['description'], 3)
-                    self.list_edited_data.SetItemText(a, ("R$ " + core.good_show("money",
-                                                      str(red[i]['value']).replace('.', ','))), 5)
-                elif len(red[i]) == 8:
-                    self.list_edited_data.SetItemText(a, u"Desperdício", 2)
-                    self.list_edited_data.SetItemText(a, red[i]['description'], 3)
-                    self.list_edited_data.SetItemText(a, str(red[i]['amount']), 4)
-                    self.list_edited_data.SetItemText(a, ("R$ " + core.good_show("money",
-                                                      str(red[i]['value']).replace('.', ','))), 5)
-                else:
-                    self.list_edited_data.SetItemText(a, u"Venda", 2)
-                    self.list_edited_data.SetItemText(a, red[i]['time'], 3)
-                    count2 = 0
-                    val = 0
-                    for x in red[i]['descriptions']:
-                        p = red[i]['descriptions'].index(x)
-                        ver = float(red[i]['prices'][p])
-                        count2 += 1
-                        val += ver
-                        b = self.list_edited_data.AppendItem(a, "---------------")
-                        self.list_edited_data.SetItemText(b, x, 3)
-                        self.list_edited_data.SetItemText(b, str(red[i]['amounts'][p]), 4)
-                        self.list_edited_data.SetItemText(b,
-                                                          ("R$ " + core.good_show("money", str(ver)).replace('.', ',')),
-                                                          5)
-                    if red[i]['discount'] != 0:
-                        ver = float(red[i]['discount'])
-                        val -= ver
-                        b = self.list_edited_data.AppendItem(a, "---------------")
-                        self.list_edited_data.SetItemText(b, u'Desconto', 3)
-                        self.list_edited_data.SetItemText(b,
-                                                          ("R$ " + core.good_show("money", str(ver))).replace(".", ","),
-                                                          5)
-                    if red[i]['tax'] != 0:
-                        ver = float(red[i]['tax'])
-                        val += ver
-                        b = self.list_edited_data.AppendItem(a, "---------------")
-                        self.list_edited_data.SetItemText(b, u'Taxas adicionais', 3)
-                        self.list_edited_data.SetItemText(b,
-                                                          ("R$ " + core.good_show("money", str(ver))).replace(".", ","),
-                                                          5)
-                    self.list_edited_data.SetItemText(a, str(count2), 4)
-                    self.list_edited_data.SetItemText(a, ("R$ " + core.good_show("money", str(val)).replace('.', ',')),
-                                                      5)
-            self.list_edited_data.SetItemText(goal, str(count), 4)
-            self.list_edited_data.Expand(goal)
-            self.list_edited_data.SetItemFont(goal, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
-            day_data.close()
-        elif str(self.combobox_day_option.GetValue()) != '' and self.combobox_entry_type.GetSelection() == 1:
-            self.clean()
-            modified_entries = []
-            for root, dirs, files in os.walk('#Trash'):
-                hu = root.split('\\')
-                if len(hu) == 5:
-                    modified_entries.append(root)
-            dict_modified_entries = {}
-            for g in modified_entries:
-                s = g.split('\\')
-                e1 = s[4].split('_')
-                e2 = e1[0].split('-')
-                date = e2[2] + '/' + e2[1] + '/' + e2[0]
-                pcid = s[3]
-                if s[2] == 'edited':
-                    done = u'Editado'
-                elif s[2] == 'deleted':
-                    done = u'Apagado'
-                if s[1] == 'clients':
-                    kind = u'Cliente'
-                elif s[1] == 'products':
-                    kind = u'Produto'
-                if date in dict_modified_entries:
-                    hj = dict_modified_entries[date]
-                    hj.append([time, pcid, done, kind, g])
-                    dict_modified_entries[date] = hj
-                else:
-                    dict_modified_entries[date] = [[time, pcid, done, kind, g]]
-            root = self.list_edited_data.AddRoot(u'---------')
-            self.list_edited_data.SetItemText(root, u'Registros Modificados', 3)
-            self.list_edited_data.SetItemFont(root, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
-            count = 0
-            for a in dict_modified_entries:
-                count2 = 0
-                sec = self.list_edited_data.AppendItem(root, a)
-                self.list_edited_data.SetItemFont(sec, wx.Font(9, wx.SWISS, wx.NORMAL, wx.BOLD))
-                for w in dict_modified_entries[a]:
-                    count += 1
-                    count2 += 1
-                    ter = self.list_edited_data.AppendItem(sec, w[0])
-                    self.list_edited_data.SetItemText(ter, w[3], 2)
-                    self.list_edited_data.SetItemText(ter, w[2], 1)
-                    self.list_edited_data.SetItemText(ter, w[1], 3)
-                self.list_edited_data.SetItemText(sec, str(count2), 4)
-            self.list_edited_data.SetItemText(root, str(count), 4)
-            self.dict_modified_entries = dict_modified_entries
-            self.list_edited_data.ExpandAll(root)
+        self.clean()
+        entry_selection = self.combobox_entry_type.GetSelection()
+        if entry_selection == 0 and self.combobox_day_option.GetValue():
+            self.setup_selection_0()
+        elif entry_selection == 1:
+            self.setup_selection_1()
+        elif entry_selection == 2 and self.combobox_month_option.GetValue():
+            self.setup_selection_2()
+
+    def setup_selection_0(self):
+        date_user = self.combobox_day_option.GetValue()
+        date = core.format_date_internal(date_user)
+        main_root = self.list_edited_data.AddRoot(date_user)
+        self.list_edited_data.SetItemText(main_root, u"Registros Apagados", 2)
+
+        db = database.TransactionsDB()
+        sales = db.daily_sales_list(date, deleted=True)
+        expenses = db.daily_expenses_list(date, deleted=True)
+        wastes = db.daily_wastes_list(date, deleted=True)
+        db.close()
+
+        sales_counter = len(sales)
+        expenses_counter = len(expenses)
+        wastes_counter = len(wastes)
+
+        value = 0.0
+        sales_root = self.list_edited_data.AppendItem(main_root, u"---------")
+        self.list_edited_data.SetItemText(sales_root, u"Vendas", 2)
+        self.list_edited_data.SetItemText(sales_root, str(sales_counter), 3)
+        self.list_edited_data.SetItemFont(sales_root, wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
+        for data in sales:
+            value += data.value
+
+            item = self.list_edited_data.AppendItem(sales_root, data.record_time)
+            self.list_edited_data.SetItemFont(item, wx.Font(9, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+            self.list_edited_data.SetItemText(item, core.format_id_user(data.ID), 1)
+            self.list_edited_data.SetItemText(item, str(len(data.products_IDs)), 3)
+            self.list_edited_data.SetItemText(item, core.format_cash_user(data.value, currency=True), 4)
+
+            self.list_edited_data.SetItemData(item, wx.TreeItemData(data))
+            for i in range(len(data.products_IDs)):
+                price = data.amounts[i] * data.prices[i]
+                product = self.list_edited_data.AppendItem(item, u"---------")
+                self.list_edited_data.SetItemText(product, core.format_id_user(data.products_IDs[i]), 1)
+                self.list_edited_data.SetItemText(product, core.format_amount_user(data.amounts[i]), 3)
+                self.list_edited_data.SetItemText(product, core.format_cash_user(price, currency=True), 4)
+
+            if data.discount != 0:
+                extra = self.list_edited_data.AppendItem(item, u"---------")
+                self.list_edited_data.SetItemText(extra, u'Desconto', 2)
+                self.list_edited_data.SetItemText(extra, core.format_cash_user(data.discount, currency=True), 4)
+            if data.taxes != 0:
+                extra = self.list_edited_data.AppendItem(item, u"---------")
+                self.list_edited_data.SetItemText(extra, u'Taixas adicionais', 2)
+                self.list_edited_data.SetItemText(extra, core.format_cash_user(data.discount, currency=True), 4)
+
+        self.list_edited_data.SetItemText(sales_root, core.format_cash_user(value, currency=True), 4)
+
+        value = 0.0
+        expenses_root = self.list_edited_data.AppendItem(main_root, u"---------")
+        self.list_edited_data.SetItemText(expenses_root, u"Gastos", 2)
+        self.list_edited_data.SetItemText(expenses_root, str(expenses_counter), 3)
+        self.list_edited_data.SetItemFont(expenses_root, wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
+        for data in expenses:
+            value += data.value
+
+            item = self.list_edited_data.AppendItem(expenses_root, data.record_time)
+            self.list_edited_data.SetItemFont(item, wx.Font(9, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+            self.list_edited_data.SetItemText(item, core.format_id_user(data.ID), 1)
+            self.list_edited_data.SetItemText(item, data.description, 2)
+            self.list_edited_data.SetItemText(item, core.format_cash_user(data.value, currency=True), 4)
+
+            self.list_edited_data.SetItemData(item, wx.TreeItemData(data))
+
+        self.list_edited_data.SetItemText(expenses_root, core.format_cash_user(value, currency=True), 4)
+
+        wastes_root = self.list_edited_data.AppendItem(main_root, u"---------")
+        self.list_edited_data.SetItemText(wastes_root, u"Desperdícios", 2)
+        self.list_edited_data.SetItemText(wastes_root, str(expenses_counter), 3)
+        self.list_edited_data.SetItemFont(wastes_root, wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
+        for data in wastes:
+
+            item = self.list_edited_data.AppendItem(wastes_root, data.record_time)
+            self.list_edited_data.SetItemFont(item, wx.Font(9, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+            self.list_edited_data.SetItemText(item, core.format_id_user(data.ID), 1)
+            self.list_edited_data.SetItemText(item, core.format_id_user(data.product_ID), 2)
+            self.list_edited_data.SetItemText(item, core.format_amount_user(data.amount), 3)
+
+            self.list_edited_data.SetItemData(item, wx.TreeItemData(data))
+
+        self.list_edited_data.SetItemText(main_root, str(sales_counter + wastes_counter + expenses_counter), 3)
+        self.list_edited_data.Expand(main_root)
+        self.list_edited_data.SetItemFont(main_root, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+    def setup_selection_1(self):
+        main_root = self.list_edited_data.AddRoot(u"---------")
+        self.list_edited_data.SetItemText(main_root, u"Registros Apagados", 2)
+
+        db = database.InventoryDB()
+        products = db.product_list(deleted=True)
+        categories = db.categories_list(deleted=True)
+        db.close()
+
+        db = database.ClientsDB()
+        clients = db.clients_list(deleted=True)
+        db.close()
+
+        clients_counter = len(clients)
+        products_counter = len(products)
+        categories_counter = len(categories)
+
+        clients_root = self.list_edited_data.AppendItem(main_root, u"---------")
+        self.list_edited_data.SetItemText(clients_root, u"Clientes", 2)
+        self.list_edited_data.SetItemText(clients_root, str(clients_counter), 3)
+        self.list_edited_data.SetItemFont(clients_root, wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
+        for data in clients:
+
+            item = self.list_edited_data.AppendItem(clients_root, u"---------")
+            self.list_edited_data.SetItemFont(item, wx.Font(9, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+            self.list_edited_data.SetItemText(item, core.format_id_user(data.ID), 1)
+            self.list_edited_data.SetItemText(item, data.name, 2)
+
+            self.list_edited_data.SetItemData(item, wx.TreeItemData(data))
+
+        products_root = self.list_edited_data.AppendItem(main_root, u"---------")
+        self.list_edited_data.SetItemText(products_root, u"Produtos", 2)
+        self.list_edited_data.SetItemText(products_root, str(products_counter), 3)
+        self.list_edited_data.SetItemFont(products_root, wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
+        for data in products:
+
+            item = self.list_edited_data.AppendItem(products_root, u"---------")
+            self.list_edited_data.SetItemFont(item, wx.Font(9, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+            self.list_edited_data.SetItemText(item, core.format_id_user(data.ID), 1)
+            self.list_edited_data.SetItemText(item, data.description, 2)
+            self.list_edited_data.SetItemText(item, core.format_amount_user(data.amount), 3)
+            self.list_edited_data.SetItemText(item, core.format_cash_user(data.price, currency=True), 4)
+
+            self.list_edited_data.SetItemData(item, wx.TreeItemData(data))
+
+        categories_root = self.list_edited_data.AppendItem(main_root, u"---------")
+        self.list_edited_data.SetItemText(categories_root, u"Categorias", 2)
+        self.list_edited_data.SetItemText(categories_root, str(categories_counter), 3)
+        self.list_edited_data.SetItemFont(categories_root, wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
+        for data in categories:
+
+            item = self.list_edited_data.AppendItem(categories_root, u"---------")
+            self.list_edited_data.SetItemFont(item, wx.Font(9, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+            self.list_edited_data.SetItemText(item, core.format_id_user(data.ID), 1)
+            self.list_edited_data.SetItemText(item, data.category, 2)
+
+            self.list_edited_data.SetItemData(item, wx.TreeItemData(data))
+
+        self.list_edited_data.SetItemFont(main_root, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
+        self.list_edited_data.SetItemText(main_root, str(categories_counter + products_counter + clients_counter), 3)
+        self.list_edited_data.Expand(main_root)
+
+    def setup_selection_2(self):
+        month_user = self.combobox_month_option.GetValue()
+        date = core.format_date_internal(month_user)
+        main_root = self.list_edited_data.AddRoot(month_user)
+        self.list_edited_data.SetItemText(main_root, u"Registros Apagados", 2)
+
+        db = database.TransactionsDB()
+        transactions = db.monthly_transactions_list(date, deleted=True)
+        db.close()
+
+        incomes_counter = 0
+        expenses_counter = 0
+
+        expenses_value = 0.0
+        expenses_root = self.list_edited_data.AppendItem(main_root, u"---------")
+        self.list_edited_data.SetItemText(expenses_root, u"Gastos", 2)
+        self.list_edited_data.SetItemText(expenses_root, str(expenses_counter), 3)
+        self.list_edited_data.SetItemFont(expenses_root, wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+        incomes_value = 0.0
+        income_root = self.list_edited_data.AppendItem(main_root, u"---------")
+        self.list_edited_data.SetItemText(income_root, u"Entrada", 2)
+        self.list_edited_data.SetItemText(income_root, str(expenses_counter), 3)
+        self.list_edited_data.SetItemFont(income_root, wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
+        for data in transactions:
+            if data.type == data_types.EXPENSE:
+                parent = expenses_root
+                expenses_counter += 1
+                expenses_value += data.value
+            elif data.type == data_types.INCOME:
+                parent = income_root
+                incomes_counter += 1
+                incomes_value += data.value
+            else:
+                parent = main_root
+
+            item = self.list_edited_data.AppendItem(parent, data.transaction_date)
+            self.list_edited_data.SetItemFont(item, wx.Font(9, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+            self.list_edited_data.SetItemText(item, core.format_id_user(data.ID), 1)
+            self.list_edited_data.SetItemText(item, data.description, 2)
+            self.list_edited_data.SetItemText(item, core.format_cash_user(data.value, currency=True), 4)
+            self.list_edited_data.SetItemData(item, wx.TreeItemData(data))
+
+        self.list_edited_data.SetItemText(income_root, core.format_cash_user(incomes_value, currency=True), 4)
+        self.list_edited_data.SetItemText(expenses_root, core.format_cash_user(expenses_value, currency=True), 4)
+
+        self.list_edited_data.SetItemText(main_root, str(incomes_counter + expenses_counter), 3)
+        self.list_edited_data.Expand(main_root)
+        self.list_edited_data.SetItemFont(main_root, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
 
     def ask_remove(self, event):
         boom = self.list_edited_data.GetSelection()
@@ -231,76 +346,75 @@ class EditionManager(wx.Frame):
             return
         dialogs.Ask(self, u"Restauração", 30)
 
-    def delete(self, event):
-        boom = self.list_edited_data.GetSelection()
-        atom = str(self.list_edited_data.GetItemText(boom, 2))
-        key2 = str(self.list_edited_data.GetItemText(boom, 0))
-        if boom == self.list_edited_data.GetRootItem() or len(key2) == 10:
+    def delete(self):
+        item = self.list_edited_data.GetSelection()
+        tree_data = self.list_edited_data.GetItemData(item)
+        if not tree_data:
             return
-        if len(atom) == 0:
-            boom = self.list_edited_data.GetItemParent(boom)
-            atom = str(self.list_edited_data.GetItemText(boom, 2))
-            key2 = str(self.list_edited_data.GetItemText(boom, 0))
-        if self.combobox_entry_type.GetSelection() == 0:
-            day_data = shelve.open(core.directory_paths['saves'] + self.file_name, writeback=True)
-            if atom == u"Venda":
-                key = day_data["edit"][key2]['key']
-                tor = day_data["edit"][key2]
-                del tor['mode']
-                ckey = day_data['edit'][key2]['client_id']
-                if ckey in os.listdir('clients'):
-                    try:
-                        h = shelve.open(core.directory_paths['clients'] + ckey + core.slash + ckey + '_deals.txt',
-                                        writeback=True)
-                        r = str(self.file_name[:10] + '_' + day_data['edit'][key2]['time'].replace(':', '-'))
-                        h[r] = tor
-                        h.close()
-                    except KeyError:
-                        shutil.rmtree(core.directory_paths['clients'] + ckey + core.slash + ckey + '_deals.txt')
-                del tor['key']
-                day_data["sales"][key] = tor
-                hair = day_data["edit"]
-                del hair[key2]
-                day_data["edit"] = hair
-                day_data.close()
-                self.setup(1)
-                return
-            elif atom == u"Gasto":
-                key = day_data["edit"][key2]['key']
-                rt = day_data["edit"][key2]
-                del rt['key']
-                del rt['mode']
-                day_data["spent"][key] = rt
-                hair = day_data["edit"]
-                del hair[key2]
-                day_data["edit"] = hair
-                day_data.close()
-                self.setup(1)
-                return
-            elif atom == u"Desperdício":
-                key = day_data["edit"][key2]['key']
-                mn = day_data["edit"][key2]
-                del mn['key']
-                del mn['mode']
-                day_data["wastes"][key] = mn
-                hair = day_data["edit"]
-                del hair[key2]
-                day_data["edit"] = hair
-                day_data.close()
-                self.setup(1)
-                return
-        elif self.combobox_entry_type.GetSelection() == 1:
-            for i in self.dict_modified_entries:
-                for x in self.dict_modified_entries[i]:
-                    if x[0] == key2:
-                        s = x[4].split('\\')
-                        y = s[1] + '/' + s[3]
-                        if os.path.exists(y):
-                            shutil.rmtree(y)
-                        shutil.copytree(x[4], y)
-                        shutil.rmtree(x[4])
-                        self.setup(1)
-                        return
+        data = tree_data.GetData()
+
+        _type_ = None
+
+        if isinstance(data, data_types.SaleData):
+            _type_ = data_types.SaleData
+        elif isinstance(data, data_types.ExpenseData):
+            _type_ = data_types.ExpenseData
+        elif isinstance(data, data_types.WasteData):
+            _type_ = data_types.WasteData
+        elif isinstance(data, data_types.ClientData):
+            _type_ = data_types.ClientData
+        elif isinstance(data, data_types.ProductData):
+            _type_ = data_types.ProductData
+        elif isinstance(data, data_types.ProductCategoryData):
+            _type_ = data_types.ProductCategoryData
+        elif isinstance(data, data_types.TransactionData):
+            _type_ = data_types.TransactionData
+
+        db_functions = {
+            data_types.SaleData: (database.TransactionsDB, database.TransactionsDB.delete_sale),
+            data_types.ExpenseData: (database.TransactionsDB, database.TransactionsDB.delete_expense),
+            data_types.WasteData: (database.TransactionsDB, database.TransactionsDB.delete_waste),
+            data_types.ClientData: (database.ClientsDB, database.ClientsDB.delete_client),
+            data_types.ProductData: (database.InventoryDB, database.InventoryDB.delete_product),
+            data_types.ProductCategoryData: (database.InventoryDB, database.InventoryDB.delete_category)
+        }
+
+        general_database, delete_function = db_functions.get(_type_)
+
+        db = general_database()
+        delete_function(db, data.ID, undo=not data.active)
+        db.close()
+        self.setup(None)
+
+    def process_click(self, event):
+        selection = self.list_edited_data.GetSelection()
+        tree_data = self.list_edited_data.GetItemData(selection)
+        if not tree_data:
+            event.Skip()
+            return
+        data = tree_data.GetData()
+
+        if isinstance(data, data_types.SaleData):
+            import sale
+            sale.Sale(self, data=data, editable=False)
+        elif isinstance(data, data_types.ProductData):
+            import inventory
+            inventory.ProductData(self, data.description, data=data, editable=False)
+        elif isinstance(data, data_types.ProductCategoryData):
+            import categories
+            categories.ProductCategoryData(self, data=data)
+        elif isinstance(data, data_types.WasteData):
+            import waste
+            waste.Waste(self, data=data)
+        elif isinstance(data, data_types.ExpenseData):
+            import expense
+            expense.Expense(self, data=data)
+        elif isinstance(data, data_types.TransactionData):
+            import transaction
+            transaction.Transaction(self, transaction_type=data.type, data=data)
+        elif isinstance(data, data_types.ClientData):
+            import clients
+            clients.ClientData(self, data.name, data.ID, data=data, editable=False)
 
     def clean(self):
         self.list_edited_data.DeleteAllItems()
