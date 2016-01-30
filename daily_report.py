@@ -346,18 +346,15 @@ class Report(wx.Frame):
 
                 self.list_sales.SetItemData(sold, wx.TreeItemData(sale_item))
 
-                try:
-                    for i in range(len(sale_item.products_IDs)):
-                        product_id = sale_item.products_IDs[i]
-                        product = inventory_db.inventory_search_id(product_id)
+                for i in range(len(sale_item.products_IDs)):
+                    product_id = sale_item.products_IDs[i]
+                    product = inventory_db.inventory_search_id(int(product_id))
 
-                        a = self.list_sales.AppendItem(sold, product.description)
-                        self.list_sales.SetItemText(a, str(sale_item.amounts[i]), 1)
-                        self.list_sales.SetItemText(a, "R$ " + core.good_show("money", sale_item.prices[i]), 3)
+                    a = self.list_sales.AppendItem(sold, product.description)
+                    self.list_sales.SetItemText(a, str(sale_item.amounts[i]), 1)
+                    self.list_sales.SetItemText(a, core.format_cash_user(sale_item.prices[i], currency=True), 3)
 
-                        self.list_sales.SetItemData(a, wx.TreeItemData(product))
-                except ValueError:
-                    pass
+                    self.list_sales.SetItemData(a, wx.TreeItemData(product))
                 if sale_item.discount:
                     web = self.list_sales.AppendItem(sold, u"Desconto")
                     self.list_sales.SetItemText(web, "R$ " + core.good_show("money", sale_item.discount), 3)

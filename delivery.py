@@ -123,7 +123,7 @@ class DeliveryManager(wx.Frame):
         deliveries_db.close()
 
         if not delivery_data.active:
-            self.list_deliveries.SetItemTextColour(red, '#ADADAD')
+            self.list_deliveries.SetItemTextColour(red, core.COLOR_LIST_ITEM_DISABLED)
         else:
             self.list_deliveries.SetItemTextColour(red, wx.BLACK)
 
