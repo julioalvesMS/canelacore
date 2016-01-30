@@ -432,10 +432,10 @@ class BaseTray(wx.TaskBarIcon):
         inventory.ProductRegister(self.frame)
 
     def open_new_category(self, event):
-        categories.CategoryData(self.frame)
+        categories.ProductCategoryData(self.frame)
 
     def open_category_manager(self, event):
-        categories.CategoryManager(self.frame)
+        categories.ProductCategoryManager(self.frame)
 
     def open_update_inventory(self, event):
         inventory.UpdateInventory(self.frame)

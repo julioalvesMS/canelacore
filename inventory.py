@@ -125,16 +125,17 @@ class InventoryManager(wx.Frame):
         for product in inventory:
             self.list_products.Append((product.description, product.ID,
                                        db.categories_search_id(product.category_ID).category,
-                                       'R$ ' + core.good_show('money', product.price), product.amount, product.sold))
+                                       core.format_cash_user(product.price, currency=True),
+                                       core.format_amount_user(product.amount), product.sold))
         db.close()
 
-    def data_delete(self, event):   # TODO Fazer os dados não serem apagados permanentemente
+    def data_delete(self, event):
         it = self.list_products.GetFocusedItem()
         if it == -1:
             return
         e_id = self.list_products.GetItem(it, 1).GetText()
         db = database.InventoryDB()
-        db.delete_product(e_id)
+        db.delete_product(int(e_id))
         db.close()
         self.setup(None)
 
@@ -162,7 +163,7 @@ class InventoryManager(wx.Frame):
         for product in inventory:
             self.list_products.Append((product.description, product.ID,
                                        db.categories_search_id(product.category_ID).category,
-                                       'R$ ' + core.good_show('money', product.price), product.amount, product.sold))
+                                       core.format_cash_user(product.price, True), product.amount, product.sold))
         db.close()
 
     def clean(self, event):
@@ -173,7 +174,7 @@ class InventoryManager(wx.Frame):
         dialogs.Ask(self, u'Apagar Produto', 25)
 
     def open_category_manager(self, event):
-        categories.CategoryManager(self)
+        categories.ProductCategoryManager(self)
 
     def open_new_product(self, event):
         ProductRegister(self)
@@ -273,7 +274,7 @@ class ProductRegister(wx.Frame):
             self.Close()
 
     def open_category_register(self, event):
-        categories.CategoryData(self)
+        categories.ProductCategoryData(self)
 
     def update_categories(self):
         db = database.InventoryDB()

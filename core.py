@@ -200,13 +200,18 @@ def format_cash_user(value, currency=False):
     return tex
 
 
-def format_amount_user(amount):
+def format_amount_user(amount, unit=None):
     """
     Prepara uma quantidade para ser mostrada para o usuario
+    :type unit: str
+    :param unit: Unidade
     :param amount: Quantidade de um produto
     :return:
     """
-    return str(amount).replace('.', ',')
+    amount_str = str(amount).replace('.', ',')
+    if unit:
+        amount_str = u'%s %s' % (amount_str, unit)
+    return amount_str
 
 
 def format_date_internal(date):
@@ -336,7 +341,7 @@ def check_currency(event):
     """
     check_money(event)
     box = event.GetEventObject()
-    box.SetValue('R$ ' + box.GetValue())
+    box.SetValue('R$ ' + box.GetValue().replace('R$ ', ''))
 
 
 def check_date(event):
@@ -575,12 +580,6 @@ def password_check(password):
 
 
 def setup_environment():
-    if not os.path.exists(directory_paths['saves']):
-        os.mkdir(directory_paths['saves'])
-    if not os.path.exists(directory_paths['inventory']):
-        os.mkdir(directory_paths['inventory'])
-    if not os.path.exists(directory_paths['clients']):
-        os.mkdir(directory_paths['clients'])
     if not os.path.exists(directory_paths['databases']):
         os.mkdir(directory_paths['databases'])
     if os.path.exists(directory_paths['temporary']):
@@ -625,16 +624,12 @@ current_dir = os.path.realpath(os.curdir) + slash
 directory_paths = {
     'backgrounds': current_dir + 'data' + slash + 'backgrounds' + slash,
     'icons': current_dir + 'data' + slash + 'icons' + slash,
-    'saves': current_dir + 'saves' + slash,
     'custom': current_dir + 'data' + slash + 'custom' + slash,
     'backups': current_dir + 'backup' + slash,
-    'clients': current_dir + 'clients' + slash,
-    'inventory': current_dir + 'inventory' + slash,
     'temporary': current_dir + '.temp' + slash,
     'trash': current_dir + '.trash' + slash,
     'preferences': current_dir + 'preferences' + slash,
-    'databases': current_dir + 'databases' + slash,
-    'sales': current_dir + 'databases' + slash + 'sales' + slash,
+    'databases': current_dir + 'databases' + slash
 }
 
 general_icon = current_dir + "bronze.ico"
@@ -646,3 +641,5 @@ default_disabled_color = '#C0C0C0'
 COLOR_LIGHT_BLUE = '#C2E6F8'
 COLOR_LIGHT_GREEN = '#6EFF70'
 COLOR_LIGHT_YELLOW = '#FFDF85'
+
+COLOR_LIST_ITEM_DISABLED = '#ADADAD'

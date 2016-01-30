@@ -18,4 +18,12 @@ Sistema para monitoramento de devedores
 Vendas programadas
 Testar uma novo cor para default background
 Nas tabelas do resumo mensal, separar os produtos por categorias
+Trocar os incones do programa
+dar um geito no bronze.ico
+
+::::Questões::::
+Marcar como pago automaticamente quando chegar a data?
+{
+    acho melhor não, talvez notificar
+}
 """

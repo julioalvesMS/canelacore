@@ -71,12 +71,12 @@ def database2category(database_list):
     :param database_list: lista obtidada do db contendo dados de uma categoria
     :type database_list: tuple
     :return: Objeto Categoria
-    :rtype: data_types.CategoryData
+    :rtype: data_types.ProductCategoryData
     """
     if not database_list:
         return None
 
-    data = data_types.CategoryData()
+    data = data_types.ProductCategoryData()
 
     data.ID = database_list[0]
     data.category = database_list[1]
@@ -187,7 +187,7 @@ class InventoryDB:
         """
         active = 1 if undo else 0
 
-        self.cursor.execute('UPDATE INVENTORY SET ACTIVE=? WHERE ID=?', (product_id, active))
+        self.cursor.execute('UPDATE INVENTORY SET ACTIVE=? WHERE ID=?', (active, product_id))
         self.db.commit()
 
     def delete_product_permanently(self, product_id):
@@ -247,22 +247,17 @@ class InventoryDB:
 
         return database2product(self.cursor.fetchone())
 
-    def inventory_search_id(self, product_id, show_all=False):
+    def inventory_search_id(self, product_id):
         """
         Busca o item com um ID especifico no BD
         :param product_id: ID do produto
-        :param show_all: Considerar as entradas apagadas
         :type product_id: int
-        :type show_all: bool
         :return: Dados do produto encontrado
         :rtype: data_types.ProductData
         """
 
         # Faz o BD mostrar apenas o item com um ID
-        if show_all:
-            self.cursor.execute("""SELECT * FROM INVENTORY WHERE ID=?""", (product_id, ))
-        else:
-            self.cursor.execute("""SELECT * FROM INVENTORY WHERE ACTIVE=1 AND ID=?""", (product_id, ))
+        self.cursor.execute("""SELECT * FROM INVENTORY WHERE ID=?""", (product_id, ))
         return database2product(self.cursor.fetchone())
 
     def inventory_search_description(self, description):
@@ -375,7 +370,7 @@ class InventoryDB:
         """
         Insere uma nova entrada no Banco de Dados de Produtos
         :param data: Dados da nova categoria
-        :type data: data_types.CategoryData
+        :type data: data_types.ProductCategoryData
         """
 
         # TODO buscar o imposto
@@ -392,7 +387,7 @@ class InventoryDB:
         """
         Insere uma nova entrada no Banco de Dados de Produtos
         :param data: Dados da nova categoria
-        :type data: data_types.CategoryData
+        :type data: data_types.ProductCategoryData
         """
 
         _data = (data.category, data.ncm, data.cfop, data.imposto, 1, data.ID)
@@ -413,7 +408,7 @@ class InventoryDB:
         """
         active = 1 if undo else 0
 
-        self.cursor.execute('UPDATE CATEGORIES SET ACTIVE=? WHERE ID=?', (category_id, active))
+        self.cursor.execute('UPDATE CATEGORIES SET ACTIVE=? WHERE ID=?', (active, category_id))
         self.db.commit()
 
     def delete_category_permanently(self, category_id):
@@ -431,7 +426,7 @@ class InventoryDB:
         Dada uma String busca por correspondecia por ids, categoria, e NCM
         :param info: String com o dado a ser buscado
         :return: List com todos as categorias compativeis com a busca
-        :rtype: list[data_types.CategoryData]
+        :rtype: list[data_types.ProductCategoryData]
         """
         # Lista para armazenar todos os produtos compativeis com a busca
         filtered_list = []
@@ -467,7 +462,7 @@ class InventoryDB:
         Dada uma String busca por correspondecia por ids, categoria, e NCM
         :param info: String com o dado a ser buscado
         :return: List com todos as categorias compativeis com a busca
-        :rtype: data_types.CategoryData
+        :rtype: data_types.ProductCategoryData
         """
         # Lista para armazenar todos os produtos compativeis com a busca
 
@@ -494,7 +489,7 @@ class InventoryDB:
         :type deleted: bool
         :param deleted: mostrar apenas as apagas ou apenas as ativas
         :return: Uma lista com todos os elementos do BD
-        :rtype: list[data_types.CategoryData]
+        :rtype: list[data_types.ProductCategoryData]
         """
         if deleted:
             self.cursor.execute("""SELECT * FROM CATEGORIES WHERE ACTIVE=0 ORDER BY CATEGORY""")
@@ -634,6 +629,14 @@ class ClientsDB:
         :param data: dados da nova entrada a ser inserido
         """
 
+        self.cursor.execute("""SELECT ID FROM SALES WHERE SALE=?""", (data.sale, ))
+
+        temp = self.cursor.fetchone()
+        if temp:
+            data.ID = temp[0]
+
+            return self.edit_sale(data)
+
         # Transfere os dados do dict mandado para um tuple
         _data = (data.client, data.sale, 1)
 
@@ -684,6 +687,18 @@ class ClientsDB:
         self.db.commit()
 
         data.active = True
+
+    def edit_client_last_sale(self, client_id, last_sale):
+        """
+        Permite alterar a data da ultima venda de um cliente
+        :param client_id: id do cliente
+        :param last_sale: data da ultima venda a ser registrada
+        :type client_id: int
+        :type last_sale: str
+        """
+
+        self.cursor.execute('UPDATE CLIENTS SET LAST_SALE=? WHERE ID=?', (last_sale, client_id))
+        self.db.commit()
 
     def delete_client(self, client_id, undo=False):
         """
@@ -817,7 +832,7 @@ class ClientsDB:
         :param show_all: Mostrar também as entradas apgadas
         :param client_id: id do cliente a ser buscado
         :return: dados da entrada com o id especificado
-        :rtype: data_types.ClientSaleData
+        :rtype: list[data_types.ClientSaleData]
         """
         if show_all:
             self.cursor.execute("""SELECT * FROM SALES WHERE CLIENT=?""", (client_id, ))
@@ -923,11 +938,12 @@ def database2sale(database_list):
     data.value = database_list[7]
     data.payment = database_list[8]
     data.client_cpf = database_list[9]
-    data.delivery = True if database_list[10] else False
-    data.record_time = database_list[11]
-    data.record_date = database_list[12]
-    data.payment_pendant = True if database_list[13] else False
-    data.active = True if database_list[14] else False
+    data.client_id = database_list[10]
+    data.delivery = True if database_list[11] else False
+    data.record_time = database_list[12]
+    data.record_date = database_list[13]
+    data.payment_pendant = True if database_list[14] else False
+    data.active = True if database_list[15] else False
 
     return data
 
@@ -1040,8 +1056,8 @@ class TransactionsDB:
         :rtype: None
         """
         self.cursor.execute('''CREATE TABLE SALES(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-            PRODUCTS TEXT NOT NULL, AMOUNTS TEXT NOT NULL, PRICES TEXT NOT NULL, SOLD REAL,
-            DISCOUNT REAL, TAXES REAL, VALUE REAL, PAYMENT TEXT, CLIENT_CPF CHAR(11), DELIVERY INTEGER,
+            PRODUCTS TEXT NOT NULL, AMOUNTS TEXT NOT NULL, PRICES TEXT NOT NULL, SOLD REAL, DISCOUNT REAL,
+            TAXES REAL, VALUE REAL, PAYMENT TEXT, CLIENT_CPF CHAR(11), CLIENT_ID INTEGER, DELIVERY INTEGER,
             RECORD_TIME CHAR(8) NOT NULL, RECORD_DATE CHAR(10) NOT NULL, PAYMENT_PENDANT INTEGER, ACTIVE INTEGER)''')
 
         self.cursor.execute('''CREATE TABLE EXPENSES(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
@@ -1071,13 +1087,13 @@ class TransactionsDB:
 
         # Transfere os dados recebidos para um tuple
         _data = (products_ids, amounts, prices, data.sold, data.discount,
-                 data.taxes, data.value, data.payment, data.client_cpf, 1 if data.delivery else 0,
+                 data.taxes, data.value, data.payment, data.client_cpf, data.client_id, 1 if data.delivery else 0,
                  data.record_time, data.record_date, 1 if data.payment_pendant else 0, 1)
 
         # Insere a nova venda no BD
         self.cursor.execute("""INSERT INTO SALES (PRODUCTS, AMOUNTS, PRICES, SOLD, DISCOUNT, TAXES, VALUE, PAYMENT,
-                            CLIENT_CPF, DELIVERY, RECORD_TIME, RECORD_DATE, PAYMENT_PENDANT, ACTIVE) VALUES
-                            (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", _data)
+                            CLIENT_CPF, CLIENT_ID, DELIVERY, RECORD_TIME, RECORD_DATE, PAYMENT_PENDANT, ACTIVE) VALUES
+                            (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", _data)
         self.db.commit()
 
         data.ID = self.cursor.lastrowid
@@ -1142,14 +1158,18 @@ class TransactionsDB:
         :type data: data_types.SaleData
         """
 
+        products_ids = ' '.join(core.convert_list(data.products_IDs, str))
+        amounts = ' '.join(core.convert_list(data.amounts, str))
+        prices = ' '.join(core.convert_list(data.prices, str))
+
         # Transfere os dados do dict mandado para um tuple
-        _data = (data.products_IDs, data.amounts, data.prices, data.sold, data.discount, data.taxes,
-                 data.value, data.payment, data.client_cpf, 1 if data.payment_pendant else 0, 1, data.ID)
+        _data = (products_ids, amounts, prices, data.sold, data.discount, data.taxes,
+                 data.value, data.payment, data.client_cpf, data.client_id, 1 if data.payment_pendant else 0, 1, data.ID)
 
         # Prepara a linha de comando
 
         cmd = 'UPDATE SALES SET PRODUCTS=?, AMOUNTS=?, PRICES=?, SOLD=?, DISCOUNT=?, TAXES=?, VALUE=?, PAYMENT=?, '
-        cmd += 'CLIENT_CPF=?, PAYMENT_PENDANT=?, ACTIVE=? WHERE ID=?'
+        cmd += 'CLIENT_CPF=?, CLIENT_ID=?, PAYMENT_PENDANT=?, ACTIVE=? WHERE ID=?'
 
         # Edita o produto no BD
         self.cursor.execute(cmd, _data)

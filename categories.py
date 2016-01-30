@@ -16,7 +16,7 @@ import data_types
 import inventory
 
 
-class CategoryManager(wx.Frame):
+class ProductCategoryManager(wx.Frame):
 
     list_categories = None
     textbox_filter = None
@@ -102,7 +102,7 @@ class CategoryManager(wx.Frame):
         self.textbox_filter.Clear()
 
     def open_new_category(self, event):
-        CategoryData(self)
+        ProductCategoryData(self)
 
     def ask_delete(self, event):
         dialogs.Ask(self, u"Apagar Categoria", 27)
@@ -122,24 +122,25 @@ class CategoryManager(wx.Frame):
             return 
         category_id = self.list_categories.GetItemText(category_index, 0)
         category_name = self.list_categories.GetItemText(category_index, 1)
-        CategoryData(self, category_name, category_id)
+        ProductCategoryData(self, category_name, category_id)
 
     def exit(self, event):
         self.Close()
 
 
-class CategoryData(wx.Frame):
+class ProductCategoryData(wx.Frame):
 
     textbox_description = None
     textbox_ncm = None
     combobox_cfop = None
     combobox_unit = None
 
-    def __init__(self, parent, title='Nova Categoria', category_id=-1):
+    def __init__(self, parent, title='Nova Categoria', category_id=-1, data=None):
         wx.Frame.__init__(self, parent, -1, title, size=(590, 200),
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN)
         
         self.category_id = category_id
+        self.data = data
         self.parent = parent
 
         self.setup_gui()
@@ -190,15 +191,18 @@ class CategoryData(wx.Frame):
         cancel.Bind(wx.EVT_BUTTON, self.ask_exit)
 
     def setup(self):
-        if self.category_id == -1:
+        if self.data:
+            self.category_id = self.data.ID
+        elif self.category_id != -1:
+            db = database.InventoryDB()
+            self.data = db.categories_search_id(self.category_id)
+            db.close()
+        else:
             return
-        db = database.InventoryDB()
-        data = db.categories_search_id(self.category_id)
-        self.textbox_description.SetValue(data.category)
-        self.textbox_ncm.SetValue(data.ncm)
-        self.combobox_cfop.SetSelection(core.cfop_values.index(data.cfop))
-        self.combobox_unit.SetValue(data.unit)
-        db.close()
+        self.textbox_description.SetValue(self.data.category)
+        self.textbox_ncm.SetValue(self.data.ncm)
+        self.combobox_cfop.SetSelection(core.cfop_values.index(self.data.cfop))
+        self.combobox_unit.SetValue(self.data.unit)
 
     def ask_clean(self, event):
         dialogs.Ask(self, u"Apagar Tudo", 1)
@@ -244,7 +248,7 @@ class CategoryData(wx.Frame):
 
         db = database.InventoryDB()
 
-        data = data_types.CategoryData()
+        data = data_types.ProductCategoryData()
         data.ncm = ncm
         data.cfop = cfop
         data.unit = unit

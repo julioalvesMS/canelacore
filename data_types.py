@@ -22,6 +22,7 @@ class SaleData:
     payment = None
 
     client_cpf = None
+    client_id = None
 
     delivery = False
 
@@ -142,7 +143,7 @@ class ProductData:
         pass
 
 
-class CategoryData:
+class ProductCategoryData:
 
     ID = -1
 
