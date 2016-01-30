@@ -2,15 +2,13 @@
 # -*- coding: utf-8 -*-
 
 import calendar
-import os
 import threading
-import time
-from datetime import datetime
 
 import wx
 import wx.gizmos
 from wx.lib.buttons import GenBitmapTextButton
 
+import categories
 import core
 import dialogs
 import transaction
@@ -39,11 +37,15 @@ class Report(wx.Frame):
     text_spent = None
     text_income = None
     text_wasted = None
+    text_income_pendant = None
+    text_expense_pendant = None
     text_daily_income = None
     text_credit_card_income = None
     text_better_week_day = None
     text_money_income = None
     text_worst_week_day = None
+    text_income_pendant_amount = None
+    text_expense_pendant_amount = None
 
     def __init__(self, parent, title=u"Resumo Mensal"):
         wx.Frame.__init__(self, parent, -1, title, size=(1200, 680),
@@ -57,16 +59,20 @@ class Report(wx.Frame):
         self.SetBackgroundColour(core.default_background_color)
         self.Centre()
         self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
-        part1 = wx.Panel(self, -1, pos=(10, 10), size=(1180, 280), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
-        self.text_profit = wx.TextCtrl(part1, -1, pos=(200, 70), size=(100, 30), style=wx.TE_READONLY)
-        self.text_spent = wx.TextCtrl(part1, -1, pos=(200, 125), size=(100, 30), style=wx.TE_READONLY)
-        self.text_income = wx.TextCtrl(part1, -1, pos=(200, 180), size=(100, 30), style=wx.TE_READONLY)
-        self.text_wasted = wx.TextCtrl(part1, -1, pos=(200, 235), size=(100, 30), style=wx.TE_READONLY)
-        self.text_daily_income = wx.TextCtrl(part1, -1, pos=(500, 15), size=(100, 30), style=wx.TE_READONLY)
-        self.text_credit_card_income = wx.TextCtrl(part1, -1, pos=(500, 70), size=(100, 30), style=wx.TE_READONLY)
-        self.text_money_income = wx.TextCtrl(part1, -1, pos=(500, 125), size=(100, 30), style=wx.TE_READONLY)
-        self.text_worst_week_day = wx.TextCtrl(part1, -1, pos=(500, 180), size=(100, 30), style=wx.TE_READONLY)
-        self.text_better_week_day = wx.TextCtrl(part1, -1, pos=(500, 235), size=(100, 30), style=wx.TE_READONLY)
+        part1 = wx.Panel(self, -1, pos=(10, 10), size=(1180, 290), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
+        self.text_profit = wx.TextCtrl(part1, -1, pos=(200, 50), size=(100, 30), style=wx.TE_READONLY)
+        self.text_income = wx.TextCtrl(part1, -1, pos=(200, 90), size=(100, 30), style=wx.TE_READONLY)
+        self.text_spent = wx.TextCtrl(part1, -1, pos=(200, 130), size=(100, 30), style=wx.TE_READONLY)
+        self.text_wasted = wx.TextCtrl(part1, -1, pos=(200, 170), size=(100, 30), style=wx.TE_READONLY)
+        self.text_income_pendant = wx.TextCtrl(part1, -1, pos=(200, 210), size=(100, 30), style=wx.TE_READONLY)
+        self.text_expense_pendant = wx.TextCtrl(part1, -1, pos=(200, 250), size=(100, 30), style=wx.TE_READONLY)
+        self.text_daily_income = wx.TextCtrl(part1, -1, pos=(500, 10), size=(100, 30), style=wx.TE_READONLY)
+        self.text_credit_card_income = wx.TextCtrl(part1, -1, pos=(500, 50), size=(100, 30), style=wx.TE_READONLY)
+        self.text_money_income = wx.TextCtrl(part1, -1, pos=(500, 90), size=(100, 30), style=wx.TE_READONLY)
+        self.text_worst_week_day = wx.TextCtrl(part1, -1, pos=(500, 130), size=(100, 30), style=wx.TE_READONLY)
+        self.text_better_week_day = wx.TextCtrl(part1, -1, pos=(500, 170), size=(100, 30), style=wx.TE_READONLY)
+        self.text_income_pendant_amount = wx.TextCtrl(part1, -1, pos=(500, 210), size=(100, 30), style=wx.TE_READONLY)
+        self.text_expense_pendant_amount = wx.TextCtrl(part1, -1, pos=(500, 250), size=(100, 30), style=wx.TE_READONLY)
         self.list_left = wx.ListCtrl(part1, -1, pos=(625, 30), size=(250, 240),
                                      style=wx.SIMPLE_BORDER | wx.LC_REPORT | wx.LC_HRULES | wx.LC_VRULES)
         self.list_right = wx.ListCtrl(part1, -1, pos=(900, 30), size=(250, 240),
@@ -77,24 +83,29 @@ class Report(wx.Frame):
         self.list_right.InsertColumn(3, u'Descrição')
         self.list_right.InsertColumn(4, u'Quantidade')
         self.list_right.InsertColumn(5, u'Valor')
-        wx.StaticText(part1, -1, u'Mês/Ano', pos=(10, 22))
-        wx.StaticText(part1, -1, u'Lucro do Mês', pos=(10, 77))
-        wx.StaticText(part1, -1, u'Total Gasto', pos=(10, 132))
-        wx.StaticText(part1, -1, u'Total Vendido', pos=(10, 187))
-        wx.StaticText(part1, -1, u'Total Perdido', pos=(10, 242))
-        wx.StaticText(part1, -1, u'Rendimento Médio por dia', pos=(310, 22))
-        wx.StaticText(part1, -1, u'Total Vendido no Cartão', pos=(310, 77))
-        wx.StaticText(part1, -1, u'Total Vendido em Dinheiro', pos=(310, 132))
-        wx.StaticText(part1, -1, u'Dia da Semana menos rentável', pos=(310, 187))
-        wx.StaticText(part1, -1, u'Dia da Semana mais rentável', pos=(310, 242))
+        wx.StaticText(part1, -1, u'Mês/Ano', pos=(10, 17))
+        wx.StaticText(part1, -1, u'Lucro', pos=(10, 57))
+        wx.StaticText(part1, -1, u'Receita', pos=(10, 97))
+        wx.StaticText(part1, -1, u'Custos', pos=(10, 137))
+        wx.StaticText(part1, -1, u'Total Perdido', pos=(10, 177))
+        wx.StaticText(part1, -1, u'Entradas Pendentes de Pagamento', pos=(10, 217))
+        wx.StaticText(part1, -1, u'Gastos Pendentes de Pagamento', pos=(10, 257))
+        wx.StaticText(part1, -1, u'Rendimento Médio por dia', pos=(310, 17))
+        wx.StaticText(part1, -1, u'Total Vendido no Cartão', pos=(310, 57))
+        wx.StaticText(part1, -1, u'Total Vendido em Dinheiro', pos=(310, 97))
+        wx.StaticText(part1, -1, u'Dia da Semana menos Rentável', pos=(310, 137))
+        wx.StaticText(part1, -1, u'Dia da Semana mais Rentável', pos=(310, 177))
+        wx.StaticText(part1, -1, u'Quantidade de Entradas Pendentes', pos=(310, 217))
+        wx.StaticText(part1, -1, u'Quantidade de Gastos Pendentes', pos=(310, 257))
+
         wx.StaticText(part1, -1, u'Produtos de Maior Redimento', pos=(625, 10)).SetFont(
             wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
         wx.StaticText(part1, -1, u'Produtos Mais Vendidos', pos=(900, 10)).SetFont(
             wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
 
-        part2 = wx.Panel(self, -1, pos=(10, 295), size=(1180, 60), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
-        part21 = wx.Panel(part2, -1, pos=(10, 5), size=(620, 50), style=wx.SIMPLE_BORDER)
-        part22 = wx.Panel(part2, -1, pos=(790, 5), size=(380, 50), style=wx.SIMPLE_BORDER)
+        part2 = wx.Panel(self, -1, pos=(10, 305), size=(1180, 50), style=wx.TAB_TRAVERSAL)
+        part21 = wx.Panel(part2, -1, pos=(10, 0), size=(620, 50), style=wx.SIMPLE_BORDER)
+        part22 = wx.Panel(part2, -1, pos=(790, 0), size=(380, 50), style=wx.SIMPLE_BORDER)
         button1 = GenBitmapTextButton(part21, -1,
                                       wx.Bitmap(core.directory_paths['icons'] + 'Report.png', wx.BITMAP_TYPE_PNG),
                                       u'Tabela de Vendas', pos=(0, 0), size=(150, 50))
@@ -109,7 +120,7 @@ class Report(wx.Frame):
                                       u'Tabela de Desperdícios', pos=(450, 0), size=(170, 50))
         button8 = GenBitmapTextButton(part2, -1,
                                       wx.Bitmap(core.directory_paths['icons'] + 'Reset.png', wx.BITMAP_TYPE_PNG),
-                                      u'Recalcular', pos=(645, 5), size=(130, 50), style=wx.SIMPLE_BORDER)
+                                      u'Recalcular', pos=(645, 0), size=(130, 50), style=wx.SIMPLE_BORDER)
         button4 = GenBitmapTextButton(part22, -1,
                                       wx.Bitmap(core.directory_paths['icons'] + 'system-users.png', wx.BITMAP_TYPE_PNG),
                                       u'Registar Gasto', pos=(0, 0), size=(130, 50))
@@ -154,8 +165,8 @@ class Report(wx.Frame):
                                        wx.Bitmap(core.directory_paths['icons'] + 'Add.png', wx.BITMAP_TYPE_PNG),
                                        u'Adicionar', pos=(0, 0), size=(145, 40))
         button32 = GenBitmapTextButton(last_panel, -1,
-                                       wx.Bitmap(core.directory_paths['icons'] + 'Edit.png', wx.BITMAP_TYPE_PNG), u'Editar',
-                                       pos=(0, 40), size=(145, 40))
+                                       wx.Bitmap(core.directory_paths['icons'] + 'Edit.png', wx.BITMAP_TYPE_PNG),
+                                       u'Editar', pos=(0, 40), size=(145, 40))
         button33 = GenBitmapTextButton(last_panel, -1,
                                        wx.Bitmap(core.directory_paths['icons'] + 'Trash.png', wx.BITMAP_TYPE_PNG),
                                        u'Apagar', pos=(0, 80), size=(145, 40))
@@ -170,7 +181,8 @@ class Report(wx.Frame):
         part32 = wx.Panel(part3, 56, pos=(590, 5), size=(575, 260), style=wx.SUNKEN_BORDER)
         part32.SetBackgroundColour(core.default_background_color)
         self.list_expenses = wx.gizmos.TreeListCtrl(part32, -1, pos=(10, 10), size=(400, 240),
-                                                    style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE | wx.TR_FULL_ROW_HIGHLIGHT)
+                                                    style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE |
+                                                    wx.TR_FULL_ROW_HIGHLIGHT)
         self.list_expenses.AddColumn(u"Data", width=110)
         self.list_expenses.AddColumn(u"Descrição", width=180)
         self.list_expenses.AddColumn(u"Valor", width=100)
@@ -183,8 +195,8 @@ class Report(wx.Frame):
                                        wx.Bitmap(core.directory_paths['icons'] + 'Add.png', wx.BITMAP_TYPE_PNG),
                                        u'Adicionar', pos=(0, 0), size=(145, 40))
         button42 = GenBitmapTextButton(last_buttons, -1,
-                                       wx.Bitmap(core.directory_paths['icons'] + 'Edit.png', wx.BITMAP_TYPE_PNG), u'Editar',
-                                       pos=(0, 40), size=(145, 40))
+                                       wx.Bitmap(core.directory_paths['icons'] + 'Edit.png', wx.BITMAP_TYPE_PNG),
+                                       u'Editar', pos=(0, 40), size=(145, 40))
         button43 = GenBitmapTextButton(last_buttons, -1,
                                        wx.Bitmap(core.directory_paths['icons'] + 'Trash.png', wx.BITMAP_TYPE_PNG),
                                        u'Apagar', pos=(0, 80), size=(145, 40))
@@ -231,42 +243,66 @@ class Report(wx.Frame):
         sales = db.monthly_sales_list(month)
         expenses = db.monthly_expenses_list(month)
         wastes = db.monthly_wastes_list(month)
+        transactions = db.monthly_transactions_list(month)
         db.close()
 
-        inventory = database.InventoryDB()
+        inventory_db = database.InventoryDB()
 
         total_expense = 0.0
         total_income = 0.0
         total_waste = 0.0
         total_card_income = 0.0
         total_money_income = 0.0
-        count = 0
         dict_products = {}
         week_sold = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        days = []
+        pendant_income = 0.0
+        pendant_expense = 0.0
+        pendant_income_count = 0
+        pendant_expense_count = 0
 
         for sale_ in sales:
             date_ = sale_.record_date.split('-')
             week_day = calendar.weekday(int(date_[0]), int(date_[1]), int(date_[2]))
-            total_income += sale_.value
-            if sale_.payment == u'Dinheiro':
-                total_money_income += sale_.value
-            elif sale_.payment.split()[0] == u'Cartão':
-                total_card_income += sale_.value
-            week_sold[week_day] += sale_.value
+            if date_[2] not in days:
+                days.append(date_[2])
+            if not sale_.payment_pendant:
+                total_income += sale_.value
+                if sale_.payment == u'Dinheiro':
+                    total_money_income += sale_.value
+                elif sale_.payment.split()[0] == u'Cartão':
+                    total_card_income += sale_.value
+                week_sold[week_day] += sale_.value
+            else:
+                pendant_income += sale_.value
+                pendant_income_count += 1
             for i in range(len(sale_.products_IDs)):
                 product_id = sale_.products_IDs[i]
                 if product_id not in dict_products:
                     dict_products[product_id] = [0, 0.0]
                 dict_products[product_id][0] += sale_.amounts[i]
-                dict_products[product_id][1] += sale_.prices[i] * sale_.amounts[i]
+                dict_products[product_id][1] += sale_.prices[i]
 
         for expense_ in expenses:
             total_expense += expense_.value
 
-        for waste in wastes:
-            product = inventory.inventory_search_id(waste.product_ID)
-            total_waste += product.price * waste.amount
-            count += waste.amount
+        for waste_ in wastes:
+            product = inventory_db.inventory_search_id(waste_.product_ID)
+            total_waste += product.price * waste_.amount
+
+        for transaction_ in transactions:
+            if not transaction_.payment_pendant:
+                if transaction_.type is transaction.INCOME:
+                    total_income += transaction_.value
+                elif transaction_.type is transaction.EXPENSE:
+                    total_expense += transaction_.value
+            else:
+                if transaction_.type is transaction.INCOME:
+                    pendant_income += transaction_.value
+                    pendant_income_count += 1
+                elif transaction_.type is transaction.EXPENSE:
+                    pendant_expense += transaction_.value
+                    pendant_expense_count += 1
 
         lp1 = []
         lp2 = []
@@ -276,18 +312,20 @@ class Report(wx.Frame):
             product_item_left = [u'', 0, 0.0, -1]
             for product_id in dict_products:
                 if dict_products[product_id][1] > product_item_left[2]:
-                    product_item_left = [inventory.inventory_search_id(product_id).description,
+                    product_item_left = [inventory_db.inventory_search_id(product_id).description,
                                          dict_products[product_id][0], dict_products[product_id][1], product_id]
 
             product_item_right = [u'', 0, 0.0, -1]
             for product_id in dict_products:
                 if dict_products[product_id][0] > product_item_right[1]:
-                    product_item_right = [inventory.inventory_search_id(product_id).description,
+                    product_item_right = [inventory_db.inventory_search_id(product_id).description,
                                           dict_products[product_id][0], dict_products[product_id][1], product_id]
             if product_item_left[2] and product_item_left not in lp1:
                 lp1.append(product_item_left)
             if product_item_right[1] and product_item_right not in lp2:
                 lp2.append(product_item_right)
+
+        inventory_db.close()
 
         for item in lp1:
             item_id = self.list_left.Append((item[0], item[1], core.format_cash_user(item[2], currency=True)))
@@ -299,7 +337,7 @@ class Report(wx.Frame):
         total_balance = (total_income - total_expense)
 
         try:
-            average_daily_balance = (total_income - total_expense) / count
+            average_daily_balance = (total_income - total_expense) / len(days)
         except ZeroDivisionError:
             average_daily_balance = 0.0
 
@@ -324,6 +362,10 @@ class Report(wx.Frame):
         self.text_spent.SetValue(core.format_cash_user(total_expense, currency=True))
         self.text_income.SetValue(core.format_cash_user(total_income, currency=True))
         self.text_wasted.SetValue(core.format_cash_user(total_waste, currency=True))
+        self.text_income_pendant.SetValue(core.format_cash_user(pendant_income, currency=True))
+        self.text_expense_pendant.SetValue(core.format_cash_user(pendant_expense, currency=True))
+        self.text_income_pendant_amount.SetValue(str(pendant_income_count))
+        self.text_expense_pendant_amount.SetValue(str(pendant_expense_count))
         self.text_daily_income.SetValue(core.format_cash_user(average_daily_balance, currency=True))
         self.text_credit_card_income.SetValue(core.format_cash_user(total_card_income, currency=True))
         self.text_money_income.SetValue(core.format_cash_user(total_money_income, currency=True))
@@ -382,7 +424,7 @@ class Report(wx.Frame):
 
     def open_text_box(self, event):
         month = self.months_files[self.month_options.index(self.combobox_month_displayed.GetValue())]
-        TextBox(self, month)
+        dialogs.TextBox(self, month)
 
     def open_sheets_sales(self, event):
         month = core.format_date_internal(self.combobox_month_displayed.GetValue())
@@ -401,48 +443,26 @@ class Report(wx.Frame):
         DataSheets(self, sheet_to_focus=4, month=month)
 
     def open_new_monthly_expense(self, event):
-        month = core.format_date_internal(self.combobox_month_displayed.GetValue())
-        transaction.Expense(self, month=month)
+        transaction.Transaction(self, transaction_type=transaction.EXPENSE)
 
     def open_edit_monthly_expense(self, event):
         red = self.list_expenses.GetSelection()
-        month = core.format_date_internal(self.combobox_month_displayed.GetValue())
-        temporary_key = -1
-        if red == self.list_expenses.GetRootItem() or self.list_expenses.GetItemParent(
-                red) is self.list_expenses.GetRootItem():
+        tree_data = self.list_expenses.GetItemData(red)
+        if not tree_data:
             return
-        for x in self.database_expenses:
-            if x == red:
-                temporary_key = x
-                break
-        key = self.database_expenses[temporary_key]
-        bravo = shelve.open(core.directory_paths['saves'] + month + '.txt')
-        original_hour = bravo['spent'][key]['time']
-        transaction.Expense(self, u"Editar Gasto n°" + str(key), month,
-                             [(core.directory_paths['saves'] + month + '.txt'), key, original_hour])
-        bravo.close()
+        data = tree_data.GetData()
+        transaction.Transaction(self, transaction_type=transaction.EXPENSE, data=data)
 
     def open_new_monthly_income(self, event):
-        month = self.months_files[self.combobox_month_displayed.GetSelection()]
-        transaction.Expense(self, -1, u'Ganhos', month)
+        transaction.Transaction(self, transaction_type=transaction.INCOME)
 
     def open_edit_monthly_income(self, event):
         red = self.list_incomes.GetSelection()
-        month = self.months_files[self.combobox_month_displayed.GetSelection()]
-        temporary_key = -1
-        if red == self.list_incomes.GetRootItem() or self.list_incomes.GetItemParent(
-                red) is self.list_incomes.GetRootItem():
+        tree_data = self.list_incomes.GetItemData(red)
+        if not tree_data:
             return
-        for x in self.database_incomes:
-            if x == red:
-                temporary_key = x
-                break
-        key = self.database_incomes[temporary_key]
-        bravo = shelve.open(core.directory_paths['saves'] + month + '.txt')
-        original_hour = bravo['winning'][key]['time']
-        transaction.Expense(self, u"Editar Ganho n°" + str(key), month,
-                             [(core.directory_paths['saves'] + month + '.txt'), key, original_hour])
-        bravo.close()
+        data = tree_data.GetData()
+        transaction.Transaction(self, transaction_type=transaction.INCOME, data=data)
 
     def ask_delete_income(self, event):
         boom = self.list_incomes.GetSelection()
@@ -457,169 +477,18 @@ class Report(wx.Frame):
         dialogs.Ask(self, u"Apagar Gasto", 22)
 
     def data_delete(self, box):
-        temporary_key = -1
-        if box == 11:
-            red = self.list_incomes.GetSelection()
-            month = self.months_files[self.combobox_month_displayed.GetSelection()]
-            if red == self.list_incomes.GetRootItem() or self.list_incomes.GetItemParent(
-                    red) is self.list_incomes.GetRootItem():
-                return
-            bravo = shelve.open(core.directory_paths['saves'] + month + '.txt')
-            for x in self.database_incomes:
-                if x == red:
-                    temporary_key = x
-                    break
-            key = self.database_incomes[temporary_key]
-            finish_time = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
-                datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
-            asw = bravo["edit"]
-            asw[finish_time] = bravo["winning"][key]
-            asw[finish_time]['key'] = key
-            asw[finish_time]['sheet_to_focus'] = 2
-            bravo["edit"] = asw
-            hair = bravo["winning"]
-            del hair[key]
-            bravo["winning"] = hair
-            bravo.close()
-            self.setup_monthly_incomes(1)
-            return
-        elif box == 12:
-            red = self.list_expenses.GetSelection()
-            month = self.months_files[self.combobox_month_displayed.GetSelection()]
-            if red == self.list_expenses.GetRootItem() or self.list_expenses.GetItemParent(
-                    red) is self.list_expenses.GetRootItem():
-                return
-            bravo = shelve.open(core.directory_paths['saves'] + month + '.txt')
-            for x in self.database_expenses:
-                if x == red:
-                    temporary_key = x
-                    break
-            key = self.database_expenses[temporary_key]
-            finish_time = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
-                datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
-            asw = bravo["edit"]
-            asw[finish_time] = bravo["spent"][key]
-            asw[finish_time]['key'] = key
-            asw[finish_time]['sheet_to_focus'] = 2
-            bravo["edit"] = asw
-            hair = bravo["spent"]
-            del hair[key]
-            bravo["spent"] = hair
-            bravo.close()
-            self.setup_monthly_expenses(1)
-            return
+        db = database.TransactionsDB()
+        item = box.GetSelection()
+        data = box.GetItemData(item).GetData()
+        db.delete_transaction(data.ID)
+        db.close()
 
-    def exit(self, event):
-        self.Close()
+        func = {
+            self.list_incomes: self.setup_monthly_incomes,
+            self.list_expenses: self.setup_monthly_expenses
+        }
 
-
-class TextBox(wx.Frame):
-    notes_box = None
-    status_bar = None
-
-    def __init__(self, parent, month, title=u'Observações'):
-        wx.Frame.__init__(self, parent, -1, title, size=(400, 300))
-        self.month = month
-        self.parent = parent
-
-        self.setup_gui()
-
-        self.Show()
-
-    def setup_gui(self):
-        self.Centre()
-        self.SetMinSize((400, 300))
-        self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
-        self.SetBackgroundColour(core.default_background_color)
-        menu1 = wx.Menu()
-        menu1.Append(4001, u'&Salvar\tCTRL+S')
-        menu1.Append(4002, u'&Salvar uma Cópia\tCTRL+SHIFT+S')
-        menu1.Append(4009, u'&Sair\tCTRL+Q')
-        menu2 = wx.Menu()
-        menu2.Append(4101, u'&Copiar\tCTRL+C')
-        menu2.Append(4102, u'&Recortar\tCTRL+X')
-        menu2.Append(4103, u'&Colar\tCTRL+V')
-        menu2.Append(4104, u'&Apagar')
-        menu2.AppendSeparator()
-        menu2.Append(4105, u'&Selecionar Tudo\tCTRL+A')
-        menu = wx.MenuBar()
-        menu.Append(menu1, u'Arquivos')
-        menu.Append(menu2, u'Ferramentas')
-        self.SetMenuBar(menu)
-        tool_bar = wx.ToolBar(self, size=(500, 50))
-        tool_bar.AddSimpleTool(4501, wx.Bitmap(core.directory_paths['icons'] + 'Save.png', wx.BITMAP_TYPE_PNG), u'Salvar', '')
-        tool_bar.AddSeparator()
-        tool_bar.AddSimpleTool(4502, wx.Bitmap(core.directory_paths['icons'] + 'Copy.png', wx.BITMAP_TYPE_PNG), u'Copiar', '')
-        tool_bar.AddSimpleTool(4503, wx.Bitmap(core.directory_paths['icons'] + 'Cut.png', wx.BITMAP_TYPE_PNG), u'Recortar', '')
-        tool_bar.AddSimpleTool(4504, wx.Bitmap(core.directory_paths['icons'] + 'Paste.png', wx.BITMAP_TYPE_PNG), u'Colar', '')
-        tool_bar.AddSimpleTool(4505, wx.Bitmap(core.directory_paths['icons'] + 'Trash.png', wx.BITMAP_TYPE_PNG), u'Apagar', '')
-        tool_bar.AddSeparator()
-        tool_bar.AddSimpleTool(4509, wx.Bitmap(core.directory_paths['icons'] + 'Exit.png', wx.BITMAP_TYPE_PNG), u'Sair', '')
-        self.notes_box = wx.TextCtrl(self, -1, pos=(10, 60), size=(400, 300), style=wx.TE_MULTILINE)
-        self.Bind(wx.EVT_MENU, self.save, id=4001)
-        self.Bind(wx.EVT_MENU, self.save_to, id=4002)
-        self.Bind(wx.EVT_MENU, self.exit, id=4009)
-        self.Bind(wx.EVT_MENU, self.text_copy, id=4101)
-        self.Bind(wx.EVT_MENU, self.text_cut, id=4102)
-        self.Bind(wx.EVT_MENU, self.text_paste, id=4103)
-        self.Bind(wx.EVT_MENU, self.text_erase, id=4104)
-        self.Bind(wx.EVT_MENU, self.text_select_all, id=4105)
-        self.Bind(wx.EVT_TOOL, self.save, id=4501)
-        self.Bind(wx.EVT_TOOL, self.text_copy, id=4502)
-        self.Bind(wx.EVT_TOOL, self.text_cut, id=4503)
-        self.Bind(wx.EVT_TOOL, self.text_paste, id=4504)
-        self.Bind(wx.EVT_TOOL, self.text_erase, id=4505)
-        self.Bind(wx.EVT_TOOL, self.exit, id=4509)
-        hsi = wx.BoxSizer(wx.VERTICAL)
-        hsi.Add(tool_bar, 0, wx.EXPAND)
-        hsi.Add(self.notes_box, 1, wx.EXPAND)
-        self.notes_box.SetPosition(wx.Point(30, 60))
-        vsi = wx.BoxSizer(wx.HORIZONTAL)
-        vsi.Add(tool_bar, 1, wx.EXPAND)
-        self.SetSizer(vsi)
-        self.SetSizer(hsi)
-        tool_bar.Realize()
-        self.status_bar = self.CreateStatusBar()
-
-    def save(self, event):
-        if type(self.GetParent()) is Report:
-            if self.notes_box.SaveFile(core.directory_paths['saves'] + '%s_obs.txt' % self.month):
-                self.status_bar.SetStatusText(u'Observação salva com sucesso')
-                time.sleep(1)
-                self.status_bar.SetStatusText('')
-            else:
-                self.status_bar.SetStatusText(u'ERRO - Não foi possível salvar o arquivo')
-                time.sleep(2)
-                self.status_bar.SetStatusText('')
-
-    def save_to(self, event):
-        loc = wx.FileDialog(self, 'Salvar em', os.getcwd(), self.month + '_obs.txt', '*.*', wx.FD_SAVE)
-        loc.ShowModal()
-        loc.Destroy()
-        if self.notes_box.SaveFile(loc.GetPath()):
-            self.status_bar.SetStatusText(u'Observação salva com sucesso em %s' % loc.GetPath())
-            time.sleep(1)
-            self.status_bar.SetStatusText('')
-        else:
-            self.status_bar.SetStatusText(u'ERRO - Não foi possível salvar o arquivo')
-            time.sleep(2)
-            self.status_bar.SetStatusText('')
-
-    def text_copy(self, event):
-        self.notes_box.Copy()
-
-    def text_cut(self, event):
-        self.notes_box.Cut()
-
-    def text_paste(self, event):
-        self.notes_box.Paste()
-
-    def text_select_all(self, event):
-        self.notes_box.SelectAll()
-
-    def text_erase(self, event):
-        p = self.notes_box.GetSelection()
-        self.notes_box.Remove(p[0], p[1])
+        func.get(box)(None)
 
     def exit(self, event):
         self.Close()
@@ -706,21 +575,32 @@ class Sheet(wx.gizmos.TreeListCtrl):
         sales_db.close()
 
         plist = {}
+        categories_dict = {}
         for sale_ in sale_list:
             for i in range(len(sale_.products_IDs)):
                 key = sale_.products_IDs[i]
-                value = sale_.prices[i] * sale_.amounts[i]
                 if key in plist:
                     plist[key][0] += sale_.amounts[i]
-                    plist[key][1] += value
+                    plist[key][1] += sale_.prices[i]
                     plist[key][2] += 1
                 else:
                     product = inventory_db.inventory_search_id(key)
-                    plist[key] = [sale_.amounts[i], value, 1, product.description, product.price, product]
+                    plist[key] = [sale_.amounts[i], sale_.prices[i], 1, product.description, product.price, product]
+
+                category_id = plist[key][5].category_ID
+
+                if category_id in categories_dict:
+                    categories_dict[category_id][0] += sale_.amounts[i]
+                    categories_dict[category_id][1] += sale_.prices[i]
+                    categories_dict[category_id][2] += 1
+                else:
+                    category = inventory_db.categories_search_id(category_id)
+                    categories_dict[category_id] = [sale_.amounts[i], sale_.prices[i], 1,
+                                                    category.category, category, None]
             
         inventory_db.close()
         self.AddColumn(u'ID', 100)
-        self.AddColumn(u'Produto', 300)
+        self.AddColumn(u'Descrição', 300)
         self.AddColumn(u'Preço Unitário', 100)
         self.AddColumn(u'Quantidade vendida', 135)
         self.AddColumn(u'Quantidade de vezes vendido', 180)
@@ -732,14 +612,29 @@ class Sheet(wx.gizmos.TreeListCtrl):
         b = 0
         counter = 0
         for product_id in plist:
-            item = self.AppendItem(root, str(product_id))
-            self.SetItemText(item, plist[product_id][3], 1)
-            self.SetItemText(item, core.format_cash_user(plist[product_id][4], currency=True), 2)
-            self.SetItemText(item, core.format_amount_user(plist[product_id][0]), 3)
-            self.SetItemText(item, str(plist[product_id][2]), 4)
-            self.SetItemText(item, core.format_cash_user(plist[product_id][1], currency=True), 5)
+            data = plist[product_id]
+            category_id = data[5].category_ID
+            data_category = categories_dict[category_id]
 
-            self.SetItemData(item, wx.TreeItemData(plist[product_id][5]))
+            if not data_category[5]:
+                aux = self.AppendItem(root, core.format_id_user(category_id))
+                self.SetItemText(aux, data_category[3], 1)
+                self.SetItemText(aux, core.format_amount_user(data[0], unit=data_category[4].unit), 3)
+                self.SetItemText(aux, str(data_category[2]), 4)
+                self.SetItemText(aux, core.format_cash_user(data_category[1], currency=True), 5)
+                self.SetItemData(aux, wx.TreeItemData(data_category[4]))
+                self.SetItemFont(aux, wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
+                data_category[5] = aux
+
+            parent = data_category[5]
+            item = self.AppendItem(parent, core.format_id_user(product_id))
+            self.SetItemText(item, data[3], 1)
+            self.SetItemText(item, core.format_cash_user(data[4], currency=True), 2)
+            self.SetItemText(item, core.format_amount_user(data[0], unit=data_category[4].unit), 3)
+            self.SetItemText(item, str(data[2]), 4)
+            self.SetItemText(item, core.format_cash_user(data[1], currency=True), 5)
+
+            self.SetItemData(item, wx.TreeItemData(data[5]))
 
             a += plist[product_id][1]
             b += plist[product_id][0]
@@ -805,7 +700,7 @@ class Sheet(wx.gizmos.TreeListCtrl):
                 self.SetItemText(kid, u'-----------', 1)
                 self.SetItemText(kid, core.format_id_user(sale_.products_IDs[i]), 2)
                 self.SetItemText(kid, core.format_amount_user(sale_.amounts[i]), 3)
-                self.SetItemText(kid, core.format_cash_user(sale_.amounts[i] * sale_.prices[i], currency=True), 4)
+                self.SetItemText(kid, core.format_cash_user(sale_.prices[i], currency=True), 4)
 
                 self.SetItemData(kid, wx.TreeItemData(str(sale_.products_IDs[i])))
 
@@ -928,13 +823,13 @@ class Sheet(wx.gizmos.TreeListCtrl):
         wastes_db.close()
 
         walist = {}
-        for waste in waste_list:
-            if waste.product_ID in walist:
-                walist[waste.product_ID][0] += waste.amount
-                walist[waste.product_ID][1] += 1
+        for waste_ in waste_list:
+            if waste_.product_ID in walist:
+                walist[waste_.product_ID][0] += waste_.amount
+                walist[waste_.product_ID][1] += 1
             else:
-                product = inventory_db.inventory_search_id(waste.product_ID)
-                walist[waste.product_ID] = [waste.amount, 1, product.description, product.price, waste]
+                product = inventory_db.inventory_search_id(waste_.product_ID)
+                walist[waste_.product_ID] = [waste_.amount, 1, product.description, product.price, waste_]
 
         self.AddColumn(u'ID', 100)
         self.AddColumn(u'Descrição', 300)
@@ -983,7 +878,9 @@ class Sheet(wx.gizmos.TreeListCtrl):
         elif isinstance(data, data_types.ProductData):
             inventory.ProductData(self.parent, data.description, data=data, editable=False)
         elif isinstance(data, str):
-            inventory.ProductData(self.parent, data, product_id=int(data), editable=False)
+            inventory.ProductData(self.parent, core.format_id_user(data), product_id=int(data), editable=False)
+        elif isinstance(data, data_types.ProductCategoryData):
+            categories.ProductCategoryData(self.parent, data.category, data=data)
         elif isinstance(data, data_types.WasteData):
             waste.Waste(self.parent, data=data)
         elif isinstance(data, data_types.ExpenseData):
