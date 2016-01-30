@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import shelve
 import threading
 from datetime import datetime
 
@@ -16,6 +15,65 @@ import database
 import data_types
 
 __author__ = 'Julio'
+
+
+def connect_sale(sale_id, client_id, date, client_sale_id=-1):
+    """
+    Conecta uma venda com um cliente
+    :param client_sale_id: id da conexão caso já existente
+    :param date: data da compra
+    :param sale_id: id da venda
+    :param client_id: id do client
+    :type sale_id: int
+    :type client_id: int
+    :type date: str
+    :type client_sale_id: int
+    :return: O objeto ClientSaleData criado
+    :rtype: data_types.ClientSaleData
+    """
+    db = database.ClientsDB()
+
+    data = data_types.ClientSaleData()
+    data.sale = sale_id
+    data.client = client_id
+    data.ID = client_sale_id
+
+    if data.ID == -1:
+        db.insert_sale(data)
+    else:
+        db.edit_sale(data)
+
+    db.edit_client_last_sale(client_id, date)
+    db.close()
+
+    return data
+
+
+def disconnect_sale(client_sale_id=-1, sale_id=-1, undo=False):
+    """
+    Conecta uma venda com um cliente
+    :param sale_id: id da venda
+    :param client_sale_id: id do client
+    :param undo: Reconectar uma venda recentemente desconectada
+    :type sale_id: int
+    :type client_sale_id: int
+    :type undo: bool
+    :return: True caso tenha removido, False caso não
+    :rtype: data_types.ClientSaleData
+    """
+    db = database.ClientsDB()
+    if client_sale_id != -1:
+        pass
+    elif sale_id != -1:
+        data = db.sales_search_sale(sale_id)
+        client_sale_id = data.ID
+    else:
+        db.close()
+        return False
+
+    db.delete_sale(client_sale_id=client_sale_id, undo=undo)
+
+    return True
 
 
 class ClientManager(wx.Frame):
@@ -91,11 +149,12 @@ class ClientManager(wx.Frame):
         panel_middle = wx.Panel(self, -1, pos=(10, 110), size=(1180, 410))
         self.list_clients = wx.ListCtrl(panel_middle, -1, pos=(5, 5), size=(1170, 390),
                                         style=wx.LC_VRULES | wx.LC_HRULES | wx.SIMPLE_BORDER | wx.LC_REPORT)
-        self.list_clients.InsertColumn(0, u'Nome do cliente', width=400)
+        self.list_clients.InsertColumn(0, u'Nome do cliente', width=300)
         self.list_clients.InsertColumn(1, u'ID', width=50)
-        self.list_clients.InsertColumn(2, u'Telefone', width=200)
-        self.list_clients.InsertColumn(3, u'e-mail', width=200)
-        self.list_clients.InsertColumn(4, u'Endereço', width=315)
+        self.list_clients.InsertColumn(2, u'CPF', width=100)
+        self.list_clients.InsertColumn(3, u'Telefone', width=200)
+        self.list_clients.InsertColumn(4, u'e-mail', width=200)
+        self.list_clients.InsertColumn(5, u'Endereço', width=315)
         if self.client_selection_mode:
             self.list_clients.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.data_select)
         else:
@@ -113,7 +172,7 @@ class ClientManager(wx.Frame):
         clients = db.clients_list()
         for person in clients:
             address = person.state + ' - ' + person.city + ', ' + person.address
-            self.list_clients.Append((person.name, str(person.ID), person.telephone, person.email, address))
+            self.list_clients.Append((person.name, str(person.ID), core.format_cpf(person.cpf), person.telephone, person.email, address))
         db.close()
 
     def data_delete(self, event):
@@ -148,8 +207,10 @@ class ClientManager(wx.Frame):
             return
         name = self.list_clients.GetItemText(g, 0)
         client_id = self.list_clients.GetItemText(g, 1)
+        cpf = self.list_clients.GetItemText(g, 2)
         self.parent.textbox_client_name.SetValue(name)
-        self.parent.textbox_client_id.SetValue(client_id)
+        self.parent.textbox_client_cpf.SetValue(cpf)
+        self.parent.textbox_client_id.SetValue(core.format_id_user(client_id))
         self.exit(None)
 
     def database_search(self, event):
@@ -159,7 +220,7 @@ class ClientManager(wx.Frame):
         clients = db.clients_search(self.textbox_filter.GetValue())
         for person in clients:
             address = person.state + ' - ' + person.city + ', ' + person.address
-            self.list_clients.Append((person.name, str(person.ID), person.telephone, person.email, address))
+            self.list_clients.Append((person.name, str(person.ID), core.format_cpf(person.cpf), person.telephone, person.email, address))
         db.close()
         
     def clean(self):
@@ -483,8 +544,11 @@ class ClientData(wx.Frame):
             ssee.Bind(wx.EVT_BUTTON, self.sale_view)
         self.list_bought = wx.ListCtrl(panel_side, -1, pos=(10, 170), size=(320, 350),
                                        style=wx.LC_VRULES | wx.LC_HRULES | wx.LC_REPORT | wx.SIMPLE_BORDER)
-        self.list_bought.InsertColumn(0, u'Data/Horário', width=180)
-        self.list_bought.InsertColumn(1, u'Valor', width=140)
+        self.list_bought.InsertColumn(0, u'Data', width=90)
+        self.list_bought.InsertColumn(1, u'Horário', width=90)
+        self.list_bought.InsertColumn(2, u'Valor', width=100)
+        self.list_bought.InsertColumn(3, u'Pago', width=40)
+        self.list_bought.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.sale_view)
         self.clean()
         if not self.editable:
             self.textbox_client_name.Disable()
@@ -523,80 +587,67 @@ class ClientData(wx.Frame):
         t = self.list_bought.GetFocusedItem()
         if t == -1:
             return
-        tex = self.list_bought.GetItemText(t, 0)
-        try:
-            j = shelve.open(core.directory_paths['clients'] + self.client_id + core.slash + self.client_id + '_deals.txt')
-            r = j[self.dict_clients_basic_data[tex]]
-            j.close()
-        except KeyError:
-            dialogs.launch_error(self, 'Não há mais registro dessa venda')
-            return
-        sale.Sale(self, tex,
-                  [(core.directory_paths['saves'] + self.dict_clients_basic_data[tex][:10] + '.txt'), r['key'],
-                   r['time']], False)
+        client_sale_id = self.list_bought.GetItemData(t)
+        db = database.ClientsDB()
+        client_sale = db.sales_search_id(client_sale_id)
+        db.close()
+        sale.Sale(self, core.format_id_user(client_sale.sale), key=client_sale.sale, editable=False)
 
     def sale_disconnect(self):
         t = self.list_bought.GetFocusedItem()
         if t == -1:
             return
-        tex = self.list_bought.GetItemText(t, 0)
-        j = shelve.open(core.directory_paths['clients'] + self.client_id + core.slash + self.client_id + '_deals.txt')
-        r = j[self.dict_clients_basic_data[tex]]
-        del j[self.dict_clients_basic_data[tex]]
-        s = shelve.open(core.directory_paths['saves'] + self.dict_clients_basic_data[tex][:10] + '.txt')
-        v = s['sales'][r['client_id']]
-        if v['client_id'] == self.client_id:
-            v['client_name'] = ''
-            v['client_id'] = ''
-            u = s['sales']
-            u[r['client_id']] = v
-            s['sales'] = u
-        s.close()
-        j.close()
-        self.sales_list()
+
+        print self.list_bought.GetItemTextColour(t)
+        if self.list_bought.GetItemTextColour(t) is core.COLOR_LIST_ITEM_DISABLED:
+            activate = True
+        else:
+            activate = False
+        client_sale_id = self.list_bought.GetItemData(t)
+        disconnect_sale(client_sale_id=client_sale_id, undo=activate)
+        if activate:
+            self.list_bought.SetItemTextColour(t, wx.BLACK)
+        else:
+            self.list_bought.SetItemTextColour(t, core.COLOR_LIST_ITEM_DISABLED)
 
     def sales_list(self):
         self.list_bought.DeleteAllItems()
-        s = shelve.open(core.directory_paths['clients'] + self.client_id + core.slash + self.client_id + '_infos.txt')
-        bat = s['date']
-        dat = bat.split('-')
-        cat = dat[2] + '/' + dat[1] + '/' + dat[0]
-        s.close()
-        sn = 0
-        tv = 0.0
-        cc = 0
-        cv = 0.0
-        mc = 0
-        mv = 0.0
-        self.dict_clients_basic_data = {}
-        y = shelve.open(core.directory_paths['clients'] + self.client_id + core.slash + self.client_id + '_deals.txt')
-        for o in y:
-            dt = o.split('_')
-            dt[1] = dt[1].replace('-', ':')
-            der = dt[0].split('-')
-            der.reverse()
-            dt[0] = '/'.join(der)
-            fdt = '   '.join(dt)
-            self.dict_clients_basic_data[fdt] = o
-            self.list_bought.Append((fdt, 'R$ ' + core.good_show('money', y[o]['value'])))
-            sn += 1
-            tv += y[o]['value']
-            if u'Dinheiro' == y[o]['payment']:
-                mc += 1
-                mv += y[o]['value']
-            elif u'Cartão' == y[o]['payment']:
-                cc += 1
-                cv += y[o]['value']
-        y.close()
+        db = database.ClientsDB()
+        sales = db.sales_search_client(self.client_id)
+        db.close()
+        sales_db = database.TransactionsDB()
+        value = 0.0
+        value_money = 0.0
+        value_card = 0.0
+        amount = 0
+        amount_money = 0
+        amount_card = 0
+        for sale_ in sales:
+            data = sales_db.sales_search_id(sale_.sale)
+            payed = u'Sim' if not data.payment_pendant else u'Não'
+            item = self.list_bought.Append((data.record_date, data.record_time,
+                                            core.format_cash_user(data.value, currency=True), payed))
+            self.list_bought.SetItemData(item, sale_.ID)
+
+            value += data.value
+            amount += 1
+            if data.payment == u'Dinheiro':
+                amount_money += 1
+                value_money += data.value
+            elif data.payment.split()[0] == u'Cartão':
+                amount_card += 1
+                value_card += data.value
+        if self.data.last_sale:
+            last_sale = u'Última compra registrada em %s \n' \
+                        u'Já gastou R$ %s na Canela Santa através de %i compras, das quais %i, no valor de R$ %s,' \
+                        u'foram pagas em dinheiro e %i, no valor de R$ %s, foram pagas no cartão.' % \
+                        (core.format_date_user(self.data.last_sale), core.format_cash_user(value), amount, amount_money,
+                         core.format_cash_user(value_money), amount_card, core.format_cash_user(value_card))
+        else:
+            last_sale = u'Não há nenhuma compra registrada em seu nome'
         self.textbox_client_intel.SetValue(
-            u'Cliente desde %s \n'
-            u'Já gastou R$ %s na Canela Santa através de %i compras, das quais %i, no valor de R$ %s, '
-            u'foram pagas em dinheiro e %i, no valor de R$ %s, foram pagas no cartão.'
-            % (cat, core.good_show('money',
-                                   str(tv)).replace('.', ','), sn, mc, core.good_show('money',
-                                                                                      str(mv)).replace('.', ','), cc,
-               core.good_show('money',
-                              str(cv)).replace('.', ',')))
+            u'Cliente desde %s \n%s'
+            % (core.format_date_user(self.data.record_date), last_sale))
 
     def clean(self):
         self.textbox_client_name.SetValue(self.data.name)
@@ -611,7 +662,7 @@ class ClientData(wx.Frame):
         self.textbox_client_district.SetValue(self.data.district)
         self.textbox_client_address.SetValue(self.data.address)
         self.textbox_client_observations.SetValue(self.data.obs)
-        # self.sales_list()
+        self.sales_list()
 
     def end(self):
         if not self.textbox_client_name.GetValue():
@@ -646,6 +697,10 @@ class ClientData(wx.Frame):
             self.parent.setup(None)
 
         self.exit(None)
+
+    def OnPaint(self, event):
+        wx.PaintDC(self.panel_client_image).DrawBitmap(wx.Bitmap(core.directory_paths['icons'] + 'stock_person.png'), 0,
+                                                       0)
 
     def exit(self, event):
         self.Close()

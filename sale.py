@@ -49,6 +49,7 @@ class Sale(wx.Frame):
     radio_payment_credit_card = None
     radio_payment_debit_card = None
     radio_payment_money = None
+    radio_payment_pendant = None
     radio_payment_other = None
     textbox_payment_other = None
 
@@ -64,6 +65,7 @@ class Sale(wx.Frame):
 
     textbox_client_name = None
     textbox_client_cpf = None
+    textbox_client_id = None
 
     textbox_delivery_receiver = None
     textbox_delivery_address = None
@@ -119,18 +121,21 @@ class Sale(wx.Frame):
 
         wx.StaticText(result, -1, u"Forma de Pagamento:", (10, 420))
         self.radio_payment_money = wx.RadioButton(result, -1, u"Dinheiro", (15, 440))
-        self.radio_payment_credit_card = wx.RadioButton(result, -1, u"Cartão de Crédito", (15, 470))
-        self.radio_payment_debit_card = wx.RadioButton(result, -1, u"Cartão de Débito", (15, 500))
-        self.radio_payment_check = wx.RadioButton(result, -1, u"Cheque", (15, 530))
-        self.radio_payment_other = wx.RadioButton(result, -1, u"Outra", (15, 560))
+        self.radio_payment_credit_card = wx.RadioButton(result, -1, u"Cartão de Crédito", (15, 465))
+        self.radio_payment_debit_card = wx.RadioButton(result, -1, u"Cartão de Débito", (15, 490))
+        self.radio_payment_check = wx.RadioButton(result, -1, u"Cheque", (15, 515))
+        self.radio_payment_pendant = wx.RadioButton(result, -1, u"Ainda não pagou", (15, 540))
+        self.radio_payment_other = wx.RadioButton(result, -1, u"Outra", (15, 565))
         self.textbox_payment_other = wx.TextCtrl(result, -1, pos=(80, 560), size=(120, 25))
         self.textbox_payment_other.Disable()
+        self.radio_payment_pendant.SetForegroundColour(wx.RED)
         self.update_payment_method(None)
         self.radio_payment_money.Bind(wx.EVT_RADIOBUTTON, self.update_payment_method)
         self.radio_payment_credit_card.Bind(wx.EVT_RADIOBUTTON, self.update_payment_method)
         self.radio_payment_debit_card.Bind(wx.EVT_RADIOBUTTON, self.update_payment_method)
         self.radio_payment_check.Bind(wx.EVT_RADIOBUTTON, self.update_payment_method)
         self.radio_payment_other.Bind(wx.EVT_RADIOBUTTON, self.update_payment_method)
+        self.radio_payment_pendant.Bind(wx.EVT_RADIOBUTTON, self.update_payment_method)
         self.radio_payment_money.SetValue(True)
 
         wx.StaticText(result, -1, u"Total:  R$", (312, 427))
@@ -227,12 +232,14 @@ class Sale(wx.Frame):
         # client
         client = wx.Panel(self, 23, pos=(460, 285), size=(450, 325), style=wx.DOUBLE_BORDER | wx.TAB_TRAVERSAL)
         client.SetBackgroundColour(core.default_background_color)
-        wx.StaticText(client, -1, u"Nome do cliente: ", pos=(25, 5))
-        wx.StaticText(client, -1, u"CPF: ", pos=(325, 5))
-        self.textbox_client_name = wx.TextCtrl(client, -1, pos=(25, 25), size=(250, 25))
-        self.textbox_client_cpf = wx.TextCtrl(client, -1, pos=(325, 25), size=(100, 25))
+        wx.StaticText(client, -1, u"Nome do cliente: ", pos=(10, 5))
+        wx.StaticText(client, -1, u"CPF: ", pos=(250, 5))
+        wx.StaticText(client, -1, u"ID: ", pos=(375, 5))
+        self.textbox_client_name = wx.TextCtrl(client, -1, pos=(25, 25), size=(200, 25))
+        self.textbox_client_cpf = wx.TextCtrl(client, -1, pos=(250, 25), size=(100, 25))
+        self.textbox_client_id = wx.TextCtrl(client, -1, pos=(375, 25), size=(50, 25))
         self.textbox_client_cpf.Bind(wx.EVT_CHAR, core.check_cpf)
-        self.textbox_client_cpf.SetMaxLength(6)
+        self.textbox_client_id.Bind(wx.EVT_CHAR, core.check_number)
         client_ = wx.Panel(client, -1, pos=(10, 60), size=(400, 40), style=wx.SIMPLE_BORDER)
         cold = GenBitmapTextButton(client_, -1,
                                    wx.Bitmap(core.directory_paths['icons'] + 'Book.png', wx.BITMAP_TYPE_PNG),
@@ -274,6 +281,7 @@ class Sale(wx.Frame):
         if not self.editable:
             self.textbox_client_name.Disable()
             self.textbox_client_cpf.Disable()
+            self.textbox_client_id.Disable()
             self.delivery.Disable()
             cold.Disable()
             cnew.Disable()
@@ -322,7 +330,10 @@ class Sale(wx.Frame):
             return
 
         # Adiciona os dados do cliente
-        self.textbox_client_cpf.SetValue(core.format_cpf(self.data.client_cpf))
+        if self.data.client_cpf:
+            self.textbox_client_cpf.SetValue(core.format_cpf(self.data.client_cpf))
+        if self.data.client_id:
+            self.textbox_client_id.SetValue(core.format_id_user(self.data.client_id))
 
         # Caso haja, adiciona os dados da entrega
         if self.delivery_id is not -1:
@@ -349,15 +360,15 @@ class Sale(wx.Frame):
         for i in range(len(self.data.products_IDs)):
             product_id = self.data.products_IDs[i]
             description = self.database_inventory.inventory_search_id(product_id).description
-            amount = self.data.amounts[i]
-            unit_price = "R$ " + core.good_show("money", self.data.prices[i])
-            price = self.data.amounts[i] * self.data.prices[i]
+            amount = core.format_amount_user(self.data.amounts[i])
+            price = core.format_cash_user(self.data.prices[i], currency=True)
+            unit_price = core.format_cash_user(self.data.prices[i] / self.data.amounts[i], currency=True)
             item = self.list_sold.Append((description, amount, unit_price, price))
             self.list_sold.SetItemData(item, product_id)
 
         # Adiciona os dados finais da venda
-        self.textbox_sale_taxes.SetValue(core.good_show("money", self.data.taxes))
-        self.textbox_sale_discount.SetValue(core.good_show("money", self.data.discount))
+        self.textbox_sale_taxes.SetValue(core.format_cash_user(self.data.taxes))
+        self.textbox_sale_discount.SetValue(core.format_cash_user(self.data.discount))
 
         payment_options = {
             u'Dinheiro': self.radio_payment_money,
@@ -434,9 +445,9 @@ class Sale(wx.Frame):
             return dialogs.launch_error(self, u'Quantidade inválida!')
 
         _price = float(amount) * float(product.price)
-        unit_price = "R$ " + core.good_show('money', product.price)
-        price = "R$ " + core.good_show('money', _price)
-        item = self.list_sold.Append((product.description, str(amount).replace('.', ','), unit_price, price))
+        unit_price = core.format_cash_user(product.price, currency=True)
+        price = core.format_cash_user(_price, currency=True)
+        item = self.list_sold.Append((product.description, core.format_amount_user(amount), unit_price, price))
         self.list_sold.SetItemData(item, product_id)
 
         self.textbox_product_amount.Clear()
@@ -480,7 +491,7 @@ class Sale(wx.Frame):
         if not product:
             return dialogs.launch_error(self, u'ID inválido!')
 
-        _amount = self.textbox_product_amount.GetValue().replace(',', '.')
+        _amount = core.format_amount_user(self.textbox_product_amount.GetValue())
         try:
             amount = float(_amount)
         except ValueError:
@@ -488,8 +499,8 @@ class Sale(wx.Frame):
             return dialogs.launch_error(self, u'Quantidade inválida!')
         
         _price = float(amount) * float(product.price)
-        unit_price = "R$ " + core.good_show('money', product.price)
-        price = "R$ " + core.good_show('money', _price)
+        unit_price = core.format_cash_user(product.price, currency=True)
+        price = core.format_cash_user(_price, currency=True)
 
         self.list_sold.SetStringItem(self.item, 0, product.description)
         self.list_sold.SetStringItem(self.item, 1, amount)
@@ -533,7 +544,7 @@ class Sale(wx.Frame):
         product_list = self.database_inventory.inventory_search_description(self.textbox_product_description.GetValue())
         for product in product_list:
             self.list_inventory.Append((product.ID, product.description,
-                                        'R$ ' + core.good_show('money', product.price)))
+                                        core.format_cash_user(product.price, currency=True)))
 
     def database_select(self, event):
         j = self.list_inventory.GetFocusedItem()
@@ -559,8 +570,8 @@ class Sale(wx.Frame):
         else:
             additional_taxes = float(additional_taxes)
         final_value = max(float(total_price + additional_taxes - discount), 0.0)
-        self.textbox_sale_products_price.SetValue(core.good_show("money", total_price))
-        self.textbox_sale_value.SetValue(core.good_show("money", final_value))
+        self.textbox_sale_products_price.SetValue(core.format_cash_user(total_price))
+        self.textbox_sale_value.SetValue(core.format_cash_user(final_value))
 
     def update_payment_method(self, event):
         if self.radio_payment_other.GetValue():
@@ -588,6 +599,9 @@ class Sale(wx.Frame):
         self.textbox_sale_discount.Clear()
         self.textbox_sale_taxes.Clear()
         self.textbox_product_description.Clear()
+        self.textbox_client_cpf.Clear()
+        self.textbox_client_name.Clear()
+        self.textbox_client_id.Clear()
         self.textbox_sale_taxes.SetValue("0,00")
         self.textbox_sale_discount.SetValue("0,00")
         self.textbox_product_price.SetValue("0,00")
@@ -611,16 +625,18 @@ class Sale(wx.Frame):
         for i in range(w):
             products_id.append(self.list_sold.GetItemData(i))
             products_amounts.append(float(self.list_sold.GetItem(i, 1).GetText().replace(',', '.')))
-            aux = float(self.list_sold.GetItem(i, 3).GetText().replace(",", ".").replace("R$ ", ""))
+            aux = core.money2float(self.list_sold.GetItem(i, 3).GetText())
             products_unitary_prices.append(aux)
 
         self.update_sale_data(None)
 
-        total_price = float(self.textbox_sale_value.GetValue().replace(",", "."))
-        final_value = float(self.textbox_sale_value.GetValue().replace(",", "."))
+        total_price = core.money2float(self.textbox_sale_value.GetValue())
+        final_value = core.money2float(self.textbox_sale_value.GetValue())
 
-        additional_taxes = float(self.textbox_sale_taxes.GetValue().replace(",", "."))
-        discount = float(self.textbox_sale_discount.GetValue().replace(",", "."))
+        additional_taxes = core.money2float(self.textbox_sale_taxes.GetValue())
+        discount = core.money2float(self.textbox_sale_discount.GetValue())
+
+        payment_pendant = False
 
         if self.radio_payment_money.GetValue():
             payment_method = u'Dinheiro'
@@ -630,11 +646,35 @@ class Sale(wx.Frame):
             payment_method = u'Cartão de Débito'
         elif self.radio_payment_check.GetValue():
             payment_method = u'Cheque'
+        elif self.radio_payment_pendant.GetValue():
+            payment_method = u'Pendente'
+            payment_pendant = True
         else:
             payment_method = self.textbox_payment_other.GetValue()
 
+        if not payment_method:
+            return dialogs.launch_error(self, u'Forma de pagamento inválida!')
+
         client_name = self.textbox_client_name.GetValue()
         client_cpf = self.textbox_client_cpf.GetValue().replace('.', '').replace('-', '')
+        client_id_str = self.textbox_client_id.GetValue()
+        client_id = 0
+        if client_id_str:
+            try:
+                client_id = int(client_id_str)
+                db = database.ClientsDB()
+                client = db.clients_search_id(client_id)
+                db.close()
+                if not client:
+                    raise ValueError
+            except ValueError:
+                return dialogs.launch_error(self, u'ID de cliente inválido')
+            if not client_cpf:
+                client_cpf = client.cpf
+            if not client_name:
+                client_name = client.name
+        if payment_pendant and not client_id:
+            return dialogs.launch_error(self, u'É necessário um cliente cadastrado para registrar pagamento pendente!')
 
         delivery_receiver_name = self.textbox_delivery_receiver.GetValue()
         delivery_address = self.textbox_delivery_address.GetValue()
@@ -673,8 +713,9 @@ class Sale(wx.Frame):
         new_sale.taxes = additional_taxes
         new_sale.value = final_value
         new_sale.payment = payment_method
-        new_sale.client_name = client_name
-        new_sale.client_cpf = client_cpf
+        new_sale.payment_pendant = payment_pendant
+        new_sale.client_cpf = client_cpf if client_cpf else None
+        new_sale.client_id = client_id if client_id else None
 
         new_sale.ID = self.key
 
@@ -717,6 +758,12 @@ class Sale(wx.Frame):
         if self.data:
             update_inventory(self.data, True)
         update_inventory(new_sale)
+
+        if self.data:
+            if self.data.client_id:
+                clients.disconnect_sale(self.data.ID)
+        if client_id:
+            clients.connect_sale(new_sale.ID, new_sale.client_id, new_sale.record_date)
 
         self.clean()
         if self.key == -1:
