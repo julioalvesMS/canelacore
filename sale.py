@@ -104,13 +104,13 @@ class Sale(wx.Frame):
     def setup_gui(self):
         self.SetPosition(wx.Point(200, 25))
         self.SetSize(wx.Size(925, 700))
-        self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
+        self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
 
-        self.SetBackgroundColour('#ffffff')
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
 
         # result
         result = wx.Panel(self, -1, pos=(5, 5), size=(450, 605), style=wx.DOUBLE_BORDER | wx.TAB_TRAVERSAL)
-        result.SetBackgroundColour(core.default_background_color)
+        result.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
 
         self.list_sold = wx.ListCtrl(result, -1, pos=(10, 10), size=(430, 400),
                                      style=wx.LC_REPORT | wx.SIMPLE_BORDER | wx.LC_VRULES | wx.LC_HRULES)
@@ -163,18 +163,19 @@ class Sale(wx.Frame):
             self.radio_payment_credit_card.Disable()
             self.radio_payment_debit_card.Disable()
             self.radio_payment_check.Disable()
+            self.radio_payment_pendant.Disable()
             self.radio_payment_other.Disable()
 
         # product
         self.panel_product_data = wx.Panel(self, 22, pos=(460, 5), size=(450, 275),
                                            style=wx.DOUBLE_BORDER | wx.TAB_TRAVERSAL)
-        self.panel_product_data.SetBackgroundColour(core.default_background_color)
+        self.panel_product_data.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         wx.StaticText(self.panel_product_data, -1, u"Adicionar Produto", pos=(160, 8)).SetFont(
             wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
 
         fin = wx.BitmapButton(self.panel_product_data, -1, wx.Bitmap(core.directory_paths['icons'] + 'Add.png'),
                               pos=(408, 25), size=(32, 32), style=wx.NO_BORDER)
-        fin.SetBackgroundColour(core.default_background_color)
+        fin.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         fin.Bind(wx.EVT_BUTTON, self.open_product_register)
 
         self.textbox_product_description = wx.SearchCtrl(self.panel_product_data, 223, pos=(10, 25), size=(395, 32))
@@ -231,7 +232,7 @@ class Sale(wx.Frame):
 
         # client
         client = wx.Panel(self, 23, pos=(460, 285), size=(450, 325), style=wx.DOUBLE_BORDER | wx.TAB_TRAVERSAL)
-        client.SetBackgroundColour(core.default_background_color)
+        client.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         wx.StaticText(client, -1, u"Nome do cliente: ", pos=(10, 5))
         wx.StaticText(client, -1, u"CPF: ", pos=(250, 5))
         wx.StaticText(client, -1, u"ID: ", pos=(375, 5))
@@ -289,7 +290,7 @@ class Sale(wx.Frame):
 
         # last
         last = wx.Panel(self, 24, pos=(5, 615), size=(905, 50), style=wx.DOUBLE_BORDER | wx.TAB_TRAVERSAL)
-        last.SetBackgroundColour(core.default_background_color)
+        last.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         if self.editable:
             last_ = wx.Panel(last, pos=(292, 5), size=(320, 40), style=wx.SIMPLE_BORDER)
             finish = GenBitmapTextButton(last_, 240,
@@ -307,16 +308,16 @@ class Sale(wx.Frame):
             cancel.Bind(wx.EVT_BUTTON, self.ask_exit, id=242)
         else:
             last_ = wx.Panel(last, pos=(352, 5), size=(200, 40), style=wx.SIMPLE_BORDER)
-            cancel = GenBitmapTextButton(last_, 242,
-                                         wx.Bitmap(core.directory_paths['icons'] + 'Exit.png', wx.BITMAP_TYPE_PNG),
-                                         u"Sair",
-                                         pos=(0, 0), size=(100, 40))
-            cancel.Bind(wx.EVT_BUTTON, self.exit)
             edit = GenBitmapTextButton(last_, 243,
                                        wx.Bitmap(core.directory_paths['icons'] + 'Edit.png', wx.BITMAP_TYPE_PNG),
                                        u"Editar",
-                                       pos=(100, 0), size=(100, 40))
+                                       pos=(0, 0), size=(100, 40))
             edit.Bind(wx.EVT_BUTTON, self.open_sale_edit)
+            cancel = GenBitmapTextButton(last_, 242,
+                                         wx.Bitmap(core.directory_paths['icons'] + 'Exit.png', wx.BITMAP_TYPE_PNG),
+                                         u"Sair",
+                                         pos=(100, 0), size=(100, 40))
+            cancel.Bind(wx.EVT_BUTTON, self.exit)
 
     def setup(self):
 
@@ -374,7 +375,8 @@ class Sale(wx.Frame):
             u'Dinheiro': self.radio_payment_money,
             u'Cartão de Crédito': self.radio_payment_credit_card,
             u'Cartão de Débito': self.radio_payment_debit_card,
-            u'Cheque': self.radio_payment_check
+            u'Cheque': self.radio_payment_check,
+            u'Pendente': self.radio_payment_pendant
         }
         try:
             payment_options[self.data.payment].SetValue(True)
@@ -417,7 +419,7 @@ class Sale(wx.Frame):
         clients.ClientRegister(self)
 
     def open_product_register(self, event):
-        inventory.ProductRegister(self)
+        inventory.ProductData(self)
 
     def open_sale_edit(self, event):
         Sale(self.GetParent(), key=self.key, data=self.data, delivery_id=self.delivery_id)
@@ -493,7 +495,7 @@ class Sale(wx.Frame):
 
         _amount = core.format_amount_user(self.textbox_product_amount.GetValue())
         try:
-            amount = float(_amount)
+            amount = core.amount2float(_amount)
         except ValueError:
             self.textbox_product_amount.Clear()
             return dialogs.launch_error(self, u'Quantidade inválida!')
@@ -624,7 +626,7 @@ class Sale(wx.Frame):
         # Armazena os dados dos produtos em vetores
         for i in range(w):
             products_id.append(self.list_sold.GetItemData(i))
-            products_amounts.append(float(self.list_sold.GetItem(i, 1).GetText().replace(',', '.')))
+            products_amounts.append(core.amount2float(self.list_sold.GetItem(i, 1).GetText()))
             aux = core.money2float(self.list_sold.GetItem(i, 3).GetText())
             products_unitary_prices.append(aux)
 
@@ -771,4 +773,147 @@ class Sale(wx.Frame):
         else:
             if type(self.GetParent()) is daily_report.Report:
                 self.GetParent().setup(None)
-            self.Close()
+            self.exit(None)
+
+
+class SaleManager(wx.Frame):
+
+    list_sales = None
+
+    def __init__(self, parent, title=u'Pagamentos Pendentes'):
+        wx.Frame.__init__(self, parent, -1, title,
+                          style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN)
+
+        self.setup_gui()
+
+        self.setup(None)
+        self.Show()
+
+    def setup_gui(self):
+        self.SetPosition(wx.Point(100, 100))
+        self.SetSize(wx.Size(810, 550))
+        self.SetIcon((wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO)))
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        panel_top = wx.Panel(self, pos=(10, 10), size=(790, 100))
+
+        button_client = GenBitmapTextButton(panel_top, -1, wx.Bitmap(core.directory_paths['icons'] + 'user-info.png',
+                                            wx.BITMAP_TYPE_PNG), u'Cliente', pos=(5, 40), size=(100, 40),
+                                            style=wx.SIMPLE_BORDER)
+        button_client.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        button_client.Bind(wx.EVT_BUTTON, self.data_open_client)
+
+        panel_buttons_left = wx.Panel(panel_top, pos=(130, 40), size=(420, 40), style=wx.SIMPLE_BORDER)
+        see = GenBitmapTextButton(panel_buttons_left, -1,
+                                  wx.Bitmap(core.directory_paths['icons'] + 'Search.png', wx.BITMAP_TYPE_PNG),
+                                  u'Ver Mais', pos=(0, 0), size=(100, 40))
+        see.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        see.Bind(wx.EVT_BUTTON, self.data_open)
+        plus = GenBitmapTextButton(panel_buttons_left, -1,
+                                   wx.Bitmap(core.directory_paths['icons'] + 'Sale.png', wx.BITMAP_TYPE_PNG),
+                                   u'Nova Venda', pos=(100, 0), size=(120, 40))
+        plus.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        plus.Bind(wx.EVT_BUTTON, self.open_new_sale)
+
+        edi = GenBitmapTextButton(panel_buttons_left, -1,
+                                  wx.Bitmap(core.directory_paths['icons'] + 'Edit.png', wx.BITMAP_TYPE_PNG), u'Editar',
+                                  pos=(220, 0), size=(100, 40))
+        edi.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        edi.Bind(wx.EVT_BUTTON, self.data_edit)
+        era = GenBitmapTextButton(panel_buttons_left, -1,
+                                  wx.Bitmap(core.directory_paths['icons'] + 'Trash.png', wx.BITMAP_TYPE_PNG),
+                                  u'Apagar', pos=(320, 0), size=(100, 40))
+        era.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        era.Bind(wx.EVT_BUTTON, self.ask_delete)
+
+        panel_buttons_right = wx.Panel(panel_top, pos=(575, 40), size=(200, 40), style=wx.SIMPLE_BORDER)
+        quir = GenBitmapTextButton(panel_buttons_right, -1, wx.Bitmap(core.directory_paths['icons'] + 'Exit.png'),
+                                   u'Sair',
+                                   pos=(100, 0), size=(100, 40))
+        quir.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        quir.Bind(wx.EVT_BUTTON, self.exit)
+        rep = GenBitmapTextButton(panel_buttons_right, -1, wx.Bitmap(core.directory_paths['icons'] + 'Reset.png'),
+                                  u'Atualizar',
+                                  pos=(0, 0), size=(100, 40))
+        rep.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        rep.Bind(wx.EVT_BUTTON, self.setup)
+        panel_center = wx.Panel(self, -1, pos=(10, 110), size=(820, 410))
+
+        self.list_sales = wx.ListCtrl(panel_center, -1, pos=(5, 5), size=(770, 390),
+                                      style=wx.LC_VRULES | wx.LC_HRULES | wx.SIMPLE_BORDER | wx.LC_REPORT)
+
+        self.list_sales.InsertColumn(0, u'ID', width=100)
+        self.list_sales.InsertColumn(1, u'Data', width=100)
+        self.list_sales.InsertColumn(2, u'Horário', width=100)
+        self.list_sales.InsertColumn(3, u'Cliente', width=315)
+        self.list_sales.InsertColumn(4, u'Valor', width=150)
+
+        self.list_sales.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.data_open)
+
+    def setup(self, event):     # FIXME Fazer a thread fechar direito com o resto do app
+        import threading
+        rest = threading.Thread(target=self.__setup__)
+        rest.daemon = True
+        rest.start()
+
+    def __setup__(self):
+        self.list_sales.DeleteAllItems()
+        sales_db = database.TransactionsDB()
+        sales = sales_db.sales_list_pendant()
+        sales_db.close()
+
+        clients_db = database.ClientsDB()
+
+        for sale_ in sales:
+
+            client = clients_db.clients_search_id(sale_.client_id)
+
+            info = (core.format_id_user(sale_.ID), core.format_date_user(sale_.record_date),
+                    sale_.record_time, client.name, core.format_cash_user(sale_.value, currency=True))
+
+            item = self.list_sales.Append(info)
+            self.list_sales.SetItemData(item, client.ID)
+
+        clients_db.close()
+
+    def data_delete(self, event):
+        it = self.list_sales.GetFocusedItem()
+        if it == -1:
+            return
+        e_id = self.list_sales.GetItem(it, 0).GetText()
+        db = database.TransactionsDB()
+        db.delete_sale(int(e_id))
+        db.close()
+        self.setup(None)
+
+    def data_edit(self, event):
+        po = self.list_sales.GetFocusedItem()
+        if po == -1:
+            return
+        sale_id = self.list_sales.GetItem(po, 0).GetText()
+        Sale(self, key=int(sale_id))
+
+    def data_open(self, event):
+        po = self.list_sales.GetFocusedItem()
+        if po == -1:
+            return
+        sale_id = self.list_sales.GetItem(po, 0).GetText()
+        Sale(self, key=int(sale_id), editable=False)
+
+    def data_open_client(self, event):
+        po = self.list_sales.GetFocusedItem()
+        if po == -1:
+            return
+        client_id = self.list_sales.GetItemData(po)
+        name = self.list_sales.GetItem(po, 3).GetText()
+
+        clients.ClientData(self, title=name, client_id=client_id, editable=False)
+
+    def ask_delete(self, event):
+        dialogs.Ask(self, u'Apagar Venda', 28)
+
+    def open_new_sale(self, event):
+        Sale(self)
+
+    def exit(self, event):
+        self.Close()
+
