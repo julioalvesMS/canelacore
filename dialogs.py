@@ -7,6 +7,7 @@ import os
 
 import wx
 import wx.gizmos
+from wx.lib.buttons import GenBitmapTextButton
 
 import clients
 import core
@@ -25,7 +26,7 @@ class Ask(wx.Dialog):
         wx.Dialog.__init__(self, parent, -1, title, size=(400, 180))
         self.option = option
 
-        self.SetBackgroundColour(core.default_background_color)
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         wx.StaticText(self, -1, ask_options[option], pos=(50, 50))
         self.Centre()
         ok = wx.Button(self, -1, u"Sim", pos=(100, 100))
@@ -67,7 +68,7 @@ class Confirmation(wx.Dialog):
         ok.Bind(wx.EVT_BUTTON, self.exit)
         nok = wx.Button(self, -1, u"Não", pos=(200, 100))
         nok.Bind(wx.EVT_BUTTON, self.cont)
-        self.SetBackgroundColour(core.default_background_color)
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         if type(parent.GetParent()) in [daily_report.Report, monthly_report.Report, clients.ClientManager,
                                         inventory.InventoryManager, categories.ProductCategoryManager]:
             parent.GetParent().setup(None)
@@ -88,27 +89,43 @@ class Warner(wx.Dialog):
         :type data: data_types.DeliveryData
         """
         wx.Dialog.__init__(self, parent, -1, title, size=(500, 230))
+        self.Centre()
+
         self.data = data
-        self.SetBackgroundColour(core.default_background_color)
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
 
         address = data.city + u' - ' + data.address
         blur = u'Lembrete'
         tempo = str(datetime.now().hour) + ':' + str(datetime.now().minute)
         minor = core.hour2int(data.hour) - core.hour2int(tempo)
         if minor >= 0:
-            y = u"%s! Falta menos de %s minutos para a entrega para o(a) Sr(a) %s\n" \
+            y = u"%s! Faltam menos de %s minutos para a entrega para o(a) Sr(a) %s " \
                 u"em %s, a qual esta marcada para as %s." % (blur, str(minor), data.receiver, address, data.hour)
         else:
-            y = u"%s! Passou-se %s minutos da hora da entrega para o(a) Sr(a) %s\n" \
+            y = u"%s! Passou-se %s minutos da hora da entrega para o(a) Sr(a) %s " \
                 u"em %s, a qual estava marcada para as %s." % (blur, str(-minor), data.receiver, address, data.hour)
-        wx.StaticText(self, -1, y, pos=(10, 50))
-        self.Centre()
-        ok = wx.Button(self, -1, u"Ver Mais", pos=(100, 150))
+        textbox = wx.TextCtrl(self, -1, y, pos=(10, 50), size=(480, 90),
+                              style=wx.NO_BORDER | wx.TE_READONLY | wx.TE_MULTILINE | wx.TE_NO_VSCROLL | wx.TE_BESTWRAP)
+        textbox.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+
+        maps = wx.BitmapButton(self, -1, wx.Bitmap(core.directory_paths['icons'] + 'map_icon_48.png'),
+                               pos=(50, 146), size=(48, 48), style=wx.NO_BORDER)
+        maps.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        maps.Bind(wx.EVT_BUTTON, self.open_maps)
+
+        panel_side_buttons = wx.Panel(self, pos=(100, 150), size=(350, 40), style=wx.SIMPLE_BORDER)
+        ok = GenBitmapTextButton(panel_side_buttons, -1, wx.Bitmap(core.directory_paths['icons'] + 'Search.png'),
+                                 u'Ver Mais', pos=(0, 0), size=(100, 40))
+        nok = GenBitmapTextButton(panel_side_buttons, -1, wx.Bitmap(core.directory_paths['icons'] + 'Check.png'),
+                                  u'OK', pos=(100, 0), size=(100, 40))
+        gray = GenBitmapTextButton(panel_side_buttons, -1, wx.Bitmap(core.directory_paths['icons'] + 'Delivery.png'),
+                                   u'Entrega Realizada', pos=(200, 0), size=(150, 40))
         ok.Bind(wx.EVT_BUTTON, self.more)
-        nok = wx.Button(self, -1, u"OK", pos=(200, 150))
         nok.Bind(wx.EVT_BUTTON, self.exit)
-        gray = wx.Button(self, -1, u"Entrega realizada", pos=(300, 150))
         gray.Bind(wx.EVT_BUTTON, self.ready)
+
+        panel_side_buttons.SetFocus()
+
         self.ShowModal()
         self.Destroy()
 
@@ -126,13 +143,18 @@ class Warner(wx.Dialog):
         db.close()
         self.exit(None)
 
+    def open_maps(self, event):
+        address = self.data.city + ', ' + self.data.address
+        import internet
+        internet.search_in_maps(address)
+
 
 class PasswordBox(wx.Dialog):
     def __init__(self, parent, title=u'Acesso Restrito'):
         wx.Dialog.__init__(self, parent, -1, title, size=(400, 180))
         self.parent = parent
         self.Centre()
-        self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
+        self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
         wx.EVT_PAINT(self, self.OnPaint)
         wx.StaticText(self, -1, u'Digíte a senha:', pos=(100, 25)).SetFont(wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
         self.password = wx.TextCtrl(self, -1, pos=(100, 50), size=(250, 30), style=wx.TE_PASSWORD)
@@ -179,8 +201,8 @@ class TextBox(wx.Frame):
     def setup_gui(self):
         self.Centre()
         self.SetMinSize((400, 300))
-        self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
-        self.SetBackgroundColour(core.default_background_color)
+        self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         menu1 = wx.Menu()
         menu1.Append(4001, u'&Salvar\tCTRL+S')
         menu1.Append(4002, u'&Salvar uma Cópia\tCTRL+SHIFT+S')
@@ -211,7 +233,7 @@ class TextBox(wx.Frame):
         tool_bar.AddSeparator()
         tool_bar.AddSimpleTool(4509, wx.Bitmap(core.directory_paths['icons'] + 'Exit.png', wx.BITMAP_TYPE_PNG),
                                u'Sair', '')
-        self.notes_box = wx.TextCtrl(self, -1, pos=(10, 60), size=(400, 300), style=wx.TE_MULTILINE)
+        self.notes_box = wx.TextCtrl(self, -1, pos=(10, 60), size=(400, 300), style=wx.TE_MULTILINE | wx.TE_BESTWRAP)
         self.Bind(wx.EVT_MENU, self.save, id=4001)
         self.Bind(wx.EVT_MENU, self.save_to, id=4002)
         self.Bind(wx.EVT_MENU, self.exit, id=4009)
@@ -290,19 +312,20 @@ def launch_error(origin, message, title=u'Error 404'):
 ask_options = {
     1: u'Você tem certeza que deseja apagar tudo?',
     11: u"Finalizar registro de venda?",
-    12: u"Finalizar registro de gasto?",
+    12: u"Finalizar registro de despesa?",
     13: u"Finalizar registro de perda?",
     14: u"Finalizar cadastro de cliente?",
     15: u"Finalizar cadastro de produto?",
     16: u"Finalizar registro de ganho?",
     17: u"Finalizar registro de categoria?",
     21: u"Você tem certeza que deseja apagar esta venda?",
-    22: u"Você tem certeza que deseja apagar este gasto?",
+    22: u"Você tem certeza que deseja apagar esta despesa?",
     23: u"Você tem certeza que deseja apagar este registro?",
     24: u"Você tem certeza que deseja apagar este cliente?",
     25: u"Você tem certeza que deseja apagar este produto?",
     26: u"Você tem certeza que deseja apagar este ganho?",
     27: u"Você tem certeza que deseja apagar esta categoria?",
+    28: u"Você tem certeza que deseja apagar esta venda?",
     30: u"Você tem certeza que deseja restaurar esse registro?",
     40: u"Você tem certeza que deseja desconectar essa venda?",
     90: u"Você tem certeza que deseja sair do programa?",
@@ -311,7 +334,7 @@ ask_options = {
 
 confirmation_options = {
     1: u"Venda registrada com sucesso!\nRegistrar outra venda?",
-    2: u"Gasto registrado com sucesso!\nRegistrar outro gasto?",
+    2: u"Despesa registrada com sucesso!\nRegistrar outra despesa?",
     3: u"Desperdício registrado com sucesso!\nRegistrar outro?",
     4: u"Cliente cadastrado com sucesso!\nCadatrar outro?",
     5: u"Produto cadastrado com sucesso!\nCadatrar outro?",
