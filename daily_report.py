@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import shelve
-
 import wx
 import wx.gizmos
 from wx.lib.buttons import GenBitmapTextButton
@@ -43,12 +41,9 @@ class Report(wx.Frame):
     list_expenses = None
     list_wastes = None
 
-    month_options = None
-    months_files = None
-
     available_lists = None
 
-    day_file = ''
+    cash_register = None
 
     def __init__(self, parent, title=u'Fechamento de Caixa'):
         wx.Frame.__init__(self, parent, -1, title,
@@ -63,23 +58,34 @@ class Report(wx.Frame):
     def setup_gui(self):
         self.SetPosition(wx.Point(75, 0))
         self.SetSize(wx.Size(1240, 720))
-        self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
-        self.SetBackgroundColour(core.default_background_color)
+        self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         # first
-        self.panel_top = wx.Panel(self, -1, pos=(10, 5), size=(1220, 50), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
-        self.panel_top.SetBackgroundColour(core.default_background_color)
-        wx.StaticText(self.panel_top, -1, u"Fechamento de:", pos=(500, 15))
+        self.panel_top = wx.Panel(self, -1, pos=(10, 5), size=(1220, 50), style=wx.TAB_TRAVERSAL)
+        self.panel_top.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        static_text_fechamento = wx.StaticText(self.panel_top, -1, u"Fechamento de:", pos=(300, 15))
+        static_text_fechamento.SetFont(wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
         self.setup_options()
-        fupdate = GenBitmapTextButton(self.panel_top, -1,
+
+        panel_top_buttons = wx.Panel(self.panel_top, -1, pos=(750, 5), size=(440, 40),
+                                     style=wx.TAB_TRAVERSAL | wx.SIMPLE_BORDER)
+
+        fupdate = GenBitmapTextButton(panel_top_buttons, -1,
                                       wx.Bitmap(core.directory_paths['icons'] + 'Reset.png', wx.BITMAP_TYPE_PNG),
-                                      u'Atualizar janela', pos=(750, 5), size=(140, 40))
+                                      u'Atualizar janela', pos=(0, 0), size=(140, 40))
         fupdate.Bind(wx.EVT_BUTTON, self.reopen)
-        pol = wx.Button(self.panel_top, -1, u"Recuperação de registros", pos=(900, 5), size=(-1, 40))
+        pol = GenBitmapTextButton(panel_top_buttons, -1,
+                                  wx.Bitmap(core.directory_paths['icons'] + 'Tools.png', wx.BITMAP_TYPE_PNG),
+                                  u"Recuperação de registros", pos=(140, 0), size=(200, 40))
         pol.Bind(wx.EVT_BUTTON, self.open_record_editor)
+        button_save = GenBitmapTextButton(panel_top_buttons, -1,
+                                          wx.Bitmap(core.directory_paths['icons'] + 'Save.png', wx.BITMAP_TYPE_PNG),
+                                          u"Salvar", pos=(340, 0), size=(100, 40))
+        button_save.Bind(wx.EVT_BUTTON, self.save)
 
         # Painel das vendas
         panel1 = wx.Panel(self, -1, pos=(10, 65), size=(810, 260), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
-        panel1.SetBackgroundColour(core.default_background_color)
+        panel1.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         self.list_sales = wx.gizmos.TreeListCtrl(panel1, -1, pos=(10, 5), size=(620, 250),
                                                  style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE |
                                                  wx.TR_FULL_ROW_HIGHLIGHT)
@@ -109,7 +115,7 @@ class Report(wx.Frame):
 
         # Painel dos gastos
         panel2 = wx.Panel(self, 53, pos=(10, 335), size=(810, 170), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
-        panel2.SetBackgroundColour(core.default_background_color)
+        panel2.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         self.list_expenses = wx.gizmos.TreeListCtrl(panel2, -1, pos=(10, 5), size=(620, 160),
                                                     style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE |
                                                     wx.TR_FULL_ROW_HIGHLIGHT)
@@ -138,7 +144,7 @@ class Report(wx.Frame):
 
         # Painel dos desperdicios
         panel_last = wx.Panel(self, 56, pos=(10, 515), size=(810, 170), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
-        panel_last.SetBackgroundColour(core.default_background_color)
+        panel_last.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         self.list_wastes = wx.gizmos.TreeListCtrl(panel_last, -1, pos=(10, 5), size=(620, 160),
                                                   style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE |
                                                   wx.TR_FULL_ROW_HIGHLIGHT)
@@ -168,7 +174,7 @@ class Report(wx.Frame):
 
         # Painel com o resulmo do dia
         panel3 = wx.Panel(self, -1, pos=(830, 65), size=(400, 620), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
-        panel3.SetBackgroundColour(core.default_background_color)
+        panel3.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         part1 = wx.Panel(panel3, -1, pos=(5, 50), size=(390, 265), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
         part2 = wx.Panel(panel3, -1, pos=(5, 320), size=(390, 85), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
         part3 = wx.Panel(panel3, -1, pos=(5, 410), size=(390, 200), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
@@ -302,17 +308,17 @@ class Report(wx.Frame):
     def setup_options(self):
         db = database.TransactionsDB()
 
-        self.month_options = list()
+        month_options = list()
 
         for date in db.list_record_dates():
-            self.month_options.append(core.format_date_user(date))
+            month_options.append(core.format_date_user(date))
 
         db.close()
 
-        self.combobox_day_option = wx.ComboBox(self.panel_top, -1, choices=self.month_options, size=(130, -1),
-                                               pos=(600, 10), style=wx.CB_READONLY)
+        self.combobox_day_option = wx.ComboBox(self.panel_top, -1, choices=month_options, size=(130, -1),
+                                               pos=(420, 12), style=wx.CB_READONLY)
         self.combobox_day_option.Bind(wx.EVT_COMBOBOX, self.setup)
-        if len(self.month_options) != 0:
+        if len(month_options) != 0:
             self.combobox_day_option.SetSelection(0)
 
     def setup(self, event):      # TODO Fazer a thread fechar direito com o resto do app
@@ -427,44 +433,31 @@ class Report(wx.Frame):
             self.textbox_card_amount.SetValue(str(card_amount))
             self.textbox_spent_value.SetValue(core.good_show("money", expenses_value))
             self.textbox_spent_amount.SetValue(str(expenses_amount))
-            # try:
-            #     if len(day_data["closure"]) == 0:
-            #         alpha = self.months_files[self.month_options.index(self.combobox_day_option.GetValue()) + 1]
-            #         zetta = shelve.open(core.directory_paths['saves'] + alpha)
-            #         self.textbox_cash_previous.SetValue(
-            #             core.good_show("money", str(zetta["closure"][0])).replace(".", ","))
-            #         zetta.close()
-            #
-            #     elif day_data["closure"][10] == 0.0:
-            #
-            #         alpha = self.months_files[self.month_options.index(self.combobox_day_option.GetValue()) + 1]
-            #         zetta = shelve.open(core.directory_paths['saves'] + alpha)
-            #         self.textbox_cash_previous.SetValue(core.good_show("money", zetta["closure"][0]))
-            #         zetta.close()
-            #     else:
-            #         self.textbox_cash_previous.SetValue(core.good_show("money", day_data["closure"][10]))
-            # except IndexError:
-            #     self.textbox_cash_previous.SetValue('0,00')
-            # try:
-            #     self.textbox_cash_real.SetValue(core.good_show("money", str(day_data["closure"][12])))
-            # except IndexError:
-            #     self.textbox_cash_real.SetValue('0,00')
-            # try:
-            #     self.textbox_cash_removed.SetValue(
-            #         core.good_show("money", str(day_data["closure"][14])))
-            # except IndexError:
-            #     self.textbox_cash_removed.SetValue('0,00')
 
-            self.textbox_cash_previous.SetValue('0,00')
-            self.textbox_cash_real.SetValue('0,00')
-            self.textbox_cash_removed.SetValue('0,00')
+            self.cash_register = transactions_db.cash_search_date(day)
+
+            if self.cash_register:
+                self.textbox_cash_previous.SetValue(core.format_cash_user(self.cash_register.fund))
+                self.textbox_cash_real.SetValue(core.format_cash_user(self.cash_register.cash))
+                self.textbox_cash_removed.SetValue(core.format_cash_user(self.cash_register.withdrawal))
+            else:
+                months = self.combobox_day_option.GetItems()
+                last_movement = months[self.combobox_day_option.GetSelection()-1]
+                cash_register = transactions_db.cash_search_date(core.format_date_internal(last_movement))
+                if cash_register:
+                    self.textbox_cash_previous.SetValue(core.format_cash_user(cash_register.cash))
+                else:
+                    self.textbox_cash_previous.SetValue('0,00')
+                self.textbox_cash_real.SetValue('0,00')
+                self.textbox_cash_removed.SetValue('0,00')
 
             self.update_cash(None)
 
             transactions_db.close()
             inventory_db.close()
 
-            # self.save()
+            self.save(None)
+
             self.combobox_day_option.Enable()
 
     def update_cash(self, event):
@@ -513,31 +506,38 @@ class Report(wx.Frame):
         self.setup_options()
         self.setup(None)
 
-    def save(self):
-        a1 = float(self.textbox_day_total.GetValue().replace(",", "."))
-        b1 = float(self.textbox_sales_value.GetValue().replace(",", "."))
-        c1 = int(self.textbox_sales_amount.GetValue().replace(",", "."))
-        d1 = float(self.textbox_money_value.GetValue().replace(",", "."))
-        e1 = int(self.textbox_money_amount.GetValue().replace(",", "."))
-        f1 = float(self.textbox_card_value.GetValue().replace(",", "."))
-        g1 = int(self.textbox_card_amount.GetValue().replace(",", "."))
-        h1 = float(self.textbox_spent_value.GetValue().replace(",", "."))
-        i1 = int(self.textbox_spent_amount.GetValue().replace(",", "."))
-        j1 = float(self.textbox_cash_previous.GetValue().replace(",", "."))
-        k1 = float(self.textbox_cash_ideal.GetValue().replace(",", "."))
-        l1 = float(self.textbox_cash_real.GetValue().replace(",", "."))
-        m1 = float(self.textbox_cash_tomorrow.GetValue().replace(",", "."))
-        n1 = float(self.textbox_cash_removed.GetValue().replace(",", "."))
-        if l1:
-            a0 = l1 - n1
+    def save(self, event):
+        fund = core.money2float(self.textbox_cash_previous.GetValue())
+        cash_ideal = core.money2float(self.textbox_cash_ideal.GetValue())
+        cash_real = core.money2float(self.textbox_cash_real.GetValue())
+        withdrawal = core.money2float(self.textbox_cash_removed.GetValue())
+        if cash_real:
+            cash = cash_real - withdrawal
         else:
-            a0 = k1 - n1
-        if a0 < 0:
-            a0 = 0.0
-        self.day_file = self.months_files[self.month_options.index(self.combobox_day_option.GetValue())]
-        day_data = shelve.open(core.directory_paths['saves'] + self.day_file)
-        day_data["closure"] = [a0, a1, b1, c1, d1, e1, f1, g1, h1, i1, j1, k1, l1, m1, n1]
-        day_data.close()
+            cash = cash_ideal - withdrawal
+        if cash < 0:
+            cash = 0.0
+
+        db = database.TransactionsDB()
+
+        if self.cash_register:
+            self.cash_register.withdrawal = withdrawal
+            self.cash_register.cash = cash
+            self.cash_register.fund = fund
+
+            db.edit_cash(self.cash_register)
+        else:
+            date = core.format_date_internal(self.combobox_day_option.GetValue())
+
+            self.cash_register = data_types.CashRegisterData()
+            self.cash_register.record_date = date
+            self.cash_register.withdrawal = withdrawal
+            self.cash_register.cash = cash
+            self.cash_register.fund = fund
+
+            db.insert_cash(self.cash_register)
+
+        db.close()
 
     def open_sale_register(self, event):
         sale.Sale(self)
@@ -580,4 +580,5 @@ class Report(wx.Frame):
         waste.Waste(self, key=data.ID)
 
     def exit(self, event):
+        self.save(event)
         self.Close()
