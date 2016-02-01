@@ -93,6 +93,17 @@ def money2float(value):
     return float(value.replace(',', '.').replace('R$ ', ''))
 
 
+def amount2float(value):
+    """
+    Converte uma string para float
+    :param value: String a ser convertida
+    :type value: str
+    :return: O valor em float
+    :rtype: float
+    """
+    return float(value.replace(',', '.').split()[0])
+
+
 def hour2int(value):
     """
     Gera um numero a partir de um horario
@@ -204,11 +215,12 @@ def format_amount_user(amount, unit=None):
     """
     Prepara uma quantidade para ser mostrada para o usuario
     :type unit: str
+    :type amount: float
     :param unit: Unidade
     :param amount: Quantidade de um produto
     :return:
     """
-    amount_str = str(amount).replace('.', ',')
+    amount_str = str(amount if not amount.is_integer() else int(amount)).replace('.', ',')
     if unit:
         amount_str = u'%s %s' % (amount_str, unit)
     return amount_str
@@ -632,11 +644,10 @@ directory_paths = {
     'databases': current_dir + 'databases' + slash
 }
 
-general_icon = current_dir + "bronze.ico"
-tray_icon = current_dir + "bronze2.ico"
+ICON_MAIN = current_dir + "bronze.ico"
+ICON_TRAY = current_dir + "bronze2.ico"
 
-default_background_color = '#B4CDCD'
-default_disabled_color = '#C0C0C0'
+COLOR_DEFAULT_BACKGROUND = '#B4CDCD'
 
 COLOR_LIGHT_BLUE = '#C2E6F8'
 COLOR_LIGHT_GREEN = '#6EFF70'

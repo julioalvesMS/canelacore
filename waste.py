@@ -67,11 +67,11 @@ class Waste(wx.Frame):
 
     def setup_gui(self):
         self.Centre()
-        self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
-        self.SetBackgroundColour(core.default_background_color)
+        self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         # first
         first = wx.Panel(self, -1, size=(450, 230), pos=(10, 10), style=wx.SIMPLE_BORDER | wx.TAB_TRAVERSAL)
-        first.SetBackgroundColour(core.default_background_color)
+        first.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         
         self.textbox_description = wx.SearchCtrl(first, -1, pos=(10, 10), size=(430, 30))
         self.textbox_description.Bind(wx.EVT_TEXT, self.database_search)
@@ -94,7 +94,7 @@ class Waste(wx.Frame):
 
         # last
         last = wx.Panel(self, -1, size=(140, 230), pos=(470, 10), style=wx.SIMPLE_BORDER)
-        last.SetBackgroundColour(core.default_background_color)
+        last.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         last_ = wx.Panel(last, pos=(10, 55), size=(120, 120), style=wx.SIMPLE_BORDER)
         finish = GenBitmapTextButton(last_, -1,
                                      wx.Bitmap(core.directory_paths['icons'] + 'Check.png', wx.BITMAP_TYPE_PNG),

@@ -91,60 +91,62 @@ class ClientManager(wx.Frame):
 
         self.setup_gui()
 
-        self.setup(1)
+        self.setup(None)
         self.Show()
 
     def setup_gui(self):
         self.SetPosition(wx.Point(100, 100))
         self.SetSize(wx.Size(1200, 550))
-        self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
-        self.SetBackgroundColour(core.default_background_color)
+        self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         panel_general = wx.Panel(self, pos=(10, 10), size=(1180, 100))
         if self.client_selection_mode:
             sele = GenBitmapTextButton(panel_general, -1,
                                        wx.Bitmap(core.directory_paths['icons'] + 'Check.png', wx.BITMAP_TYPE_PNG),
-                                       u'Selecionar', pos=(50, 40), size=(100, 40), style=wx.SIMPLE_BORDER)
-            sele.SetBackgroundColour(core.default_background_color)
+                                       u'Selecionar', pos=(10, 40), size=(120, 40), style=wx.SIMPLE_BORDER)
+            sele.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
             sele.Bind(wx.EVT_BUTTON, self.data_select)
         panel_top = wx.Panel(panel_general, -1, size=(400, 40), pos=(200, 40), style=wx.SIMPLE_BORDER)
         see = GenBitmapTextButton(panel_top, -1,
                                   wx.Bitmap(core.directory_paths['icons'] + 'user-info.png', wx.BITMAP_TYPE_PNG),
                                   u'Ver Mais', pos=(0, 0), size=(100, 40))
-        see.SetBackgroundColour(core.default_background_color)
+        see.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         see.Bind(wx.EVT_BUTTON, self.data_open)
         plus = GenBitmapTextButton(panel_top, -1,
                                    wx.Bitmap(core.directory_paths['icons'] + 'contact-new.png', wx.BITMAP_TYPE_PNG),
                                    u'Novo', pos=(100, 0), size=(100, 40))
-        plus.SetBackgroundColour(core.default_background_color)
+        plus.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         plus.Bind(wx.EVT_BUTTON, self.open_client_registry)
         edi = GenBitmapTextButton(panel_top, -1,
                                   wx.Bitmap(core.directory_paths['icons'] + 'Edit.png', wx.BITMAP_TYPE_PNG), u'Editar',
                                   pos=(200, 0), size=(100, 40))
-        edi.SetBackgroundColour(core.default_background_color)
+        edi.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         edi.Bind(wx.EVT_BUTTON, self.data_edit)
         era = GenBitmapTextButton(panel_top, -1,
                                   wx.Bitmap(core.directory_paths['icons'] + 'Trash.png', wx.BITMAP_TYPE_PNG), u'Apagar',
                                   pos=(300, 0), size=(100, 40))
-        era.SetBackgroundColour(core.default_background_color)
+        era.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         era.Bind(wx.EVT_BUTTON, self.ask_delete)
         self.textbox_filter = wx.SearchCtrl(panel_general, -1, pos=(650, 45), size=(200, 30), style=wx.TE_PROCESS_ENTER)
         self.textbox_filter.SetDescriptiveText(u'Busca por nome')
+        self.textbox_filter.ShowCancelButton(True)
         fin = wx.BitmapButton(panel_general, -1, wx.Bitmap(core.directory_paths['icons'] + 'edit_find.png'),
-                              pos=(855, 42),
-                              size=(35, 35))
+                              pos=(855, 42), size=(35, 35), style=wx.NO_BORDER)
         fin.Bind(wx.EVT_BUTTON, self.database_search)
+        fin.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+
         self.textbox_filter.Bind(wx.EVT_TEXT_ENTER, self.database_search)
         self.textbox_filter.Bind(wx.EVT_SEARCHCTRL_SEARCH_BTN, self.database_search)
-        panel_bottom = wx.Panel(panel_general, size=(240, 40), pos=(900, 40), style=wx.SIMPLE_BORDER)
+        panel_bottom = wx.Panel(panel_general, size=(240, 40), pos=(930, 40), style=wx.SIMPLE_BORDER)
         button_exit = GenBitmapTextButton(panel_bottom, -1, wx.Bitmap(core.directory_paths['icons'] + 'Exit.png'),
                                           u'Sair',
                                           pos=(120, 0), size=(120, 40))
-        button_exit.SetBackgroundColour(core.default_background_color)
+        button_exit.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         button_exit.Bind(wx.EVT_BUTTON, self.exit)
         rep = GenBitmapTextButton(panel_bottom, -1, wx.Bitmap(core.directory_paths['icons'] + 'Reset.png'),
                                   u'Atualizar',
                                   pos=(0, 0), size=(120, 40))
-        rep.SetBackgroundColour(core.default_background_color)
+        rep.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         rep.Bind(wx.EVT_BUTTON, self.setup)
         panel_middle = wx.Panel(self, -1, pos=(10, 110), size=(1180, 410))
         self.list_clients = wx.ListCtrl(panel_middle, -1, pos=(5, 5), size=(1170, 390),
@@ -266,8 +268,8 @@ class ClientRegister(wx.Frame):
 
     def setup_gui(self):
         self.SetSize(wx.Size(500, 585))
-        self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
-        self.SetBackgroundColour(core.default_background_color)
+        self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         self.Centre()
 
         panel_client_intel = wx.Panel(self, -1, pos=(0, 0), size=(500, 500), style=wx.TAB_TRAVERSAL)
@@ -443,8 +445,8 @@ class ClientData(wx.Frame):
 
     def setup_gui(self):
         self.SetSize(wx.Size(850, 585))
-        self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
-        self.SetBackgroundColour(core.default_background_color)
+        self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         self.Centre()
 
         panel_client_intel = wx.Panel(self, -1, pos=(0, 0), size=(500, 500), style=wx.TAB_TRAVERSAL)
@@ -524,7 +526,7 @@ class ClientData(wx.Frame):
         panel_side = wx.Panel(self, -1, pos=(500, 10), size=(340, 530), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
         self.textbox_client_intel = wx.TextCtrl(panel_side, -1, pos=(10, 10), size=(320, 100),
                                                 style=wx.TE_MULTILINE | wx.NO_BORDER)
-        self.textbox_client_intel.SetBackgroundColour(core.default_background_color)
+        self.textbox_client_intel.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         if self.editable:
             bp1 = wx.Panel(panel_side, -1, pos=(20, 120), size=(300, 40), style=wx.SIMPLE_BORDER)
             sunbind = GenBitmapTextButton(bp1, -1,
@@ -598,7 +600,6 @@ class ClientData(wx.Frame):
         if t == -1:
             return
 
-        print self.list_bought.GetItemTextColour(t)
         if self.list_bought.GetItemTextColour(t) is core.COLOR_LIST_ITEM_DISABLED:
             activate = True
         else:

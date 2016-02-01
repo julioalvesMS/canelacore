@@ -118,6 +118,34 @@ class TransactionData:
         db.close()
 
 
+class TransactionCategoryData:
+
+    ID = -1
+
+    category = None
+
+    active = True
+
+    def __init__(self):
+        pass
+
+
+class CashRegisterData:
+
+    ID = -1
+
+    fund = 0.0
+    cash = 0.0
+    withdrawal = 0.0
+
+    record_date = None
+
+    active = True
+
+    def __init__(self):
+        pass
+
+
 class ProductData:
 
     ID = -1

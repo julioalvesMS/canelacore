@@ -29,10 +29,10 @@ class DeliveryManager(wx.Frame):
         self.Show()
 
     def setup_gui(self):
-        self.SetBackgroundColour('#383838')
-        self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
         panel_deliveries = wx.Panel(self, -1, size=(730, 380), pos=(10, 10), style=wx.DOUBLE_BORDER | wx.TAB_TRAVERSAL)
-        panel_deliveries.SetBackgroundColour(core.COLOR_LIGHT_GREEN)
+        panel_deliveries.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
 
         self.list_deliveries = wx.gizmos.TreeListCtrl(panel_deliveries, -1, pos=(10, 10), size=(710, 360),
                                                       style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE |
@@ -45,7 +45,7 @@ class DeliveryManager(wx.Frame):
         self.Bind(wx.EVT_TREE_ITEM_ACTIVATED, self.open_view_sale, self.list_deliveries)
 
         panel_right = wx.Panel(self, -1, size=(200, 380), pos=(750, 10), style=wx.DOUBLE_BORDER | wx.TAB_TRAVERSAL)
-        panel_right.SetBackgroundColour(core.COLOR_LIGHT_GREEN)
+        panel_right.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
 
         show_options = [u'Apenas entregas ativas', u'Todas as entregas cadastradas']
         self.combobox_show_option = wx.ComboBox(panel_right, choices=show_options, size=(190, -1), pos=(2, 20),
@@ -55,7 +55,7 @@ class DeliveryManager(wx.Frame):
 
         maps = wx.BitmapButton(panel_right, -1, wx.Bitmap(core.directory_paths['icons'] + 'map_icon_48.png'),
                                pos=(76, 76), size=(48, 48), style=wx.NO_BORDER)
-        maps.SetBackgroundColour(core.default_background_color)
+        maps.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         maps.Bind(wx.EVT_BUTTON, self.open_maps)
 
         tell = wx.Button(panel_right, -1, u'Mostrar mais', pos=(50, 150), size=(100, 30))
@@ -63,8 +63,8 @@ class DeliveryManager(wx.Frame):
 
         panel_side_buttons = wx.Panel(panel_right, pos=(40, 220), size=(120, 120), style=wx.SIMPLE_BORDER)
         change_delivery_status = GenBitmapTextButton(panel_side_buttons, -1,
-                                                     wx.Bitmap(core.directory_paths['icons'] + 'Check.png'),
-                                                     u"Concluída", pos=(0, 0), size=(120, 40))
+                                                     wx.Bitmap(core.directory_paths['icons'] + 'Delivery.png'),
+                                                     u"Realizada", pos=(0, 0), size=(120, 40))
         change_delivery_status.Bind(wx.EVT_BUTTON, self.change_delivery_status)
         up = GenBitmapTextButton(panel_side_buttons, -1, wx.Bitmap(core.directory_paths['icons'] + 'Reset.png'),
                                  u"Atualizar", pos=(0, 40), size=(120, 40))

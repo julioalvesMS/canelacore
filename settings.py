@@ -38,7 +38,7 @@ class SettingsMenu(wx.Frame):
     def setup_gui(self):
         self.Centre()
         self.SetBackgroundColour('#D6D6D6')
-        self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
+        self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
         self.notebook_settings = wx.Notebook(self, pos=(5, 5), style=wx.LEFT)
         # --Geral
         # buscar atualizações
