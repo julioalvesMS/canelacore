@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
-import shelve
 import threading
-from datetime import datetime
 from string import strip
 
 import wx
@@ -23,8 +20,6 @@ __author__ = 'Julio'
 
 class InventoryManager(wx.Frame):
 
-    dict_products = None
-
     list_products = None
     textbox_filter = None
 
@@ -40,66 +35,63 @@ class InventoryManager(wx.Frame):
     def setup_gui(self):
         self.SetPosition(wx.Point(100, 100))
         self.SetSize(wx.Size(1200, 550))
-        self.SetIcon((wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO)))
-        self.SetBackgroundColour(core.default_background_color)
+        self.SetIcon((wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO)))
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         panel_top = wx.Panel(self, pos=(10, 10), size=(1180, 100))
 
-        button_categories = GenBitmapTextButton(panel_top, -1, wx.Bitmap(core.directory_paths['icons'] + 'Tools.png',
-                                                wx.BITMAP_TYPE_PNG), u'Categorias', pos=(10, 40), size=(100, 40),
+        button_categories = GenBitmapTextButton(panel_top, -1, wx.Bitmap(core.directory_paths['icons'] + 'Drawer.png',
+                                                wx.BITMAP_TYPE_PNG), u'Categorias', pos=(5, 40), size=(115, 40),
                                                 style=wx.SIMPLE_BORDER)
-        button_categories.SetBackgroundColour(core.default_background_color)
+        button_categories.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         button_categories.Bind(wx.EVT_BUTTON, self.open_category_manager)
-        panel_buttons_left = wx.Panel(panel_top, pos=(120, 40), size=(500, 40), style=wx.SIMPLE_BORDER)
+        panel_buttons_left = wx.Panel(panel_top, pos=(140, 40), size=(500, 40), style=wx.SIMPLE_BORDER)
         see = GenBitmapTextButton(panel_buttons_left, -1,
                                   wx.Bitmap(core.directory_paths['icons'] + 'Tools.png', wx.BITMAP_TYPE_PNG),
                                   u'Ver Mais', pos=(0, 0), size=(100, 40))
-        see.SetBackgroundColour(core.default_background_color)
+        see.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         see.Bind(wx.EVT_BUTTON, self.data_open)
         plus = GenBitmapTextButton(panel_buttons_left, -1,
                                    wx.Bitmap(core.directory_paths['icons'] + 'contact-new.png', wx.BITMAP_TYPE_PNG),
                                    u'Novo', pos=(100, 0), size=(100, 40))
-        plus.SetBackgroundColour(core.default_background_color)
+        plus.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         plus.Bind(wx.EVT_BUTTON, self.open_new_product)
 
         mplus = GenBitmapTextButton(panel_buttons_left, -1,
                                     wx.Bitmap(core.directory_paths['icons'] + 'Box_download.png', wx.BITMAP_TYPE_PNG),
                                     u'Entrada', pos=(200, 0), size=(100, 40))
-        mplus.SetBackgroundColour(core.default_background_color)
+        mplus.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         mplus.Bind(wx.EVT_BUTTON, self.open_update_inventory)
-        # Desabilitado por enquanto
-        mplus.Disable()
 
         edi = GenBitmapTextButton(panel_buttons_left, -1,
                                   wx.Bitmap(core.directory_paths['icons'] + 'Edit.png', wx.BITMAP_TYPE_PNG), u'Editar',
                                   pos=(300, 0), size=(100, 40))
-        edi.SetBackgroundColour(core.default_background_color)
+        edi.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         edi.Bind(wx.EVT_BUTTON, self.data_edit)
         era = GenBitmapTextButton(panel_buttons_left, -1,
                                   wx.Bitmap(core.directory_paths['icons'] + 'Trash.png', wx.BITMAP_TYPE_PNG),
                                   u'Apagar', pos=(400, 0), size=(100, 40))
-        era.SetBackgroundColour(core.default_background_color)
+        era.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         era.Bind(wx.EVT_BUTTON, self.ask_delete)
-        self.textbox_filter = wx.SearchCtrl(panel_top, -1, pos=(650, 45), size=(200, 30), style=wx.TE_PROCESS_ENTER)
+        self.textbox_filter = wx.SearchCtrl(panel_top, -1, pos=(665, 45), size=(200, 30), style=wx.TE_PROCESS_ENTER)
         self.textbox_filter.SetDescriptiveText(u'Busca por nome')
         self.textbox_filter.ShowCancelButton(True)
-        self.textbox_filter.SetCancelBitmap(wx.Bitmap(core.directory_paths['icons'] + 'Erase2.png', wx.BITMAP_TYPE_PNG))
         fin = wx.BitmapButton(panel_top, -1, wx.Bitmap(core.directory_paths['icons'] + 'edit_find.png'),
-                              pos=(855, 42), size=(35, 35), style=wx.NO_BORDER)
+                              pos=(870, 42), size=(35, 35), style=wx.NO_BORDER)
         fin.Bind(wx.EVT_BUTTON, self.database_search)
-        fin.SetBackgroundColour(core.default_background_color)
+        fin.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         self.textbox_filter.Bind(wx.EVT_TEXT_ENTER, self.database_search)
         self.textbox_filter.Bind(wx.EVT_SEARCHCTRL_SEARCH_BTN, self.database_search)
         self.textbox_filter.Bind(wx.EVT_SEARCHCTRL_CANCEL_BTN, self.clean)
-        panel_buttons_right = wx.Panel(panel_top, pos=(900, 40), size=(240, 40), style=wx.SIMPLE_BORDER)
+        panel_buttons_right = wx.Panel(panel_top, pos=(930, 40), size=(240, 40), style=wx.SIMPLE_BORDER)
         quir = GenBitmapTextButton(panel_buttons_right, -1, wx.Bitmap(core.directory_paths['icons'] + 'Exit.png'),
                                    u'Sair',
                                    pos=(120, 0), size=(120, 40))
-        quir.SetBackgroundColour(core.default_background_color)
+        quir.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         quir.Bind(wx.EVT_BUTTON, self.exit)
         rep = GenBitmapTextButton(panel_buttons_right, -1, wx.Bitmap(core.directory_paths['icons'] + 'Reset.png'),
                                   u'Atualizar',
                                   pos=(0, 0), size=(120, 40))
-        rep.SetBackgroundColour(core.default_background_color)
+        rep.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         rep.Bind(wx.EVT_BUTTON, self.setup)
         panel_center = wx.Panel(self, -1, pos=(10, 110), size=(1180, 410))
         self.list_products = wx.ListCtrl(panel_center, -1, pos=(5, 5), size=(1170, 390),
@@ -123,10 +115,12 @@ class InventoryManager(wx.Frame):
         db = database.InventoryDB()
         inventory = db.product_list()
         for product in inventory:
+            category = db.categories_search_id(product.category_ID)
             self.list_products.Append((product.description, product.ID,
-                                       db.categories_search_id(product.category_ID).category,
+                                       category.category,
                                        core.format_cash_user(product.price, currency=True),
-                                       core.format_amount_user(product.amount), product.sold))
+                                       core.format_amount_user(product.amount, unit=category.unit),
+                                       core.format_amount_user(product.sold, unit=category.unit)))
         db.close()
 
     def data_delete(self, event):
@@ -145,7 +139,7 @@ class InventoryManager(wx.Frame):
             return
         lo = self.list_products.GetItem(po, 1).GetText()
         ko = self.list_products.GetItemText(po)
-        ProductData(self, ko, lo, True)
+        ProductData(self, title=ko, product_id=lo, editable=True)
 
     def data_open(self, event):
         po = self.list_products.GetFocusedItem()
@@ -153,7 +147,7 @@ class InventoryManager(wx.Frame):
             return
         lo = self.list_products.GetItem(po, 1).GetText()
         ko = self.list_products.GetItemText(po)
-        ProductData(self, ko, lo, False)
+        ProductData(self, title=ko, product_id=lo, editable=False)
 
     def database_search(self, event):
         self.list_products.DeleteAllItems()
@@ -161,9 +155,12 @@ class InventoryManager(wx.Frame):
         info = self.textbox_filter.GetValue()
         inventory = db.inventory_search(info)
         for product in inventory:
+            category = db.categories_search_id(product.category_ID)
             self.list_products.Append((product.description, product.ID,
-                                       db.categories_search_id(product.category_ID).category,
-                                       core.format_cash_user(product.price, True), product.amount, product.sold))
+                                       category.category,
+                                       core.format_cash_user(product.price, currency=True),
+                                       core.format_amount_user(product.amount, unit=category.unit),
+                                       core.format_amount_user(product.sold, unit=category.unit)))
         db.close()
 
     def clean(self, event):
@@ -177,168 +174,11 @@ class InventoryManager(wx.Frame):
         categories.ProductCategoryManager(self)
 
     def open_new_product(self, event):
-        ProductRegister(self)
+        ProductData(self)
 
     def open_update_inventory(self, event):
         UpdateInventory(self)
 
-    def exit(self, event):
-        self.Close()
-
-
-class ProductRegister(wx.Frame):
-    panel_data = None
-    panel_image = None
-
-    textbox_description = None
-    textbox_barcode = None
-    textbox_amount = None
-    textbox_price = None
-    textbox_supplier = None
-    textbox_observation = None
-
-    combobox_category = None
-
-    def __init__(self, parent, title=u'Cadastro de Produtos'):
-        wx.Frame.__init__(self, parent, -1, title,
-                          style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION |
-                          wx.CLOSE_BOX | wx.CLIP_CHILDREN | wx.TAB_TRAVERSAL)
-        self.parent = parent
-
-        self.setup_gui()
-
-        self.Show()
-
-    def setup_gui(self):
-
-        self.Centre()
-        self.SetSize(wx.Size(500, 410))
-        self.SetIcon((wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO)))
-        self.SetBackgroundColour(core.default_background_color)
-
-        self.panel_data = wx.Panel(self, -1, pos=(0, 0), size=(500, 320), style=wx.TAB_TRAVERSAL)
-        wx.StaticText(self.panel_data, -1, u'Descrição do produto:', pos=(190, 10))
-        wx.StaticText(self.panel_data, -1, u'Código de Barras:', pos=(190, 70))
-        wx.StaticText(self.panel_data, -1, u'Preço:', pos=(190, 130))
-        wx.StaticText(self.panel_data, -1, u'Estoque:', pos=(350, 130))
-        wx.StaticText(self.panel_data, -1, u'Categoria:', pos=(190, 190))
-        wx.StaticText(self.panel_data, -1, u'Fornecedor:', pos=(350, 190))
-        wx.StaticText(self.panel_data, -1, u'Observações:', pos=(10, 230))
-        self.textbox_description = wx.TextCtrl(self.panel_data, -1, pos=(190, 30), size=(300, 30))
-        self.textbox_barcode = wx.TextCtrl(self.panel_data, -1, pos=(190, 90), size=(300, 30))
-        self.textbox_price = wx.TextCtrl(self.panel_data, -1, pos=(190, 150), size=(100, 30))
-        self.textbox_amount = wx.TextCtrl(self.panel_data, -1, pos=(350, 150), size=(100, 30))
-        self.combobox_category = wx.ComboBox(self.panel_data, -1, pos=(190, 210), size=(150, 30), style=wx.TE_READONLY)
-        self.textbox_supplier = wx.TextCtrl(self.panel_data, -1, pos=(350, 210), size=(140, 30))
-        self.textbox_observation = wx.TextCtrl(self.panel_data, -1, pos=(10, 250), size=(480, 65),
-                                               style=wx.TE_MULTILINE)
-        self.textbox_barcode.Bind(wx.EVT_CHAR, core.check_number)
-        self.textbox_price.Bind(wx.EVT_CHAR, core.check_currency)
-
-        button_category = wx.BitmapButton(self.panel_data, -1,
-                                          wx.Bitmap(core.directory_paths['icons'] + 'Add.png', wx.BITMAP_TYPE_PNG),
-                                          pos=(150, 204), size=(32, 32), style=wx.NO_BORDER)
-        button_category.Bind(wx.EVT_BUTTON, self.open_category_register)
-        button_category.SetBackgroundColour(core.default_background_color)
-
-        self.panel_image = wx.Panel(self.panel_data, -1, size=(150, 150), pos=(10, 45), style=wx.SIMPLE_BORDER)
-        self.panel_image.SetBackgroundColour('#ffffff')
-        wx.EVT_PAINT(self.panel_image, self.OnPaint)
-        self.clean()
-
-        panel_bottom = wx.Panel(self, -1, pos=(0, 325), size=(500, 50))
-        panel_bottom_buttons = wx.Panel(panel_bottom, pos=(90, 5), size=(320, 40), style=wx.SIMPLE_BORDER)
-        finish = GenBitmapTextButton(panel_bottom_buttons, -1,
-                                     wx.Bitmap(core.directory_paths['icons'] + 'Check.png', wx.BITMAP_TYPE_PNG),
-                                     u"Finalizar", pos=(0, 0), size=(100, 40))
-        finish.Bind(wx.EVT_BUTTON, self.ask_end)
-        restart = GenBitmapTextButton(panel_bottom_buttons, -1,
-                                      wx.Bitmap(core.directory_paths['icons'] + 'Reset.png', wx.BITMAP_TYPE_PNG),
-                                      u"Recomeçar", pos=(100, 0), size=(120, 40))
-        restart.Bind(wx.EVT_BUTTON, self.ask_clean)
-        cancel = GenBitmapTextButton(panel_bottom_buttons, -1,
-                                     wx.Bitmap(core.directory_paths['icons'] + 'Exit.png', wx.BITMAP_TYPE_PNG),
-                                     u"Sair", pos=(220, 0), size=(100, 40))
-        cancel.Bind(wx.EVT_BUTTON, self.ask_exit)
-
-    def ask_end(self, event):
-        dialogs.Ask(self, u'Finalizar Cadastro', 15)
-
-    def ask_clean(self, event):
-        dialogs.Ask(self, u'Recomeçar', 1)
-
-    def ask_exit(self, event):
-        if self.textbox_description.GetValue():
-            dialogs.Ask(self, u'Sair', 91)
-        else:
-            self.Close()
-
-    def open_category_register(self, event):
-        categories.ProductCategoryData(self)
-
-    def update_categories(self):
-        db = database.InventoryDB()
-        category_list = db.categories_list()
-        category_options = [u'Selecione']
-        for category in category_list:
-            category_options.append(category.category)
-        self.combobox_category.SetItems(category_options)
-        self.combobox_category.SetSelection(0)
-        db.close()
-
-    def clean(self):
-        self.textbox_description.SetValue('')
-        self.textbox_price.SetValue('R$ 0,00')
-        self.textbox_amount.SetValue('')
-        self.textbox_supplier.SetValue('')
-        self.textbox_observation.SetValue('')
-        self.update_categories()
-
-    def end(self):
-        if not self.textbox_description.GetValue():
-            return dialogs.launch_error(self, u'É necessária uma descrição!')
-        if self.combobox_category.GetSelection() == 0:
-            return dialogs.launch_error(self, u'Selecione uma categoria!')
-
-        rtime = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
-            datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
-        rdate = str(datetime.now().year) + "-" + core.good_show("o", str(datetime.now().month)) + "-" + core.good_show(
-            "o", str(datetime.now().day))
-
-        names = strip(self.textbox_description.GetValue()).split()
-        for i in range(0, len(names)):
-            names[i] = names[i].capitalize()
-        namef = ' '.join(names)
-
-        db = database.InventoryDB()
-        category = db.category_search_name(self.combobox_category.GetValue())
-
-        barcode = self.textbox_barcode.GetValue()
-        s = data_types.ProductData()
-        if barcode:
-            s.barcode = barcode
-        s.description = namef
-        s.price = float(self.textbox_price.GetValue().replace(',', '.').replace('R$ ', ''))
-        s.amount = int(self.textbox_amount.GetValue())
-        s.category_ID = category.ID
-        s.supplier = self.textbox_supplier.GetValue()
-        s.obs = self.textbox_observation.GetValue()
-        s.record_time = rtime
-        s.record_date = rdate
-        db.insert_product(s)
-        db.close()
-        if isinstance(self.parent, sale.Sale):
-            self.parent.database_inventory.insert_product(s)
-            self.parent.database_search(None)
-        self.clean()
-
-        dialogs.Confirmation(self, u'Sucesso', 5)
-
-    def OnPaint(self, event):
-        wx.PaintDC(self.panel_image).DrawBitmap(
-            core.resize_bitmap(wx.Bitmap(core.directory_paths['custom'] + 'logo-canela-santa.jpg'),
-                               self.panel_image.GetSizeTuple()[0], self.panel_image.GetSizeTuple()[1]), 0, 0)
-    
     def exit(self, event):
         self.Close()
 
@@ -356,7 +196,7 @@ class ProductData(wx.Frame):
 
     combobox_category = None
 
-    def __init__(self, parent, title, product_id=-1, data=None, editable=True):
+    def __init__(self, parent, title='Cadastro de Produto', product_id=-1, data=None, editable=True):
         wx.Frame.__init__(self, parent, -1, title,
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION |
                           wx.CLOSE_BOX | wx.CLIP_CHILDREN | wx.TAB_TRAVERSAL)
@@ -372,8 +212,8 @@ class ProductData(wx.Frame):
 
     def setup_gui(self):
         self.SetSize(wx.Size(500, 410))
-        self.SetIcon((wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO)))
-        self.SetBackgroundColour(core.default_background_color)
+        self.SetIcon((wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO)))
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         self.Centre()
         self.panel_data = wx.Panel(self, -1, pos=(0, 0), size=(500, 320), style=wx.TAB_TRAVERSAL)
         wx.StaticText(self.panel_data, -1, u'Descrição do produto:', pos=(190, 10))
@@ -448,43 +288,68 @@ class ProductData(wx.Frame):
 
     def clean(self):
         db = database.InventoryDB()
-        category_list = db.categories_list()
-        category_options = []
-        for category in category_list:
-            category_options.append(category.category)
+
+        if self.editable:
+            self.update_categories()
+
         if self.data:
             self.product_id = self.data.ID
         elif self.product_id != -1:
             self.data = db.inventory_search_id(self.product_id)
         else:
-            return self.exit(None)
+            db.close()
+
+            self.textbox_description.SetValue('')
+            self.textbox_price.SetValue('R$ 0,00')
+            self.textbox_amount.SetValue('')
+            self.textbox_supplier.SetValue('')
+            self.textbox_observation.SetValue('')
+            self.update_categories()
+
+            return
+        category = db.categories_search_id(self.data.category_ID)
 
         self.textbox_description.SetValue(self.data.description)
         self.textbox_barcode.SetValue(self.data.barcode)
         self.textbox_price.SetValue(core.format_cash_user(self.data.price, currency=True))
-        self.textbox_amount.SetValue(core.format_amount_user(self.data.amount))
+        self.textbox_amount.SetValue(core.format_amount_user(self.data.amount, unit=category.unit))
         self.textbox_supplier.SetValue(self.data.supplier)
         self.textbox_observation.SetValue(self.data.obs)
 
-        if self.editable:
-            self.combobox_category.SetItems(category_options)
-        self.combobox_category.SetValue(db.categories_search_id(self.data.category_ID).category)
+        self.combobox_category.SetValue(category.category)
 
         db.close()
 
+    def update_categories(self):
+        db = database.InventoryDB()
+        category_list = db.categories_list()
+        category_options = [u'Selecione']
+        for category in category_list:
+            category_options.append(category.category)
+        self.combobox_category.SetItems(category_options)
+        self.combobox_category.SetSelection(0)
+        db.close()
+
     def set_editable(self, event):
-        ProductData(self.parent, self.title, self.product_id, True)
+        ProductData(self.parent, self.title, self.product_id, self.data, True)
         self.Close()
 
     def end(self):
+
         if not self.textbox_description.GetValue():
             return dialogs.launch_error(self, u'É necessária uma descrição!')
+        if self.combobox_category.GetSelection() == 0:
+            return dialogs.launch_error(self, u'Selecione uma categoria!')
 
-        rtime = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
-            datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
-        rdate = str(datetime.now().year) + "-" + core.good_show("o", str(datetime.now().month)) + "-" + core.good_show(
-            "o", str(
-                datetime.now().day))
+        amount_str = self.textbox_amount.GetValue()
+
+        try:
+            amount = core.amount2float(amount_str)
+        except ValueError:
+            self.textbox_amount.Clear()
+            return dialogs.launch_error(self, u'Quantidade inválida!')
+
+        rdate, rtime = core.datetime_today()
         names = strip(self.textbox_description.GetValue()).split()
         for i in range(0, len(names)):
             names[i] = names[i].capitalize()
@@ -499,20 +364,32 @@ class ProductData(wx.Frame):
 
         s.ID = self.product_id
         s.description = namef
-        s.price = float(self.textbox_price.GetValue().replace(',', '.').replace('R$ ', ''))
-        s.amount = int(self.textbox_amount.GetValue())
+        s.price = core.money2float(self.textbox_price.GetValue())
+        s.amount = int(amount)
         s.category_ID = category.ID
         s.supplier = self.textbox_supplier.GetValue()
         s.obs = self.textbox_observation.GetValue()
         s.record_time = rtime
         s.record_date = rdate
-        db.edit_product(s)
+
+        if self.data:
+            db.edit_product(s)
+        else:
+            db.insert_product(s)
         db.close()
 
         if isinstance(self.parent, InventoryManager):
             self.parent.setup(None)
 
-        self.exit(None)
+        elif isinstance(self.parent, sale.Sale):
+            self.parent.database_inventory.insert_product(s)
+            self.parent.database_search(None)
+
+        if self.data:
+            return self.exit(None)
+
+        self.clean()
+        dialogs.Confirmation(self, u'Sucesso', 5)
 
     def OnPaint(self, event):
         wx.PaintDC(self.panel_image).DrawBitmap(
@@ -525,56 +402,109 @@ class ProductData(wx.Frame):
 
 class UpdateInventory(wx.Frame):
 
-    dict_products = None
+    textbox_product_description = None
+    textbox_product_id = None
+    textbox_product_price = None
+    textbox_product_amount = None
 
-    new_products = None
+    list_inventory = None
+    list_update = None
+
+    panel_product_data = None
+    __panel_product = None
+
+    item = None
 
     def __init__(self, parent, title=u'Entrada de Produtos'):
-        wx.Frame.__init__(self, parent, -1, title, size=(850, 650),
+        wx.Frame.__init__(self, parent, -1, title, size=(470, 675),
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION |
                           wx.CLOSE_BOX | wx.CLIP_CHILDREN | wx.TAB_TRAVERSAL)
 
         self.parent = parent
         self.setup_gui()
+
+        self.database_inventory = database.InventoryDB(':memory:')
+        self.database_search(None)
+
         self.Show()
 
     def setup_gui(self):
-        self.SetIcon((wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO)))
+        self.SetIcon((wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO)))
         self.Centre()
-        self.new_products = []
-        for i in range(10):
-            if i >= 5:
-                x = 435
-                y = (i - 5) * 110 + 10
-            else:
-                x = 15
-                y = i * 110 + 10
-            panel = wx.Panel(self, -1, size=(400, 100), pos=(x, y), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
-            pnm = wx.TextCtrl(panel, -1, size=(300, 30), pos=(95, 5))
-            pam = wx.TextCtrl(panel, -1, size=(100, 30), pos=(95, 60))
-            pct = wx.TextCtrl(panel, -1, size=(100, 30), pos=(285, 60))
-            pam.Bind(wx.EVT_CHAR, core.check_number)
-            pct.Bind(wx.EVT_CHAR, core.check_currency)
-            pct.SetValue('R$ 0,00')
-            self.new_products.append([pnm, pam, pct])
-            panel.SetBackgroundColour(core.default_background_color)
-            wx.StaticText(panel, -1, u'Descrição:', pos=(21, 12))
-            wx.StaticText(panel, -1, u'Quantidade:', pos=(25, 67))
-            wx.StaticText(panel, -1, u'Preço:', pos=(240, 67))
 
-        bottom = wx.Panel(self, -1, size=(390, 50), pos=(230, 560), style=wx.SIMPLE_BORDER)
+        self.list_update = wx.ListCtrl(self, -1, pos=(10, 280), size=(450, 295),
+                                       style=wx.LC_REPORT | wx.SIMPLE_BORDER | wx.LC_VRULES | wx.LC_HRULES)
+        self.list_update.InsertColumn(0, u"ID", width=50)
+        self.list_update.InsertColumn(1, u"Descrição", width=180)
+        self.list_update.InsertColumn(2, u"Quantidade")
+        self.list_update.InsertColumn(3, u"Preço Unit.")
+
+        # product
+        self.panel_product_data = wx.Panel(self, 22, pos=(10, 10), size=(450, 260),
+                                           style=wx.DOUBLE_BORDER | wx.TAB_TRAVERSAL)
+        self.panel_product_data.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+
+        fin = wx.BitmapButton(self.panel_product_data, -1, wx.Bitmap(core.directory_paths['icons'] + 'Add.png'),
+                              pos=(408, 10), size=(32, 32), style=wx.NO_BORDER)
+        fin.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        fin.Bind(wx.EVT_BUTTON, self.open_product_register)
+
+        self.textbox_product_description = wx.SearchCtrl(self.panel_product_data, 223, pos=(10, 10), size=(395, 32))
+        self.textbox_product_description.Bind(wx.EVT_TEXT, self.database_search, id=223)
+        self.textbox_product_description.ShowSearchButton(False)
+        self.textbox_product_description.SetDescriptiveText(u'Descrição do produto')
+        self.list_inventory = wx.ListCtrl(self.panel_product_data, -1, pos=(10, 45), size=(430, 115),
+                                          style=wx.LC_REPORT | wx.LC_VRULES | wx.LC_HRULES | wx.SIMPLE_BORDER)
+        self.list_inventory.InsertColumn(0, u'ID')
+        self.list_inventory.InsertColumn(1, u'Descrição', width=230)
+        self.list_inventory.InsertColumn(2, u'Preço')
+        self.list_inventory.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.database_select)
+
+        self.textbox_product_id = wx.SearchCtrl(self.panel_product_data, -1, pos=(10, 170), size=(100, -1))
+        self.textbox_product_id.ShowSearchButton(False)
+        self.textbox_product_id.SetDescriptiveText(u'ID')
+
+        self.textbox_product_price = wx.SearchCtrl(self.panel_product_data, -1, pos=(130, 170), size=(80, -1))
+        self.textbox_product_price.ShowSearchButton(False)
+        self.textbox_product_price.SetDescriptiveText(u'Preço')
+        self.textbox_product_price.SetValue(u'R$ 0,00')
+        self.textbox_product_price.Disable()
+
+        self.textbox_product_amount = wx.SearchCtrl(self.panel_product_data, -1, pos=(230, 170), size=(100, -1))
+        self.textbox_product_amount.ShowSearchButton(False)
+        self.textbox_product_amount.SetDescriptiveText(u'Quantidade')
+
+        self.__panel_product = wx.Panel(self.panel_product_data, size=(300, 40), pos=(100, 210),
+                                        style=wx.SIMPLE_BORDER)
+        button_add_product = GenBitmapTextButton(self.__panel_product, 220,
+                                                 wx.Bitmap(core.directory_paths['icons'] + 'Add.png',
+                                                           wx.BITMAP_TYPE_PNG),
+                                                 u"Adicionar", pos=(0, 0), size=(100, 40))
+        button_add_product.Bind(wx.EVT_BUTTON, self.data_insert, id=220)
+        button_product_editor = GenBitmapTextButton(self.__panel_product, 221,
+                                                    wx.Bitmap(core.directory_paths['icons'] + 'Edit.png',
+                                                              wx.BITMAP_TYPE_PNG),
+                                                    u'Editar', pos=(100, 0), size=(100, 40))
+        button_product_editor.Bind(wx.EVT_BUTTON, self.data_editor_enable, id=221)
+        button_remove_product = GenBitmapTextButton(self.__panel_product, 222,
+                                                    wx.Bitmap(core.directory_paths['icons'] + 'Trash.png',
+                                                              wx.BITMAP_TYPE_PNG),
+                                                    u'Apagar', pos=(200, 0), size=(100, 40))
+        button_remove_product.Bind(wx.EVT_BUTTON, self.data_delete, id=222)
+
+        bottom = wx.Panel(self, -1, size=(450, 50), pos=(10, 590), style=wx.SIMPLE_BORDER)
         add = GenBitmapTextButton(bottom, -1, wx.Bitmap(core.directory_paths['icons'] + 'Add.png', wx.BITMAP_TYPE_PNG),
-                                  u'Registrar produtos', size=(150, 50), pos=(0, 0))
+                                  u'Registrar produtos', size=(200, 50), pos=(0, 0))
         reset = GenBitmapTextButton(bottom, -1,
                                     wx.Bitmap(core.directory_paths['icons'] + 'Reset.png', wx.BITMAP_TYPE_PNG),
-                                    u'Recomeçar', size=(120, 50), pos=(150, 0))
+                                    u'Recomeçar', size=(125, 50), pos=(200, 0))
         cancel = GenBitmapTextButton(bottom, -1,
                                      wx.Bitmap(core.directory_paths['icons'] + 'Exit.png', wx.BITMAP_TYPE_PNG),
-                                     u'Sair', size=(120, 50), pos=(270, 0))
+                                     u'Sair', size=(125, 50), pos=(325, 0))
         add.Bind(wx.EVT_BUTTON, self.ask_end)
         reset.Bind(wx.EVT_BUTTON, self.ask_clean)
         cancel.Bind(wx.EVT_BUTTON, self.ask_exit)
-        self.SetBackgroundColour(core.default_background_color)
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
 
     def ask_end(self, event):
         dialogs.Ask(self, u'Finalizar Cadastro', 15)
@@ -583,100 +513,153 @@ class UpdateInventory(wx.Frame):
         dialogs.Ask(self, u'Recomeçar', 1)
 
     def ask_exit(self, event):
+        if self.list_update.GetItemCount() == 0:
+            self.exit(None)
+            return
         dialogs.Ask(self, u'Sair', 91)
 
-    def end(self, event):
-        prods = []
-        for i in self.new_products:
-            a = i[0].GetValue()
-            b = i[1].GetValue()
-            if a and b:
-                b = int(b)
-                d = i[2].GetValue()
-                c = float(d.replace('R$ ', '').replace(',', '.'))
-                if a and b and c:
-                    prods.append([a, b, c, d])
-        if not prods:
-            a = wx.MessageDialog(self, u'Nenhum produto adicionado!', u'Error 404', style=wx.OK | wx.ICON_ERROR)
-            a.ShowModal()
-            a.Destroy()
-            return
-        if not os.path.exists(core.directory_paths['inventory']):
-            os.mkdir(core.directory_paths['inventory'])
-        dirs = os.listdir(core.directory_paths['inventory'])
-        if os.path.exists('#Trash/inventory/deleted'):
-            dirs += os.listdir('#Trash/inventory/deleted')
-        if os.path.exists('#Trash/inventory/edited'):
-            dirs += os.listdir('#Trash/inventory/edited')
-        last_id = 0
-        for i in dirs:
-            try:
-                if int(i) > last_id:
-                    last_id = int(i)
-            except ValueError:
-                pass
-        if type(self.parent) is not InventoryManager:
-            self.dict_products = {}
-            for root, dirs, files in os.walk(core.directory_paths['inventory']):
-                if root != core.directory_paths['inventory']:
-                    try:
-                        o = shelve.open(root + core.slash + root.split(core.slash)[-1] + '_infos.txt')
-                        self.dict_products[o['description']] = [str(int(root.split(core.slash)[-1])), o['category'],
-                                                                'R$ ' + core.good_show('money',
-                                                                                       str(o['price'])).replace('.',
-                                                                                                                ','),
-                                                                o['amount']]
-                        o.close()
-                    except ValueError:
-                        pass
-        else:
-            self.dict_products = self.parent.dict_products
-        for k in prods:
-            names = strip(k[0]).split()
-            for i in range(0, len(names)):
-                names[i] = names[i].capitalize()
-            namef = ' '.join(names)
-            if namef not in self.dict_products:
-                new_id = last_id + 1
-                idstr = str(new_id)
-                while len(idstr) < 6:
-                    idstr = '0' + idstr
-                os.mkdir(core.directory_paths['inventory'] + idstr)
-                rtime = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
-                    datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
-                rdate = str(datetime.now().year) + "-" + core.good_show("o", str(
-                    datetime.now().month)) + "-" + core.good_show(
-                    "o", str(datetime.now().day))
-                po = (core.directory_paths['inventory'] + idstr + core.slash + idstr + '_infos.txt')
-                s = shelve.open(po)
-                s['description'] = namef
-                s['price'] = k[2]
-                s['amount'] = k[1]
-                s['category'] = ''
-                s['supplier'] = ''
-                s['obs'] = ''
-                s['time'] = rtime
-                s['date'] = rdate
-                s.close()
-                last_id = new_id
-                self.dict_products[namef] = [new_id, '', k[3], k[2]]
-            else:
-                if self.dict_products[namef][2] == k[3]:
-                    idstr = str(self.dict_products[namef][0])
-                    while len(idstr) < 6:
-                        idstr = '0' + idstr
-                    po = (core.directory_paths['inventory'] + idstr + core.slash + idstr + '_infos.txt')
-                    s = shelve.open(po)
-                    s['amount'] += k[1]
-                    s.close()
-        dialogs.Confirmation(self, u'Sucesso', 6)
-        self.clean(None)
+    def clean(self):
+        self.list_update.DeleteAllItems()
+        self.textbox_product_amount.Clear()
+        self.textbox_product_price.Clear()
+        self.textbox_product_description.Clear()
+        self.database_search(None)
 
-    def clean(self, event):
-        for a in self.new_products:
-            for b in a:
-                b.Clear()
+    def open_product_register(self, event):
+        ProductData(self)
+
+    def data_insert(self, event):
+        _product_id = self.textbox_product_id.GetValue()
+        if not _product_id:
+            return dialogs.launch_error(self, u'Eh necessário especificar o ID do produto!')
+
+        product_id = int(_product_id)
+        product = self.database_inventory.inventory_search_id(product_id)
+        if not product:
+            return dialogs.launch_error(self, u'ID inválido!')
+
+        _amount = self.textbox_product_amount.GetValue()
+        try:
+            amount = core.amount2float(_amount)
+        except ValueError:
+            self.textbox_product_amount.Clear()
+            return dialogs.launch_error(self, u'Quantidade inválida!')
+
+        unit_price = core.format_cash_user(product.price, currency=True)
+        item = self.list_update.Append((core.format_id_user(product.ID), product.description, core.format_amount_user(amount), unit_price))
+        self.list_update.SetItemData(item, product_id)
+
+        self.textbox_product_amount.Clear()
+        self.textbox_product_id.Clear()
+        self.textbox_product_description.Clear()
+        self.textbox_product_price.SetValue(u"0,00")
+
+    def data_delete(self, event):
+        if self.list_update.GetFocusedItem() == -1:
+            return
+        self.list_update.DeleteItem(self.list_update.GetFocusedItem())
+
+    def data_editor_enable(self, event):
+        self.item = self.list_update.GetFocusedItem()
+        if not self.item == -1:
+            self.textbox_product_description.SetValue(self.list_update.GetItemText(self.item, 1))
+            self.textbox_product_id.SetValue(str(self.list_update.GetItemData(self.item)))
+            self.textbox_product_price.SetValue(self.list_update.GetItemText(self.item, 3))
+            self.textbox_product_amount.SetValue(self.list_update.GetItemText(self.item, 2))
+            self.__panel_product.Destroy()
+            self.__panel_product = wx.Panel(self.panel_product_data, size=(200, 40), pos=(200, 225),
+                                            style=wx.SIMPLE_BORDER)
+            eplus = GenBitmapTextButton(self.__panel_product, 220,
+                                        wx.Bitmap(core.directory_paths['icons'] + 'Edit.png', wx.BITMAP_TYPE_PNG),
+                                        u"Salvar", pos=(0, 0), size=(100, 40))
+            eplus.Bind(wx.EVT_BUTTON, self.data_edit)
+            eremov = GenBitmapTextButton(self.__panel_product, 222,
+                                         wx.Bitmap(core.directory_paths['icons'] + 'Cancel.png', wx.BITMAP_TYPE_PNG),
+                                         u'Cancelar', pos=(100, 0), size=(100, 40))
+            eremov.Bind(wx.EVT_BUTTON, self.data_editor_disable)
+
+    def data_edit(self, event):
+        _product_id = self.textbox_product_id.GetValue()
+        if not _product_id:
+            return dialogs.launch_error(self, u'Eh necessário especificar o ID do produto!')
+
+        product_id = int(_product_id)
+        product = self.database_inventory.inventory_search_id(product_id)
+        if not product:
+            return dialogs.launch_error(self, u'ID inválido!')
+
+        _amount = core.amount2float(self.textbox_product_amount.GetValue())
+        try:
+            amount = float(_amount)
+        except ValueError:
+            self.textbox_product_amount.Clear()
+            return dialogs.launch_error(self, u'Quantidade inválida!')
+
+        unit_price = core.format_cash_user(product.price, currency=True)
+
+        self.list_update.SetStringItem(self.item, 0, core.format_id_user(product.ID))
+        self.list_update.SetStringItem(self.item, 1, product.description)
+        self.list_update.SetStringItem(self.item, 2, amount)
+        self.list_update.SetStringItem(self.item, 3, unit_price)
+
+        self.list_update.SetItemData(self.item, product_id)
+
+        self.data_editor_disable(event)
+
+    def data_editor_disable(self, event):
+        self.textbox_product_amount.Clear()
+        self.textbox_product_price.SetValue(u'0,00')
+        self.textbox_product_id.Clear()
+        self.textbox_product_description.Clear()
+        self.__panel_product.Destroy()
+        self.__panel_product = wx.Panel(self.panel_product_data, size=(300, 40), pos=(100, 225), style=wx.SIMPLE_BORDER)
+        button_add_product = GenBitmapTextButton(self.__panel_product, 220,
+                                                 wx.Bitmap(core.directory_paths['icons'] + 'Add.png',
+                                                           wx.BITMAP_TYPE_PNG),
+                                                 u"Adicionar", pos=(0, 0), size=(100, 40))
+        button_add_product.Bind(wx.EVT_BUTTON, self.data_insert, id=220)
+        button_product_editor = GenBitmapTextButton(self.__panel_product, 221,
+                                                    wx.Bitmap(core.directory_paths['icons'] + 'Edit.png',
+                                                              wx.BITMAP_TYPE_PNG),
+                                                    u'Editar', pos=(100, 0), size=(100, 40))
+        button_product_editor.Bind(wx.EVT_BUTTON, self.data_editor_enable, id=221)
+        button_remove_product = GenBitmapTextButton(self.__panel_product, 222,
+                                                    wx.Bitmap(core.directory_paths['icons'] + 'Trash.png',
+                                                              wx.BITMAP_TYPE_PNG),
+                                                    u'Apagar', pos=(200, 0), size=(100, 40))
+        button_remove_product.Bind(wx.EVT_BUTTON, self.data_delete, id=222)
 
     def exit(self, event):
+        self.database_inventory.close()
         self.Close()
 
+    def database_search(self, event):
+        self.list_inventory.DeleteAllItems()
+        product_list = self.database_inventory.inventory_search_description(self.textbox_product_description.GetValue())
+        for product in product_list:
+            self.list_inventory.Append((product.ID, product.description,
+                                        core.format_cash_user(product.price, currency=True)))
+
+    def database_select(self, event):
+        j = self.list_inventory.GetFocusedItem()
+        self.textbox_product_price.SetValue(self.list_inventory.GetItemText(j, 2))
+        self.textbox_product_id.SetValue(self.list_inventory.GetItemText(j, 0))
+        self.textbox_product_description.SetValue(self.list_inventory.GetItemText(j, 1))
+        self.textbox_product_amount.SetFocus()
+
+    def end(self):
+
+        w = self.list_update.GetItemCount()
+        if w == 0:
+            return dialogs.launch_error(self, u'Você não adicionou nenhum produto!')
+
+        db = database.InventoryDB()
+        for i in range(w):
+            products_id = self.list_update.GetItemData(i)
+            amount = core.amount2float(self.list_update.GetItemText(i, 2))
+            db.update_product_amount(products_id, amount)
+
+        db.close()
+
+        self.clean()
+        dialogs.Confirmation(self, u'Sucesso', 6)
