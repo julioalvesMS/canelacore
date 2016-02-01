@@ -72,36 +72,35 @@ class Base(wx.Frame):
         self.SetSize(wx.Size(805, 647))
         self.Centre()
         part1 = wx.Panel(self, pos=(130, 325), size=(540, 60), style=wx.SIMPLE_BORDER)
-        part2 = wx.Panel(self, pos=(160, 390), size=(480, 60), style=wx.SIMPLE_BORDER)
+        part2 = wx.Panel(self, pos=(100, 390), size=(600, 60), style=wx.SIMPLE_BORDER)
         part3 = wx.Panel(self, pos=(220, 455), size=(360, 60), style=wx.SIMPLE_BORDER)
         part4 = wx.Panel(self, pos=(550, 535), size=(220, 50), style=wx.SIMPLE_BORDER)
         part5 = wx.Panel(self, pos=(35, 535), size=(150, 50), style=wx.SIMPLE_BORDER)
         self.panel_logo = wx.Panel(self, pos=(263, 45), size=(274, 274), style=wx.SIMPLE_BORDER)
-        a = GenBitmapTextButton(part1, 11,
-                                wx.Bitmap(core.directory_paths['icons'] + 'system-users.png', wx.BITMAP_TYPE_PNG),
-                                u"Registrar Vendas", (0, 0), size=(180, 60))
-        b = GenBitmapTextButton(part1, 13,
-                                wx.Bitmap(core.directory_paths['icons'] + 'system-users.png', wx.BITMAP_TYPE_PNG),
-                                u"Registrar Gastos", (180, 0), size=(180, 60))
-        c = GenBitmapTextButton(part1, 17,
-                                wx.Bitmap(core.directory_paths['icons'] + 'system-users.png', wx.BITMAP_TYPE_PNG),
-                                u"Registrar Desperdícios", (360, 0), size=(180, 60))
-        d = GenBitmapTextButton(part2, 14, wx.Bitmap(core.directory_paths['icons'] + 'Money.png', wx.BITMAP_TYPE_PNG),
-                                u"Fechamento", (0, 0), size=(120, 60))
-        e = GenBitmapTextButton(part2, 12, wx.Bitmap(core.directory_paths['icons'] + 'Book.png', wx.BITMAP_TYPE_PNG),
-                                u"Clientes", (120, 0), size=(120, 60))
-        f = GenBitmapTextButton(part2, 19, wx.Bitmap(core.directory_paths['icons'] + 'Stock.png', wx.BITMAP_TYPE_PNG),
-                                u"Estoque", (240, 0), size=(120, 60))
-        g = GenBitmapTextButton(part2, 18,
-                                wx.Bitmap(core.directory_paths['icons'] + 'Delivery.png', wx.BITMAP_TYPE_PNG),
-                                u"Entregas", (360, 0), size=(120, 60))
-        h = GenBitmapTextButton(part3, 20, wx.Bitmap(core.directory_paths['icons'] + 'Resumo.png', wx.BITMAP_TYPE_PNG),
-                                u"Resumos", (0, 0), size=(120, 60))
-        i = GenBitmapTextButton(part3, 15, wx.Bitmap(core.directory_paths['icons'] + 'Tools.png', wx.BITMAP_TYPE_PNG),
-                                u"Recuperação", (120, 0), size=(120, 60))
-        j = GenBitmapTextButton(part3, 16, wx.Bitmap(core.directory_paths['icons'] + 'Save.png', wx.BITMAP_TYPE_PNG),
-                                u"Backup", (240, 0), size=(120, 60))
-        k = GenBitmapTextButton(self, 21, wx.Bitmap(core.directory_paths['icons'] + 'system-users.png', wx.BITMAP_TYPE_PNG), u"Teste", (0, 0), size=(180, 60))
+        button_sale = GenBitmapTextButton(part1, 11,  wx.Bitmap(core.directory_paths['icons'] + 'system-users.png',
+                                          wx.BITMAP_TYPE_PNG), u"Registrar Vendas", (0, 0), size=(180, 60))
+        button_expense = GenBitmapTextButton(part1, 13, wx.Bitmap(core.directory_paths['icons'] + 'system-users.png',
+                                             wx.BITMAP_TYPE_PNG), u"Registrar Despesas", (180, 0), size=(180, 60))
+        button_waste = GenBitmapTextButton(part1, 17, wx.Bitmap(core.directory_paths['icons'] + 'system-users.png',
+                                           wx.BITMAP_TYPE_PNG), u"Registrar Desperdícios", (360, 0), size=(180, 60))
+        button_cash = GenBitmapTextButton(part2, 14, wx.Bitmap(core.directory_paths['icons'] + 'Money.png',
+                                          wx.BITMAP_TYPE_PNG), u"Fechamento", (0, 0), size=(120, 60))
+        button_clients = GenBitmapTextButton(part2, 12, wx.Bitmap(core.directory_paths['icons'] + 'Book.png',
+                                             wx.BITMAP_TYPE_PNG), u"Clientes", (120, 0), size=(120, 60))
+        button_inventory = GenBitmapTextButton(part2, 19, wx.Bitmap(core.directory_paths['icons'] + 'Stock.png',
+                                               wx.BITMAP_TYPE_PNG), u"Estoque", (240, 0), size=(120, 60))
+        button_deliveries = GenBitmapTextButton(part2, 18, wx.Bitmap(core.directory_paths['icons'] + 'Gift.png',
+                                                wx.BITMAP_TYPE_PNG), u"Entregas", (360, 0), size=(120, 60))
+        button_pendant = GenBitmapTextButton(part2, 22, wx.Bitmap(core.directory_paths['icons'] + 'Business.png',
+                                             wx.BITMAP_TYPE_PNG), u"Pendente", (480, 0), size=(120, 60))
+        button_report = GenBitmapTextButton(part3, 20, wx.Bitmap(core.directory_paths['icons'] + 'Resumo.png',
+                                            wx.BITMAP_TYPE_PNG), u"Resumos", (0, 0), size=(120, 60))
+        button_recovery = GenBitmapTextButton(part3, 15, wx.Bitmap(core.directory_paths['icons'] + 'Tools.png',
+                                              wx.BITMAP_TYPE_PNG), u"Recuperação", (120, 0), size=(120, 60))
+        button_categories = GenBitmapTextButton(part3, 16, wx.Bitmap(core.directory_paths['icons'] + 'Drawer.png',
+                                                wx.BITMAP_TYPE_PNG), u"Categorias", (240, 0), size=(120, 60))
+        GenBitmapTextButton(self, 21, wx.Bitmap(core.directory_paths['icons'] + 'system-users.png', wx.BITMAP_TYPE_PNG),
+                            u"Teste", (0, 0), size=(180, 60))
         GenBitmapTextButton(part4, 98, wx.Bitmap(core.directory_paths['icons'] + 'Down.png', wx.BITMAP_TYPE_PNG),
                             u"Minimizar", (0, 0), size=(120, 50))
         GenBitmapTextButton(part4, 99, wx.Bitmap(core.directory_paths['icons'] + 'Exit.png', wx.BITMAP_TYPE_PNG),
@@ -113,36 +112,38 @@ class Base(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.open_new_expense, id=13)
         self.Bind(wx.EVT_BUTTON, self.open_daily_report, id=14)
         self.Bind(wx.EVT_BUTTON, self.open_edition_manager, id=15)
-        self.Bind(wx.EVT_BUTTON, self.backup, id=16)
+        self.Bind(wx.EVT_BUTTON, self.open_category_manager, id=16)
         self.Bind(wx.EVT_BUTTON, self.open_new_waste, id=17)
         self.Bind(wx.EVT_BUTTON, self.open_delivery_manager, id=18)
         self.Bind(wx.EVT_BUTTON, self.open_inventory_manager, id=19)
         self.Bind(wx.EVT_BUTTON, self.verify_credentials, id=20)
         self.Bind(wx.EVT_BUTTON, self.open_teste_window, id=21)
+        self.Bind(wx.EVT_BUTTON, self.open_sale_manager, id=22)
         self.Bind(wx.EVT_BUTTON, self.open_settings, id=42)
         self.Bind(wx.EVT_BUTTON, self.hide_to_tray, id=98)
         self.Bind(wx.EVT_BUTTON, self.ask_exit, id=99)
-        a.SetBackgroundColour('#C2E6F8')
-        b.SetBackgroundColour('#C2E6F8')
-        c.SetBackgroundColour('#C2E6F8')
-        d.SetBackgroundColour('#6EFF70')
-        e.SetBackgroundColour('#6EFF70')
-        f.SetBackgroundColour('#6EFF70')
-        g.SetBackgroundColour('#6EFF70')
-        h.SetBackgroundColour('#FFDF85')
-        i.SetBackgroundColour('#FFDF85')
-        j.SetBackgroundColour('#FFDF85')
+        button_sale.SetBackgroundColour(core.COLOR_LIGHT_BLUE)
+        button_expense.SetBackgroundColour(core.COLOR_LIGHT_BLUE)
+        button_waste.SetBackgroundColour(core.COLOR_LIGHT_BLUE)
+        button_cash.SetBackgroundColour(core.COLOR_LIGHT_GREEN)
+        button_clients.SetBackgroundColour(core.COLOR_LIGHT_GREEN)
+        button_inventory.SetBackgroundColour(core.COLOR_LIGHT_GREEN)
+        button_deliveries.SetBackgroundColour(core.COLOR_LIGHT_GREEN)
+        button_pendant.SetBackgroundColour(core.COLOR_LIGHT_GREEN)
+        button_report.SetBackgroundColour(core.COLOR_LIGHT_YELLOW)
+        button_recovery.SetBackgroundColour(core.COLOR_LIGHT_YELLOW)
+        button_categories.SetBackgroundColour(core.COLOR_LIGHT_YELLOW)
 
         # Prepara os backgrounds do base
         backs = []
         for root, dirs, files in os.walk(core.directory_paths['backgrounds']):
-            for i in files:
-                if i[-3:] in ['png', 'jpg']:
-                    backs.append(root + core.slash + i)
+            for button_recovery in files:
+                if button_recovery[-3:] in ['png', 'jpg']:
+                    backs.append(root + core.slash + button_recovery)
         self.background_image = wx.Bitmap(backs[randint(0, len(backs) - 1)])
         self.logo = wx.Bitmap(core.directory_paths['custom'] + 'logo-canela-santa1.jpg')
         wx.EVT_PAINT(self, self.OnPaint)
-        self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
+        self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
         # Faz o menu
         files = wx.Menu()
         files.Append(57, u'&Reabrir\tF5')
@@ -325,6 +326,9 @@ class Base(wx.Frame):
     def open_edition_manager(self, event):
         record_editor.EditionManager(self)
 
+    def open_category_manager(self, event):
+        categories.TransactionCategoryManager(self)
+
     def open_new_waste(self, event):
         waste.Waste(self)
 
@@ -333,6 +337,9 @@ class Base(wx.Frame):
 
     def open_inventory_manager(self, event):
         inventory.InventoryManager(self)
+
+    def open_sale_manager(self, event):
+        sale.SaleManager(self)
 
     def open_monthly_report(self, event):
         monthly_report.Report(self)
@@ -348,7 +355,7 @@ class BaseTray(wx.TaskBarIcon):
     def __init__(self, frame):
         wx.TaskBarIcon.__init__(self)
         self.frame = frame
-        self.SetIcon(wx.Icon(core.tray_icon, wx.BITMAP_TYPE_ICO), u'Canela Santa')
+        self.SetIcon(wx.Icon(core.ICON_TRAY, wx.BITMAP_TYPE_ICO), u'Canela Santa')
         self.Bind(wx.EVT_MENU, self.bshow, id=101)
         self.Bind(wx.EVT_MENU, self.bhide, id=102)
         self.Bind(wx.EVT_MENU, self.open_new_sale, id=1031)
@@ -376,7 +383,7 @@ class BaseTray(wx.TaskBarIcon):
         menu.AppendSeparator()
         menu2 = wx.Menu()
         menu2.Append(1031, u'Venda')
-        menu2.Append(1032, u'Gasto')
+        menu2.Append(1032, u'Despesa')
         menu2.Append(1033, u'Desperdício')
         menu2.Append(1034, u'Cliente')
         menu2.Append(1035, u'Produto')
@@ -429,7 +436,7 @@ class BaseTray(wx.TaskBarIcon):
         monthly_report.Report(self.frame)
 
     def open_new_product(self, event):
-        inventory.ProductRegister(self.frame)
+        inventory.ProductData(self.frame)
 
     def open_new_category(self, event):
         categories.ProductCategoryData(self.frame)
