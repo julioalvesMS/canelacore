@@ -65,7 +65,7 @@ def database2product(database_list):
     return data
 
 
-def database2category(database_list):
+def database2productcategory(database_list):
     """
     Converte uma lista obtidada do banco de dados em um objeto categoria
     :param database_list: lista obtidada do db contendo dados de uma categoria
@@ -129,7 +129,7 @@ class InventoryDB:
         """
         self.cursor.execute('''CREATE TABLE INVENTORY(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
             BARCODE CHAR(32) UNIQUE, DESCRIPTION TEXT NOT NULL, CATEGORY INTEGER NOT NULL,
-            PRICE REAL NOT NULL, AMOUNT INTEGER, SOLD INTEGER, SUPPLIER TEXT, OBS TEXT, RECORD_TIME CHAR(8) NOT NULL,
+            PRICE REAL NOT NULL, AMOUNT REAL, SOLD REAL, SUPPLIER TEXT, OBS TEXT, RECORD_TIME CHAR(8) NOT NULL,
             RECORD_DATE CHAR(10) NOT NULL, ACTIVE INTEGER)''')
 
         self.cursor.execute('''CREATE TABLE CATEGORIES(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
@@ -390,10 +390,10 @@ class InventoryDB:
         :type data: data_types.ProductCategoryData
         """
 
-        _data = (data.category, data.ncm, data.cfop, data.imposto, 1, data.ID)
+        _data = (data.category, data.ncm, data.cfop, data.imposto, data.unit, 1, data.ID)
 
         self.cursor.execute("""UPDATE CATEGORIES SET CATEGORY=?, NCM=?, CFOP=?,
-                            IMPOSTO=?, UNIT=? ACTIVE=? WHERE ID=?""", _data)
+                            IMPOSTO=?, UNIT=?, ACTIVE=? WHERE ID=?""", _data)
         self.db.commit()
 
         data.active = True
@@ -452,7 +452,7 @@ class InventoryDB:
         categories_list = list()
 
         for category in filtered_list:
-            categories_list.append(database2category(category))
+            categories_list.append(database2productcategory(category))
 
         return categories_list
 
@@ -470,7 +470,7 @@ class InventoryDB:
         int_info = int(info)
 
         self.cursor.execute("""SELECT * FROM CATEGORIES WHERE ID=?""", (int_info, ))
-        return database2category(self.cursor.fetchone())
+        return database2productcategory(self.cursor.fetchone())
 
     def category_search_name(self, info):
         """
@@ -481,7 +481,7 @@ class InventoryDB:
         """
 
         self.cursor.execute("""SELECT * FROM CATEGORIES WHERE CATEGORY=?""", (info, ))
-        return database2category(self.cursor.fetchone())
+        return database2productcategory(self.cursor.fetchone())
 
     def categories_list(self, deleted=False):
         """
@@ -501,7 +501,7 @@ class InventoryDB:
         categories_list = list()
 
         for category in temp:
-            categories_list.append(database2category(category))
+            categories_list.append(database2productcategory(category))
 
         return categories_list
 
@@ -598,7 +598,7 @@ class ClientsDB:
             OBS TEXT, LAST_SALE CHAR(10), RECORD_DATE CHAR(10) NOT NULL, ACTIVE INTEGER)''')
 
         self.cursor.execute('''CREATE TABLE SALES(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-            CLIENT INTEGER NOT NULL, SALE INTEGER NOT NULL, ACTIVE INTEGER NOT NULL)''')
+            CLIENT INTEGER NOT NULL, SALE INTEGER NOT NULL UNIQUE, ACTIVE INTEGER NOT NULL)''')
 
         self.db.commit()
 
@@ -680,7 +680,7 @@ class ClientsDB:
 
         # Prepara a linha de comando
 
-        cmd = 'UPDATE CLIENTS SET CLIENT=?, SALE=?, ACTIVE=? WHERE ID=?'
+        cmd = 'UPDATE CLIENTS SET CLIENTS=?, SALE=?, ACTIVE=? WHERE ID=?'
 
         # Edita o produto no BD
         self.cursor.execute(cmd, _data)
@@ -997,11 +997,11 @@ def database2waste(database_list):
 
 def database2transaction(database_list):
     """
-    Converte uma lista obtidada do banco de dados em um objeto gasto
-    :param database_list: lista obtidada do db contendo dados de um gasto
+    Converte uma lista obtidada do banco de dados em um objeto transação
+    :param database_list: lista obtidada do db contendo dados de uma transação
     :type database_list: tuple
-    :return: Objeto gASTO
-    :rtype: data_types.ExpenseData
+    :return: Objeto Transação
+    :rtype: data_types.TransactionData
     """
     if not database_list:
         return None
@@ -1017,6 +1017,49 @@ def database2transaction(database_list):
     data.record_date = database_list[6]
     data.payment_pendant = True if database_list[7] else False
     data.active = True if database_list[8] else False
+
+    return data
+
+
+def database2transactioncategory(database_list):
+    """
+    Converte uma lista obtidada do banco de dados em um objeto categoria de transação
+    :param database_list: lista obtidada do db contendo dados de uma categoria de transação
+    :type database_list: tuple
+    :return: Objeto Transação
+    :rtype: data_types.TransactionCategoryData
+    """
+    if not database_list:
+        return None
+
+    data = data_types.TransactionCategoryData()
+
+    data.ID = database_list[0]
+    data.category = database_list[1]
+    data.active = True if database_list[2] else False
+
+    return data
+
+
+def database2cashregister(database_list):
+    """
+    Converte uma lista obtidada do banco de dados em um objeto transação
+    :param database_list: lista obtidada do db contendo dados de uma transação
+    :type database_list: tuple
+    :return: Objeto Transação
+    :rtype: data_types.CashRegisterData
+    """
+    if not database_list:
+        return None
+
+    data = data_types.CashRegisterData()
+
+    data.ID = database_list[0]
+    data.fund = database_list[1]
+    data.cash = database_list[2]
+    data.withdrawal = database_list[3]
+    data.record_date = database_list[4]
+    data.active = True if database_list[5] else False
 
     return data
 
@@ -1071,6 +1114,12 @@ class TransactionsDB:
         self.cursor.execute('''CREATE TABLE TRANSACTIONS(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
             DESCRIPTION TEXT NOT NULL, VALUE REAL, TRANSACTION_DATE CHAR(10) NOT NULL, CATEGORY INTEGER, TYPE INTEGER,
             RECORD_TIME CHAR(8) NOT NULL, RECORD_DATE CHAR(10) NOT NULL, PAYMENT_PENDANT INTEGER, ACTIVE INTEGER)''')
+
+        self.cursor.execute('''CREATE TABLE CATEGORIES(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
+            CATEGORY TEXT NOT NULL UNIQUE, ACTIVE INTEGER)''')
+
+        self.cursor.execute('''CREATE TABLE CASH_REGISTER(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
+            FUND REAL, CASH REAL, WITHDRAWAL REAL, RECORD_DATE CHAR(10) NOT NULL, ACTIVE INTEGER)''')
 
         self.db.commit()
 
@@ -1147,6 +1196,39 @@ class TransactionsDB:
         # Insere o novo gasto no BD
         self.cursor.execute("""INSERT INTO TRANSACTIONS (DESCRIPTION, VALUE, TRANSACTION_DATE, CATEGORY, TYPE,
                             RECORD_TIME, RECORD_DATE, PAYMENT_PENDANT, ACTIVE) VALUES (?,?,?,?,?,?,?,?,?)""", _data)
+        self.db.commit()
+
+        data.ID = self.cursor.lastrowid
+
+    def insert_category(self, data):
+        """
+        Insere uma nova entrada no Banco de Dados de Categorias
+        :param data: dados da nova Categoria a ser cadastrada
+        :type data: data_types.TransactionCategoryData
+        """
+
+        # Transfere os dados recebidos para um tuple
+        _data = (data.category, 1)
+
+        # Insere o novo gasto no BD
+        self.cursor.execute("""INSERT INTO CATEGORIES (CATEGORY, ACTIVE) VALUES (?,?)""", _data)
+        self.db.commit()
+
+        data.ID = self.cursor.lastrowid
+
+    def insert_cash(self, data):
+        """
+        Insere uma nova entrada no Banco de Dados de Caixa
+        :param data: dados do novo registro de caixa a ser cadastrado
+        :type data: data_types.CashRegisterData
+        """
+
+        # Transfere os dados recebidos para um tuple
+        _data = (data.fund, data.cash, data.withdrawal, data.record_date, 1)
+
+        # Insere o novo gasto no BD
+        self.cursor.execute("""INSERT INTO CASH_REGISTER (FUND, CASH, WITHDRAWAL, RECORD_DATE, ACTIVE)
+                            VALUES (?,?,?,?,?)""", _data)
         self.db.commit()
 
         data.ID = self.cursor.lastrowid
@@ -1235,6 +1317,38 @@ class TransactionsDB:
 
         data.active = True
 
+    def edit_category(self, data):
+        """
+        Edita uma entrada do Banco de Dados de Categorias
+        :param data: dados da categoria a ser editado
+        :type data: data_types.TransactionCategoryData
+        """
+
+        # Transfere os dados do dict mandado para um tuple
+        _data = (data.category, 1, data.ID)
+
+        # Edita a transação no BD
+        self.cursor.execute("""UPDATE CATEGORIES SET CATEGORY=?, ACTIVE=? WHERE ID=?""", _data)
+        self.db.commit()
+
+        data.active = True
+
+    def edit_cash(self, data):
+        """
+        Edita uma entrada do Banco de Dados de Caixa
+        :param data: dados do registro de caixa a ser editado
+        :type data: data_types.CashRegisterData
+        """
+
+        # Transfere os dados do dict mandado para um tuple
+        _data = (data.fund, data.cash, data.withdrawal, 1, data.ID)
+
+        # Edita a transação no BD
+        self.cursor.execute("""UPDATE CASH_REGISTER SET FUND=?, CASH=?, WITHDRAWAL=?, ACTIVE=? WHERE ID=?""", _data)
+        self.db.commit()
+
+        data.active = True
+
     def delete_sale(self, sale_id, undo=False):
         """
         Deleta uma entrada do BD
@@ -1291,6 +1405,34 @@ class TransactionsDB:
         self.cursor.execute('UPDATE TRANSACTIONS SET ACTIVE=? WHERE ID=?', (active, transaction_id))
         self.db.commit()
 
+    def delete_category(self, category_id, undo=False):
+        """
+        Deleta uma entrada do BD
+        :type undo: bool
+        :param undo: Recuperar entrada apagada
+        :param category_id: id da entrada a ser deletada
+        :return: None
+        :rtype: None
+        """
+        active = 1 if undo else 0
+
+        self.cursor.execute('UPDATE CATEGORIES SET ACTIVE=? WHERE ID=?', (active, category_id))
+        self.db.commit()
+
+    def delete_cash(self, cash_id, undo=False):
+        """
+        Deleta uma entrada do BD
+        :type undo: bool
+        :param undo: Recuperar entrada apagada
+        :param cash_id: id da entrada a ser deletada
+        :return: None
+        :rtype: None
+        """
+        active = 1 if undo else 0
+
+        self.cursor.execute('UPDATE CASH_REGISTER SET ACTIVE=? WHERE ID=?', (active, cash_id))
+        self.db.commit()
+
     def delete_sale_permanently(self, sale_id):
         """
         Delete uma venda do BD
@@ -1329,6 +1471,26 @@ class TransactionsDB:
         :rtype: None
         """
         self.cursor.execute('DELETE FROM TRANSACTIONS WHERE ID=?', (transaction_id, ))
+        self.db.commit()
+
+    def delete_category_permanently(self, category_id):
+        """
+        Delete uma categoria do BD
+        :param category_id: id da categoria a ser deletada
+        :return: None
+        :rtype: None
+        """
+        self.cursor.execute('DELETE FROM CATEGORIES WHERE ID=?', (category_id, ))
+        self.db.commit()
+
+    def delete_cash_permanently(self, cash_id):
+        """
+        Delete um registro do BD
+        :param cash_id: id do registro a ser deletado
+        :return: None
+        :rtype: None
+        """
+        self.cursor.execute('DELETE FROM CASH_REGISTER WHERE ID=?', (cash_id, ))
         self.db.commit()
 
     def sales_search_id(self, sale_id):
@@ -1374,6 +1536,93 @@ class TransactionsDB:
         self.cursor.execute("""SELECT * FROM TRANSACTIONS WHERE ID=?""", (transactions_id, ))
 
         return database2transaction(self.cursor.fetchone())
+
+    def categories_search_id(self, category_id):
+        """
+        Encontra a categoria com um determinado ID
+        :param category_id: id da categoria a ser buscada
+        :rtype: data_types.TransactionCategoryData
+        :return: uma Categoria do BD
+        """
+        self.cursor.execute("""SELECT * FROM CATEGORIES WHERE ID=?""", (category_id, ))
+
+        return database2transactioncategory(self.cursor.fetchone())
+
+    def cash_search_id(self, cash_id):
+        """
+        Encontra o registro com um determinado ID
+        :param cash_id: id do registro a ser buscado
+        :rtype: data_types.CashRegisterData
+        :return: um registro do BD
+        """
+        self.cursor.execute("""SELECT * FROM CASH_REGISTER WHERE ID=?""", (cash_id, ))
+
+        return database2cashregister(self.cursor.fetchone())
+
+    def categories_search_category(self, info, show_all=False):
+        """
+        Encontra o registro compativel com a info
+        :param info: texto a ser buscado
+        :type show_all: bool
+        :param show_all: Considerar também as entradas apagadas
+        :rtype: list[data_types.TransactionCategoryData]
+        :return: um registro do BD
+        """
+
+        info = u'%' + info + u'%'
+        if show_all:
+            self.cursor.execute("""SELECT * FROM CATEGORIES WHERE CATEGORY LIKE ?""", (info, ))
+        else:
+            self.cursor.execute("""SELECT * FROM CATEGORIES WHERE CATEGORY LIKE ? AND ACTIVE=1""", (info, ))
+
+        temp = self.cursor.fetchall()
+        categories_list = list()
+
+        for category in temp:
+            categories_list.append(database2transactioncategory(category))
+
+        return categories_list
+
+    def categories_search(self, info):
+        """
+        Encontra o registro compativel com a info
+        :param info: texto a ser buscado
+        :rtype: list[data_types.TransactionCategoryData]
+        :return: um registro do BD
+        """
+
+        # Lista para armazenar todos os produtos compativeis com a busca
+        filtered_list = []
+        try:
+            # converte para integer para buscar por IDs e codigo de barras
+            int_info = int(info)
+
+            self.cursor.execute("""SELECT * FROM INVENTORY WHERE ACTIVE=1 AND ID=?""", (int_info, ))
+            filtered_list = list(set(filtered_list + self.cursor.fetchall()))
+        except ValueError:
+            pass
+
+        info = u'%' + info + u'%'
+        self.cursor.execute("""SELECT * FROM CATEGORIES WHERE CATEGORY LIKE ? AND ACTIVE=1""", (info, ))
+        filtered_list = list(set(filtered_list + self.cursor.fetchall()))
+
+        categories_list = list()
+
+        for category in filtered_list:
+            categories_list.append(database2transactioncategory(category))
+
+        return categories_list
+
+    def cash_search_date(self, date):
+        """
+        Encontra o registro de uma determinada data
+        :param date: data do registro a ser buscado
+        :rtype: data_types.CashRegisterData
+        :return: um registro do BD
+        """
+        self.cursor.execute("""SELECT * FROM CASH_REGISTER WHERE RECORD_DATE=?""", (date, ))
+
+        return database2cashregister(self.cursor.fetchone())
 
     def daily_sales_list(self, date, deleted=False):
         """
@@ -1615,6 +1864,48 @@ class TransactionsDB:
         records.sort(reverse=True)
 
         return records
+
+    def categories_list(self, deleted=False):
+        """
+        Encontra o registro compativel com a info
+        :type deleted: bool
+        :param deleted: Mostrar entradas apagadas apenas
+        :rtype: list[data_types.TransactionCategoryData]
+        :return: um registro do BD
+        """
+
+        active = 0 if deleted else 1
+
+        self.cursor.execute("""SELECT * FROM CATEGORIES WHERE ACTIVE=?""", (active, ))
+
+        temp = self.cursor.fetchall()
+        categories_list = list()
+
+        for category in temp:
+            categories_list.append(database2transactioncategory(category))
+
+        return categories_list
+
+    def sales_list_pendant(self, deleted=False):
+        """
+        Dados de todas as entradas cadastrados que estão com pagamento pendente
+        :type deleted: bool
+        :param deleted: Mostrar entradas apagadas apenas
+        :rtype: list[data_types.SaleData]
+        :return: uma list com todas as entradas do BD no mes
+        """
+        active = 0 if deleted else 1
+
+        self.cursor.execute("""SELECT * FROM SALES WHERE ACTIVE=? AND PAYMENT_PENDANT=1 ORDER BY RECORD_DATE""",
+                            (active, ))
+
+        temp = self.cursor.fetchall()
+        sales_list = list()
+
+        for sale in temp:
+            sales_list.append(database2sale(sale))
+
+        return sales_list
 
 
 def database2delivery(database_list):

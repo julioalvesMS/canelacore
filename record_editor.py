@@ -42,9 +42,9 @@ class EditionManager(wx.Frame):
         self.Show()
 
     def setup_gui(self):
-        self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
+        self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
         self.Centre()
-        self.SetBackgroundColour(core.default_background_color)
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         panel_original = wx.Panel(self, -1, size=(730, 380), pos=(10, 10), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
         self.list_edited_data = wx.gizmos.TreeListCtrl(panel_original, -1, pos=(10, 10), size=(710, 360),
                                                        style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE |
@@ -128,16 +128,18 @@ class EditionManager(wx.Frame):
     def __setup__(self):
         self.clean()
         entry_selection = self.combobox_entry_type.GetSelection()
-        if entry_selection == 0 and self.combobox_day_option.GetValue():
+        if entry_selection == 0:
             self.setup_selection_0()
         elif entry_selection == 1:
             self.setup_selection_1()
-        elif entry_selection == 2 and self.combobox_month_option.GetValue():
+        elif entry_selection == 2:
             self.setup_selection_2()
 
     def setup_selection_0(self):
         date_user = self.combobox_day_option.GetValue()
         date = core.format_date_internal(date_user)
+        if not date_user:
+            date_user = u"---------"
         main_root = self.list_edited_data.AddRoot(date_user)
         self.list_edited_data.SetItemText(main_root, u"Registros Apagados", 2)
 
@@ -291,15 +293,19 @@ class EditionManager(wx.Frame):
     def setup_selection_2(self):
         month_user = self.combobox_month_option.GetValue()
         date = core.format_date_internal(month_user)
+        if not month_user:
+            month_user = u"---------"
         main_root = self.list_edited_data.AddRoot(month_user)
         self.list_edited_data.SetItemText(main_root, u"Registros Apagados", 2)
 
         db = database.TransactionsDB()
         transactions = db.monthly_transactions_list(date, deleted=True)
+        categories = db.categories_list(deleted=True)
         db.close()
 
         incomes_counter = 0
         expenses_counter = 0
+        categories_counter = len(categories)
 
         expenses_value = 0.0
         expenses_root = self.list_edited_data.AppendItem(main_root, u"---------")
@@ -335,6 +341,20 @@ class EditionManager(wx.Frame):
         self.list_edited_data.SetItemText(income_root, core.format_cash_user(incomes_value, currency=True), 4)
         self.list_edited_data.SetItemText(expenses_root, core.format_cash_user(expenses_value, currency=True), 4)
 
+        categories_root = self.list_edited_data.AppendItem(main_root, u"---------")
+        self.list_edited_data.SetItemText(categories_root, u"Categorias", 2)
+        self.list_edited_data.SetItemText(categories_root, str(categories_counter), 3)
+        self.list_edited_data.SetItemFont(categories_root, wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD))
+        for data in categories:
+
+            item = self.list_edited_data.AppendItem(categories_root, u"---------")
+            self.list_edited_data.SetItemFont(item, wx.Font(9, wx.SWISS, wx.NORMAL, wx.BOLD))
+
+            self.list_edited_data.SetItemText(item, core.format_id_user(data.ID), 1)
+            self.list_edited_data.SetItemText(item, data.category, 2)
+
+            self.list_edited_data.SetItemData(item, wx.TreeItemData(data))
+
         self.list_edited_data.SetItemText(main_root, str(incomes_counter + expenses_counter), 3)
         self.list_edited_data.Expand(main_root)
         self.list_edited_data.SetItemFont(main_root, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
@@ -369,6 +389,8 @@ class EditionManager(wx.Frame):
             _type_ = data_types.ProductCategoryData
         elif isinstance(data, data_types.TransactionData):
             _type_ = data_types.TransactionData
+        elif isinstance(data, data_types.TransactionCategoryData):
+            _type_ = data_types.TransactionCategoryData
 
         db_functions = {
             data_types.SaleData: (database.TransactionsDB, database.TransactionsDB.delete_sale),
@@ -376,7 +398,8 @@ class EditionManager(wx.Frame):
             data_types.WasteData: (database.TransactionsDB, database.TransactionsDB.delete_waste),
             data_types.ClientData: (database.ClientsDB, database.ClientsDB.delete_client),
             data_types.ProductData: (database.InventoryDB, database.InventoryDB.delete_product),
-            data_types.ProductCategoryData: (database.InventoryDB, database.InventoryDB.delete_category)
+            data_types.ProductCategoryData: (database.InventoryDB, database.InventoryDB.delete_category),
+            data_types.TransactionCategoryData: (database.TransactionsDB, database.TransactionsDB.delete_category)
         }
 
         general_database, delete_function = db_functions.get(_type_)
@@ -415,6 +438,9 @@ class EditionManager(wx.Frame):
         elif isinstance(data, data_types.ClientData):
             import clients
             clients.ClientData(self, data.name, data.ID, data=data, editable=False)
+        elif isinstance(data, data_types.TransactionCategoryData):
+            import categories
+            categories.TransactionCategoryData(self, data.category, data.ID, data=data)
 
     def clean(self):
         self.list_edited_data.DeleteAllItems()

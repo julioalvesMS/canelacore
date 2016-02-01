@@ -5,6 +5,7 @@ import wx
 import wx.gizmos
 from wx.lib.buttons import GenBitmapTextButton
 
+import categories
 import core
 import dialogs
 import database
@@ -18,9 +19,12 @@ class Expense(wx.Frame):
 
     textbox_description = None
     textbox_value = None
+    combobox_category = None
 
-    def __init__(self, parent, title=u'Gastos', key=-1, data=None):
-        wx.Frame.__init__(self, parent, -1, title, size=(500, 200),
+    categories_ids = [None]
+
+    def __init__(self, parent, title=u'Despesas', key=-1, data=None):
+        wx.Frame.__init__(self, parent, -1, title, size=(600, 200),
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN)
 
         self.key = key
@@ -35,33 +39,46 @@ class Expense(wx.Frame):
 
     def setup_gui(self):
         self.Centre()
-        self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
-        self.SetBackgroundColour(core.default_background_color)
+        self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         # first
-        first = wx.Panel(self, -1, size=(480, 85), pos=(10, 10), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
-        first.SetBackgroundColour(core.default_background_color)
-        wx.StaticText(first, -1, u"Descrição:", pos=(10, 5))
-        self.textbox_description = wx.TextCtrl(first, -1, pos=(10, 25), size=(300, 30))
-        wx.StaticText(first, -1, u"Valor:", pos=(370, 5))
-        wx.StaticText(first, -1, u"R$", pos=(355, 32))
-        self.textbox_value = wx.TextCtrl(first, -1, pos=(370, 25), size=(80, 30))
-        self.textbox_value.Bind(wx.EVT_CHAR, core.check_money)
-        self.textbox_value.SetValue(u"0,00")
+        first = wx.Panel(self, -1, size=(420, 150), pos=(10, 10), style=wx.SIMPLE_BORDER | wx.TAB_TRAVERSAL)
+        first.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+
+        wx.StaticText(first, -1, u"Descrição:", pos=(10, 15))
+        self.textbox_description = wx.TextCtrl(first, -1, pos=(10, 35), size=(400, 30))
+
+        wx.StaticText(first, -1, u"Categoria:", pos=(10, 85))
+        self.combobox_category = wx.ComboBox(first, -1, pos=(10, 105), size=(165, 30), style=wx.CB_READONLY)
+        self.update_categories()
+
+        button_category = wx.BitmapButton(first, -1,
+                                          wx.Bitmap(core.directory_paths['icons'] + 'Add.png', wx.BITMAP_TYPE_PNG),
+                                          pos=(175, 100), size=(32, 32), style=wx.NO_BORDER)
+        button_category.Bind(wx.EVT_BUTTON, self.open_category_register)
+        button_category.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+
+        wx.StaticText(first, -1, u"Valor:", pos=(290, 85))
+        self.textbox_value = wx.TextCtrl(first, -1, pos=(290, 105), size=(120, 30))
+
+        self.textbox_value.Bind(wx.EVT_CHAR, core.check_currency)
+        self.textbox_value.SetValue(u"R$ 0,00")
+
         # last
-        last = wx.Panel(self, -1, size=(480, 60), pos=(10, 105), style=wx.SUNKEN_BORDER)
-        last.SetBackgroundColour(core.default_background_color)
-        last_ = wx.Panel(last, pos=(80, 10), size=(320, 40), style=wx.SIMPLE_BORDER)
+        last = wx.Panel(self, -1, size=(140, 150), pos=(440, 10), style=wx.SIMPLE_BORDER)
+        last.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        last_ = wx.Panel(last, pos=(10, 15), size=(120, 120), style=wx.SIMPLE_BORDER)
         finish = GenBitmapTextButton(last_, -1,
                                      wx.Bitmap(core.directory_paths['icons'] + 'Check.png', wx.BITMAP_TYPE_PNG),
-                                     u'Finalizar', pos=(0, 0), size=(100, 40))
+                                     u'Finalizar', pos=(0, 0), size=(120, 40))
         finish.Bind(wx.EVT_BUTTON, self.ask_end)
         restart = GenBitmapTextButton(last_, -1,
                                       wx.Bitmap(core.directory_paths['icons'] + 'Reset.png', wx.BITMAP_TYPE_PNG),
-                                      u'Recomeçar', pos=(100, 0), size=(120, 40))
+                                      u'Recomeçar', pos=(0, 40), size=(120, 40))
         restart.Bind(wx.EVT_BUTTON, self.ask_clean)
         cancel = GenBitmapTextButton(last_, -1,
                                      wx.Bitmap(core.directory_paths['icons'] + 'Exit.png', wx.BITMAP_TYPE_PNG),
-                                     u"sair", pos=(220, 0), size=(100, 40))
+                                     u"sair", pos=(0, 80), size=(120, 40))
         cancel.Bind(wx.EVT_BUTTON, self.ask_exit)
 
     def setup(self):
@@ -72,6 +89,10 @@ class Expense(wx.Frame):
             self.key = self.data.ID
         self.textbox_description.SetValue(self.data.description)
         self.textbox_value.SetValue(core.format_cash_user(self.data.value))
+        try:
+            self.combobox_category.SetSelection(self.categories_ids.index(self.data.category))
+        except ValueError:
+            pass
 
     def ask_clean(self, event):
         dialogs.Ask(self, u"Apagar Tudo", 1)
@@ -85,12 +106,28 @@ class Expense(wx.Frame):
         dialogs.Ask(self, u"Sair", 91)
 
     def ask_end(self, event):
-        dialogs.Ask(self, u"Registrar Gasto", 12)
+        dialogs.Ask(self, u"Registrar Despesa", 12)
+
+    def update_categories(self):
+        db = database.TransactionsDB()
+        category_list = db.categories_list()
+        category_options = [u'Selecione']
+        self.categories_ids = [None]
+        for category in category_list:
+            category_options.append(category.category)
+            self.categories_ids.append(category.ID)
+        self.combobox_category.SetItems(category_options)
+        self.combobox_category.SetSelection(0)
+        db.close()
+
+    def open_category_register(self, event):
+        categories.TransactionCategoryData(self)
 
     def clean(self):
         self.textbox_description.Clear()
         self.textbox_value.Clear()
         self.textbox_value.SetValue(u"0,00")
+        self.update_categories()
 
     def exit(self, event):
         self.Close()
@@ -106,6 +143,7 @@ class Expense(wx.Frame):
         data = data_types.ExpenseData()
         data.ID = self.key
         data.description = description
+        data.category = self.categories_ids[self.combobox_category.GetSelection()]
         data.value = val
         data.record_date = date
         data.record_time = finish_time

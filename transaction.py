@@ -6,6 +6,7 @@ import wx.gizmos
 import wx.calendar
 from wx.lib.buttons import GenBitmapTextButton
 
+import categories
 import core
 import dialogs
 import database
@@ -29,10 +30,12 @@ class Transaction(wx.Frame):
 
     calendar_date = None
 
+    categories_ids = [None]
+
     def __init__(self, parent, transaction_type, key=-1, data=None):
 
         title_options = {
-            EXPENSE: u'Gasto',
+            EXPENSE: u'Despesa',
             INCOME: u'Entrada'
         }
         title = title_options.get(transaction_type, u'Transação')
@@ -52,17 +55,24 @@ class Transaction(wx.Frame):
 
     def setup_gui(self):
         self.Centre()
-        self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
-        self.SetBackgroundColour(core.default_background_color)
+        self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         # first
         first = wx.Panel(self, -1, size=(495, 250), pos=(10, 10), style=wx.SIMPLE_BORDER | wx.TAB_TRAVERSAL)
-        first.SetBackgroundColour(core.default_background_color)
+        first.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
 
         wx.StaticText(first, -1, u"Descrição: *", pos=(20, 20))
         self.textbox_description = wx.TextCtrl(first, -1, pos=(20, 40), size=(200, 30))
 
-        wx.StaticText(first, -1, u"Categoria: *", pos=(20, 90))
-        self.combobox_category = wx.ComboBox(first, -1, pos=(20, 110), size=(200, 30), style=wx.CB_READONLY)
+        wx.StaticText(first, -1, u"Categoria:", pos=(20, 90))
+        self.combobox_category = wx.ComboBox(first, -1, pos=(20, 110), size=(165, 30), style=wx.CB_READONLY)
+        self.update_categories()
+
+        button_category = wx.BitmapButton(first, -1,
+                                          wx.Bitmap(core.directory_paths['icons'] + 'Add.png', wx.BITMAP_TYPE_PNG),
+                                          pos=(185, 105), size=(32, 32), style=wx.NO_BORDER)
+        button_category.Bind(wx.EVT_BUTTON, self.open_category_register)
+        button_category.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
 
         wx.StaticText(first, -1, u"Valor: *", pos=(20, 160))
         self.textbox_value = wx.TextCtrl(first, -1, pos=(20, 180), size=(200, 30))
@@ -85,7 +95,7 @@ class Transaction(wx.Frame):
 
         # last
         last = wx.Panel(self, -1, size=(130, 250), pos=(515, 10), style=wx.SIMPLE_BORDER)
-        last.SetBackgroundColour(core.default_background_color)
+        last.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         last_ = wx.Panel(last, pos=(5, 65), size=(120, 120), style=wx.SIMPLE_BORDER)
         finish = GenBitmapTextButton(last_, -1,
                                      wx.Bitmap(core.directory_paths['icons'] + 'Check.png', wx.BITMAP_TYPE_PNG),
@@ -115,6 +125,10 @@ class Transaction(wx.Frame):
         wx_date = wx.DateTime()
         wx_date.Set(int(date[2]), int(date[1]) - 1, int(date[0]))
         self.calendar_date.SetDate(wx_date)
+        try:
+            self.combobox_category.SetSelection(self.categories_ids.index(self.data.category))
+        except ValueError:
+            pass
 
     def ask_clean(self, event):
         dialogs.Ask(self, u"Apagar Tudo", 1)
@@ -143,10 +157,26 @@ class Transaction(wx.Frame):
         else:
             self.checkbox_payed.SetForegroundColour(wx.RED)
 
+    def open_category_register(self, event):
+        categories.TransactionCategoryData(self)
+
+    def update_categories(self):
+        db = database.TransactionsDB()
+        category_list = db.categories_list()
+        category_options = [u'Selecione']
+        self.categories_ids = [None]
+        for category in category_list:
+            category_options.append(category.category)
+            self.categories_ids.append(category.ID)
+        self.combobox_category.SetItems(category_options)
+        self.combobox_category.SetSelection(0)
+        db.close()
+
     def clean(self):
         self.textbox_description.Clear()
         self.textbox_value.SetValue(u"R$ 0,00")
         self.calendar_date.SetDate(wx.DateTime_Now())
+        self.update_categories()
 
     def exit(self, event):
         self.Close()
@@ -165,6 +195,7 @@ class Transaction(wx.Frame):
         data = data_types.TransactionData()
         data.ID = self.key
         data.description = description
+        data.category = self.categories_ids[self.combobox_category.GetSelection()]
         data.value = val
         data.record_date = date
         data.record_time = finish_time

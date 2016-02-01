@@ -23,10 +23,7 @@ __author__ = 'Julio'
 
 
 class Report(wx.Frame):
-    month_options = []
-    months_files = []
-    database_incomes = {}
-    database_expenses = {}
+
     combobox_month_displayed = None
     list_incomes = None
     list_expenses = None
@@ -56,9 +53,9 @@ class Report(wx.Frame):
         self.Show()
 
     def setup_gui(self):
-        self.SetBackgroundColour(core.default_background_color)
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         self.Centre()
-        self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
+        self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
         part1 = wx.Panel(self, -1, pos=(10, 10), size=(1180, 290), style=wx.SUNKEN_BORDER | wx.TAB_TRAVERSAL)
         self.text_profit = wx.TextCtrl(part1, -1, pos=(200, 50), size=(100, 30), style=wx.TE_READONLY)
         self.text_income = wx.TextCtrl(part1, -1, pos=(200, 90), size=(100, 30), style=wx.TE_READONLY)
@@ -149,7 +146,7 @@ class Report(wx.Frame):
         part3 = wx.Panel(self, pos=(10, 360), size=(1180, 280), style=wx.SIMPLE_BORDER)
 
         part31 = wx.Panel(part3, 56, pos=(10, 5), size=(575, 260), style=wx.SUNKEN_BORDER)
-        part31.SetBackgroundColour(core.default_background_color)
+        part31.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         self.list_incomes = wx.gizmos.TreeListCtrl(part31, -1, pos=(10, 10), size=(400, 240),
                                                    style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE |
                                                    wx.TR_FULL_ROW_HIGHLIGHT)
@@ -179,7 +176,7 @@ class Report(wx.Frame):
         button34.Bind(wx.EVT_BUTTON, self.setup_monthly_incomes)
 
         part32 = wx.Panel(part3, 56, pos=(590, 5), size=(575, 260), style=wx.SUNKEN_BORDER)
-        part32.SetBackgroundColour(core.default_background_color)
+        part32.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         self.list_expenses = wx.gizmos.TreeListCtrl(part32, -1, pos=(10, 10), size=(400, 240),
                                                     style=wx.SIMPLE_BORDER | wx.TR_DEFAULT_STYLE |
                                                     wx.TR_FULL_ROW_HIGHLIGHT)
@@ -423,7 +420,7 @@ class Report(wx.Frame):
         self.list_expenses.ExpandAll(root)
 
     def open_text_box(self, event):
-        month = self.months_files[self.month_options.index(self.combobox_month_displayed.GetValue())]
+        month = None
         dialogs.TextBox(self, month)
 
     def open_sheets_sales(self, event):
@@ -499,8 +496,8 @@ class DataSheets(wx.Frame):
         wx.Frame.__init__(self, parent, -1, title, size=(970, 600))
         self.month = month
         self.parent = parent
-        self.SetBackgroundColour(core.default_background_color)
-        self.SetIcon(wx.Icon(core.general_icon, wx.BITMAP_TYPE_ICO))
+        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
         box = wx.BoxSizer(wx.VERTICAL)
         note = wx.Notebook(self, style=wx.LEFT)
         if sheet_to_focus == 1:
