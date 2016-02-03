@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
-import shutil
 import threading
-from datetime import datetime
 from random import randint
 
 import wx
@@ -53,12 +51,6 @@ class Base(wx.Frame):
 
         core.setup_environment()
 
-        # desabilitado em faze de desenvolvimento
-
-        # # Faz o Backup e verifica entregas
-        # self.bool_b = False
-        # self.backup(None)
-        
         self.timer_delivery = wx.Timer(self)
         self.notification_control = {}
         self.Bind(wx.EVT_TIMER, self.delivery_check, self.timer_delivery)
@@ -162,65 +154,10 @@ class Base(wx.Frame):
         self.Bind(wx.EVT_MENU, self.ask_exit, id=59)
         self.Bind(wx.EVT_MENU, self.hide_to_tray, id=58)
         self.Bind(wx.EVT_MENU, self.reopen, id=57)
-        self.Bind(wx.EVT_MENU, self.backup, id=62)
 
     def OnPaint(self, event):
         wx.PaintDC(self).DrawBitmap(self.background_image, 0, 0)
         wx.PaintDC(self.panel_logo).DrawBitmap(self.logo, 0, 0)
-
-    def backup(self, event):    # TODO Fazer a thread fechar direito com o resto do app
-        if self.backup_running or not self.backup_enabled:
-            return
-        back = threading.Thread(target=self.__backup__, args=[True if event else False])
-        back.setDaemon(True)
-        back.start()
-
-    def __backup__(self, called=False):
-        try:
-            if self.backup_running:
-                return
-            self.backup_running = True
-            tempo = core.good_show("o", str(datetime.now().hour)) + "-" + core.good_show("o", str(
-                datetime.now().minute)) + "-" + core.good_show("o", str(datetime.now().second))
-            date = str(datetime.now().year) + "-" + core.good_show("o", str(datetime.now().month)) + "-" + \
-                core.good_show("o", str(datetime.now().day))
-            lol = date + "_" + tempo
-            if os.path.exists(core.directory_paths['temporary']):
-                shutil.rmtree(core.directory_paths['temporary'])
-            os.mkdir(core.directory_paths['temporary'])
-            shutil.copytree(core.directory_paths['saves'], core.directory_paths['temporary'] + 'saves')
-            shutil.copytree(core.directory_paths['inventory'], core.directory_paths['temporary'] + 'products')
-            shutil.copytree(core.directory_paths['clients'], core.directory_paths['temporary'] + 'clients')
-            if os.path.exists(core.directory_paths['trash']):
-                shutil.copytree(core.directory_paths['trash'], core.directory_paths['.trash'])
-            shutil.make_archive(core.directory_paths['backups'] + lol, "zip", core.directory_paths['temporary'])
-            shutil.rmtree(core.directory_paths['temporary'], True)
-            for root, dirs, files in os.walk(core.directory_paths['backups']):
-                files.sort()
-                files.reverse()
-                p = len(files)
-                while p > 20:
-                    os.remove(root + core.slash + files[p - 1])
-                    p -= 1
-            self.timer_backup = threading.Timer(2*3600*1000, self.__backup__)
-            self.timer_backup.start()
-            if called:
-                wx.CallAfter(self.backup_confirmation)
-            self.backup_running = False
-        except Exception, e:    # TODO Determinar quais exeptions podem ocorrer e dazer um melhor tratamento
-            print e
-            self.backup_running = False
-            if called:
-                back = threading.Thread(target=self.__backup__, args=[True])
-            else:
-                back = threading.Thread(target=self.__backup__)
-            back.start()
-            return
-
-    def backup_confirmation(self):
-        a = wx.MessageDialog(self, u'Backup salvo com sucesso!', u'Backup', style=wx.OK | wx.ICON_INFORMATION)
-        a.ShowModal()
-        a.Destroy()
 
     def delivery_check(self, event):
         self.timer_delivery.Stop()
