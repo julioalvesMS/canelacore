@@ -680,7 +680,7 @@ class ClientsDB:
 
         # Prepara a linha de comando
 
-        cmd = 'UPDATE CLIENTS SET CLIENTS=?, SALE=?, ACTIVE=? WHERE ID=?'
+        cmd = 'UPDATE SALES SET CLIENT=?, SALE=?, ACTIVE=? WHERE ID=?'
 
         # Edita o produto no BD
         self.cursor.execute(cmd, _data)
