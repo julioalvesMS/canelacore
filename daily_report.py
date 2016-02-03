@@ -347,7 +347,7 @@ class Report(wx.Frame):
                 sales_value += sale_item.value
                 sold = self.list_sales.AppendItem(root, sale_item.record_time)
                 self.list_sales.SetItemText(sold, sale_item.payment, 2)
-                self.list_sales.SetItemText(sold, "R$ " + core.good_show("money", sale_item.value), 3)
+                self.list_sales.SetItemText(sold, core.format_cash_user(sale_item.value, currency=True), 3)
                 self.list_sales.SetItemFont(sold, wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
 
                 self.list_sales.SetItemData(sold, wx.TreeItemData(sale_item))
@@ -357,26 +357,26 @@ class Report(wx.Frame):
                     product = inventory_db.inventory_search_id(int(product_id))
 
                     a = self.list_sales.AppendItem(sold, product.description)
-                    self.list_sales.SetItemText(a, str(sale_item.amounts[i]), 1)
+                    self.list_sales.SetItemText(a, core.format_amount_user(sale_item.amounts[i]), 1)
                     self.list_sales.SetItemText(a, core.format_cash_user(sale_item.prices[i], currency=True), 3)
 
                     self.list_sales.SetItemData(a, wx.TreeItemData(product))
                 if sale_item.discount:
                     web = self.list_sales.AppendItem(sold, u"Desconto")
-                    self.list_sales.SetItemText(web, "R$ " + core.good_show("money", sale_item.discount), 3)
+                    self.list_sales.SetItemText(web, core.format_cash_user(sale_item.discount, currency=True), 3)
                 if sale_item.taxes:
                     bew = self.list_sales.AppendItem(sold, u"Taxas adicionais")
-                    self.list_sales.SetItemText(bew, "R$ " + core.good_show("money", sale_item.taxes), 3)
+                    self.list_sales.SetItemText(bew, core.format_cash_user(sale_item.taxes, currency=True), 3)
                 sales_amount += 1
                 if sale_item.payment == u"Dinheiro":
                     money_amount += 1
-                    money_value += float(sale_item.value)
+                    money_value += sale_item.value
                 elif sale_item.payment.split()[0] == u"Cartão":
                     card_amount += 1
-                    card_value += float(sale_item.value)
+                    card_value += sale_item.value
 
-            self.list_sales.SetItemText(root, str(sales_amount), 2)
-            self.list_sales.SetItemText(root, ("R$ " + core.good_show("money", sales_value)), 3)
+            self.list_sales.SetItemText(root, str(sales_amount), 1)
+            self.list_sales.SetItemText(root, core.format_cash_user(sales_value, currency=True), 3)
             self.list_sales.Expand(root)
 
             raz = self.list_expenses.AddRoot(self.combobox_day_option.GetValue())
@@ -392,13 +392,13 @@ class Report(wx.Frame):
                 expenses_value += value
                 golf = self.list_expenses.AppendItem(raz, core.format_date_user(expense_item.record_time))
                 self.list_expenses.SetItemText(golf, description, 1)
-                self.list_expenses.SetItemText(golf, ("R$ " + core.good_show("money", value)), 3)
+                self.list_expenses.SetItemText(golf, core.format_cash_user(value, currency=True), 3)
 
                 self.list_expenses.SetItemData(golf, wx.TreeItemData(expense_item))
 
-            self.list_expenses.SetItemText(raz, "Gastos", 1)
+            self.list_expenses.SetItemText(raz, u"Gastos", 1)
             self.list_expenses.SetItemText(raz, str(expenses_amount), 2)
-            self.list_expenses.SetItemText(raz, ("R$ " + core.good_show("money", expenses_value)), 3)
+            self.list_expenses.SetItemText(raz, core.format_cash_user(expenses_value, currency=True), 3)
             self.list_expenses.Expand(raz)
 
             pain = self.list_wastes.AddRoot(u"Desperdícios de " + self.combobox_day_option.GetValue())
@@ -415,23 +415,23 @@ class Report(wx.Frame):
                 wastes_value += value
 
                 king = self.list_wastes.AppendItem(pain, product.description)
-                self.list_wastes.SetItemText(king, str(amount), 1)
-                self.list_wastes.SetItemText(king, ("R$ " + core.good_show("money", value)), 2)
+                self.list_wastes.SetItemText(king, core.format_amount_user(amount), 1)
+                self.list_wastes.SetItemText(king, core.format_cash_user(value, currency=True), 2)
 
                 self.list_wastes.SetItemData(king, wx.TreeItemData(wasted))
 
             self.list_wastes.SetItemText(pain, str(wastes_amount), 1)
-            self.list_wastes.SetItemText(pain, ("R$ " + core.good_show("money", wastes_value)), 2)
+            self.list_wastes.SetItemText(pain, core.format_cash_user(wastes_value, currency=True), 2)
             self.list_wastes.Expand(pain)
 
-            self.textbox_day_total.SetValue(core.good_show("money", sales_value - expenses_value))
-            self.textbox_sales_value.SetValue(core.good_show("money", sales_value))
+            self.textbox_day_total.SetValue(core.format_cash_user(sales_value - expenses_value, currency=True))
+            self.textbox_sales_value.SetValue(core.format_cash_user(sales_value, currency=True))
             self.textbox_sales_amount.SetValue(str(sales_amount))
-            self.textbox_money_value.SetValue(core.good_show("money", money_value))
+            self.textbox_money_value.SetValue(core.format_cash_user(money_value, currency=True))
             self.textbox_money_amount.SetValue(str(money_amount))
-            self.textbox_card_value.SetValue(core.good_show("money", card_value))
+            self.textbox_card_value.SetValue(core.format_cash_user(card_value, currency=True))
             self.textbox_card_amount.SetValue(str(card_amount))
-            self.textbox_spent_value.SetValue(core.good_show("money", expenses_value))
+            self.textbox_spent_value.SetValue(core.format_cash_user(expenses_value, currency=True))
             self.textbox_spent_amount.SetValue(str(expenses_amount))
 
             self.cash_register = transactions_db.cash_search_date(day)
@@ -470,7 +470,7 @@ class Report(wx.Frame):
 
         cash_ideal = previous + money - spent
 
-        self.textbox_cash_ideal.SetValue(core.good_show("money", cash_ideal))
+        self.textbox_cash_ideal.SetValue(core.format_cash_user(cash_ideal, currency=True))
 
         if not cash_real:
             cash_tomorrow = cash_ideal - removed
@@ -480,7 +480,7 @@ class Report(wx.Frame):
         if cash_tomorrow < 0:
             cash_tomorrow = 0.0
 
-        self.textbox_cash_tomorrow.SetValue(core.good_show("money", cash_tomorrow))
+        self.textbox_cash_tomorrow.SetValue(core.format_cash_user(cash_tomorrow, currency=True))
 
     def clean(self):
         self.list_sales.DeleteAllItems()
