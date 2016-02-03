@@ -101,7 +101,10 @@ def amount2float(value):
     :return: O valor em float
     :rtype: float
     """
-    return float(value.replace(',', '.').split()[0])
+    if value:
+        return float(value.replace(',', '.').split()[0])
+    else:
+        return float(0)
 
 
 def hour2int(value):
@@ -195,10 +198,11 @@ def format_cash_user(value, currency=False):
     :param value: valor a ser preparado
     :param currency: Mostrar o R$ antes do valor
     :type currency: bool
+    :type value: float
     :return: String para identificar o valor
     :rtype: str
     """
-    tex = str(value).replace('.', ',')
+    tex = str(round(value, 2)).replace('.', ',')
     x = len(tex.split(',')[1])
     if x == 1:
         tex += "0"
