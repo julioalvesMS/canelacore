@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from datetime import datetime
-
 import wx
 import wx.gizmos
 from wx.lib.buttons import GenBitmapTextButton
@@ -39,6 +37,7 @@ class Waste(wx.Frame):
     textbox_description = None
     textbox_amount = None
     textbox_id = None
+    textbox_product_unit = None
 
     list_inventory = None
 
@@ -80,8 +79,8 @@ class Waste(wx.Frame):
 
         self.list_inventory = wx.ListCtrl(first, -1, pos=(10, 45), size=(430, 115),
                                           style=wx.LC_REPORT | wx.LC_VRULES | wx.LC_HRULES | wx.SIMPLE_BORDER)
-        self.list_inventory.InsertColumn(0, u'ID')
-        self.list_inventory.InsertColumn(1, u'Descrição', width=230)
+        self.list_inventory.InsertColumn(0, u'Descrição', width=230)
+        self.list_inventory.InsertColumn(1, u'Estoque')
         self.list_inventory.InsertColumn(2, u'Preço')
         self.list_inventory.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.database_select)
 
@@ -91,6 +90,10 @@ class Waste(wx.Frame):
 
         wx.StaticText(first, -1, u"Quantidade: *", pos=(250, 170))
         self.textbox_amount = wx.TextCtrl(first, -1, pos=(250, 190), size=(150, 30))
+
+        self.textbox_product_unit = wx.TextCtrl(first, -1, pos=(405, 195), size=(30, -1),
+                                                style=wx.NO_BORDER | wx.TE_READONLY)
+        self.textbox_product_unit.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
 
         # last
         last = wx.Panel(self, -1, size=(140, 230), pos=(470, 10), style=wx.SIMPLE_BORDER)
@@ -110,8 +113,12 @@ class Waste(wx.Frame):
         cancel.Bind(wx.EVT_BUTTON, self.ask_exit)
 
     def recover_waste(self):
+
+        product = self.database_inventory.inventory_search_id(self.data.product_ID)
+        category = self.database_inventory.categories_search_id(product.category_ID)
         self.textbox_id.SetValue(str(self.data.product_ID))
-        self.textbox_amount.SetValue(str(self.data.amount))
+        self.textbox_amount.SetValue(core.format_amount_user(self.data.amount))
+        self.textbox_product_unit.SetValue(category.unit)
 
     def ask_clean(self, event):
         """
@@ -137,18 +144,24 @@ class Waste(wx.Frame):
         self.textbox_description.Clear()
         self.textbox_id.Clear()
         self.textbox_amount.Clear()
+        self.textbox_product_unit.Clear()
 
     def database_search(self, event):
         self.list_inventory.DeleteAllItems()
         product_list = self.database_inventory.inventory_search_description(self.textbox_description.GetValue())
         for product in product_list:
-            self.list_inventory.Append((product.ID, product.description,
-                                        'R$ ' + core.good_show('money', product.price)))
+            category = self.database_inventory.categories_search_id(product.category_ID)
+            item = self.list_inventory.Append((product.description,
+                                               core.format_amount_user(product.amount, category.unit),
+                                               core.format_cash_user(product.price, currency=True)))
+            self.list_inventory.SetItemData(item, product.ID)
 
     def database_select(self, event):
         j = self.list_inventory.GetFocusedItem()
-        self.textbox_id.SetValue(self.list_inventory.GetItemText(j, 0))
-        self.textbox_description.SetValue(self.list_inventory.GetItemText(j, 1))
+        unit = self.list_inventory.GetItemText(j, 1).split()[-1]
+        self.textbox_id.SetValue(str(self.list_inventory.GetItemData(j)))
+        self.textbox_description.SetValue(self.list_inventory.GetItemText(j, 0))
+        self.textbox_product_unit.SetValue(unit)
         self.textbox_amount.SetFocus()
 
     def end(self):
@@ -158,10 +171,7 @@ class Waste(wx.Frame):
         if not _product_id or not _amount:
             return dialogs.launch_error(self, u'Dados insuficientes!')
 
-        finish_time = core.good_show("o", str(datetime.now().hour)) + ":" + core.good_show("o", str(
-            datetime.now().minute)) + ":" + core.good_show("o", str(datetime.now().second))
-        date = str(datetime.now().year) + "-" + core.good_show("o", str(datetime.now().month)) + "-" + core.good_show(
-            "o", str(datetime.now().day))
+        date, finish_time = core.datetime_today()
 
         data = data_types.WasteData()
         data.product_ID = int(_product_id)

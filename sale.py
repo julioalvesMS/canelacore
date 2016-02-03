@@ -57,6 +57,7 @@ class Sale(wx.Frame):
     textbox_product_id = None
     textbox_product_price = None
     textbox_product_amount = None
+    textbox_product_unit = None
 
     textbox_sale_discount = None
     textbox_sale_taxes = None
@@ -184,8 +185,8 @@ class Sale(wx.Frame):
         self.textbox_product_description.SetDescriptiveText(u'Descrição do produto')
         self.list_inventory = wx.ListCtrl(self.panel_product_data, -1, pos=(10, 60), size=(430, 115),
                                           style=wx.LC_REPORT | wx.LC_VRULES | wx.LC_HRULES | wx.SIMPLE_BORDER)
-        self.list_inventory.InsertColumn(0, u'ID')
-        self.list_inventory.InsertColumn(1, u'Descrição', width=230)
+        self.list_inventory.InsertColumn(0, u'Descrição', width=230)
+        self.list_inventory.InsertColumn(1, u'Estoque')
         self.list_inventory.InsertColumn(2, u'Preço')
         self.list_inventory.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.database_select)
 
@@ -202,6 +203,10 @@ class Sale(wx.Frame):
         self.textbox_product_amount = wx.SearchCtrl(self.panel_product_data, -1, pos=(230, 185), size=(100, -1))
         self.textbox_product_amount.ShowSearchButton(False)
         self.textbox_product_amount.SetDescriptiveText(u'Quantidade')
+
+        self.textbox_product_unit = wx.TextCtrl(self.panel_product_data, -1, pos=(335, 190), size=(50, -1),
+                                                style=wx.NO_BORDER | wx.TE_READONLY)
+        self.textbox_product_unit.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
 
         self.__panel_product = wx.Panel(self.panel_product_data, size=(300, 40), pos=(100, 225),
                                         style=wx.SIMPLE_BORDER)
@@ -236,7 +241,7 @@ class Sale(wx.Frame):
         wx.StaticText(client, -1, u"Nome do cliente: ", pos=(10, 5))
         wx.StaticText(client, -1, u"CPF: ", pos=(250, 5))
         wx.StaticText(client, -1, u"ID: ", pos=(375, 5))
-        self.textbox_client_name = wx.TextCtrl(client, -1, pos=(25, 25), size=(200, 25))
+        self.textbox_client_name = wx.TextCtrl(client, -1, pos=(10, 25), size=(215, 25))
         self.textbox_client_cpf = wx.TextCtrl(client, -1, pos=(250, 25), size=(100, 25))
         self.textbox_client_id = wx.TextCtrl(client, -1, pos=(375, 25), size=(50, 25))
         self.textbox_client_cpf.Bind(wx.EVT_CHAR, core.check_cpf)
@@ -260,19 +265,20 @@ class Sale(wx.Frame):
         wx.StaticText(client, -1, u"Endereço da entrega:", pos=(10, 180))
         wx.StaticText(client, -1, u"Telefone \ndo cliente:", pos=(10, 240))
         wx.StaticText(client, -1, u"Cidade:", pos=(215, 247))
-        wx.StaticText(client, -1, u"Data:", pos=(10, 287))
-        wx.StaticText(client, -1, u"Horário:", pos=(150, 287))
-        self.textbox_delivery_receiver = wx.TextCtrl(client, -1, pos=(10, 150), size=(350, 25))
-        self.textbox_delivery_address = wx.TextCtrl(client, -1, pos=(10, 200), size=(350, 25))
+        wx.StaticText(client, -1, u"        Data:", pos=(10, 287))
+        wx.StaticText(client, -1, u"Horário:", pos=(210, 287))
+        self.textbox_delivery_receiver = wx.TextCtrl(client, -1, pos=(10, 150), size=(415, 25))
+        self.textbox_delivery_address = wx.TextCtrl(client, -1, pos=(10, 200), size=(415, 25))
         self.textbox_delivery_telephone = wx.TextCtrl(client, -1, pos=(80, 240), size=(120, 25))
-        self.textbox_delivery_city = wx.TextCtrl(client, -1, pos=(260, 240), size=(100, 25))
-        self.textbox_delivery_date = wx.TextCtrl(client, -1, pos=(50, 280), size=(60, 25))
-        self.textbox_delivery_hour = wx.TextCtrl(client, -1, pos=(200, 280), size=(60, 25))
+        self.textbox_delivery_city = wx.TextCtrl(client, -1, pos=(260, 240), size=(120, 25))
+        self.textbox_delivery_date = wx.TextCtrl(client, -1, pos=(80, 280), size=(120, 25))
+        self.textbox_delivery_hour = wx.TextCtrl(client, -1, pos=(260, 280), size=(120, 25))
 
         self.textbox_delivery_telephone.Bind(wx.EVT_CHAR, core.check_telephone)
         self.textbox_delivery_date.Bind(wx.EVT_CHAR, core.check_date_simple)
         self.textbox_delivery_hour.Bind(wx.EVT_CHAR, core.check_hour)
 
+        self.textbox_client_name.Disable()
         self.textbox_delivery_receiver.Disable()
         self.textbox_delivery_address.Disable()
         self.textbox_delivery_telephone.Disable()
@@ -391,6 +397,7 @@ class Sale(wx.Frame):
     def setup_delivery(self, event):
         self.delivery_enabled = self.delivery.GetValue()
         if self.delivery.GetValue():
+            self.textbox_client_name.Enable()
             self.textbox_delivery_receiver.Enable()
             self.textbox_delivery_address.Enable()
             self.textbox_delivery_telephone.Enable()
@@ -405,6 +412,7 @@ class Sale(wx.Frame):
             self.textbox_delivery_hour.SetValue('00:00')
 
         else:
+            self.textbox_client_name.Disable()
             self.textbox_delivery_receiver.Disable()
             self.textbox_delivery_address.Disable()
             self.textbox_delivery_telephone.Disable()
@@ -439,9 +447,9 @@ class Sale(wx.Frame):
         if not product:
             return dialogs.launch_error(self, u'ID inválido!')
 
-        _amount = self.textbox_product_amount.GetValue().replace(',', '.')
+        _amount = self.textbox_product_amount.GetValue()
         try:
-            amount = float(_amount)
+            amount = core.amount2float(_amount)
         except ValueError:
             self.textbox_product_amount.Clear()
             return dialogs.launch_error(self, u'Quantidade inválida!')
@@ -449,9 +457,13 @@ class Sale(wx.Frame):
         _price = float(amount) * float(product.price)
         unit_price = core.format_cash_user(product.price, currency=True)
         price = core.format_cash_user(_price, currency=True)
-        item = self.list_sold.Append((product.description, core.format_amount_user(amount), unit_price, price))
+        unit = self.textbox_product_unit.GetValue()
+
+        item = self.list_sold.Append((product.description, core.format_amount_user(amount, unit=unit),
+                                      unit_price, price))
         self.list_sold.SetItemData(item, product_id)
 
+        self.textbox_product_unit.Clear()
         self.textbox_product_amount.Clear()
         self.textbox_product_id.Clear()
         self.textbox_product_description.Clear()
@@ -467,10 +479,12 @@ class Sale(wx.Frame):
     def data_editor_enable(self, event):
         self.item = self.list_sold.GetFocusedItem()
         if not self.item == -1:
+            amount, unit = self.list_sold.GetItemText(self.item, 1).split()
             self.textbox_product_description.SetValue(self.list_sold.GetItemText(self.item, 0))
             self.textbox_product_id.SetValue(str(self.list_sold.GetItemData(self.item)))
             self.textbox_product_price.SetValue(self.list_sold.GetItemText(self.item, 2))
-            self.textbox_product_amount.SetValue(self.list_sold.GetItemText(self.item, 1))
+            self.textbox_product_amount.SetValue(amount)
+            self.textbox_product_unit.SetValue(unit)
             self.__panel_product.Destroy()
             self.__panel_product = wx.Panel(self.panel_product_data, size=(200, 40), pos=(200, 225),
                                             style=wx.SIMPLE_BORDER)
@@ -493,7 +507,7 @@ class Sale(wx.Frame):
         if not product:
             return dialogs.launch_error(self, u'ID inválido!')
 
-        _amount = core.format_amount_user(self.textbox_product_amount.GetValue())
+        _amount = self.textbox_product_amount.GetValue()
         try:
             amount = core.amount2float(_amount)
         except ValueError:
@@ -504,8 +518,10 @@ class Sale(wx.Frame):
         unit_price = core.format_cash_user(product.price, currency=True)
         price = core.format_cash_user(_price, currency=True)
 
+        unit = self.textbox_product_unit.GetValue()
+
         self.list_sold.SetStringItem(self.item, 0, product.description)
-        self.list_sold.SetStringItem(self.item, 1, amount)
+        self.list_sold.SetStringItem(self.item, 1, core.format_amount_user(amount, unit))
         self.list_sold.SetStringItem(self.item, 2, unit_price)
         self.list_sold.SetStringItem(self.item, 3, price)
 
@@ -515,6 +531,7 @@ class Sale(wx.Frame):
         self.data_editor_disable(event)
 
     def data_editor_disable(self, event):
+        self.textbox_product_unit.Clear()
         self.textbox_product_amount.Clear()
         self.textbox_product_price.SetValue(u'0,00')
         self.textbox_product_id.Clear()
@@ -545,33 +562,39 @@ class Sale(wx.Frame):
         self.list_inventory.DeleteAllItems()
         product_list = self.database_inventory.inventory_search_description(self.textbox_product_description.GetValue())
         for product in product_list:
-            self.list_inventory.Append((product.ID, product.description,
-                                        core.format_cash_user(product.price, currency=True)))
+            category = self.database_inventory.categories_search_id(product.category_ID)
+            item = self.list_inventory.Append((product.description,
+                                               core.format_amount_user(product.amount, category.unit),
+                                               core.format_cash_user(product.price, currency=True)))
+            self.list_inventory.SetItemData(item, product.ID)
 
     def database_select(self, event):
         j = self.list_inventory.GetFocusedItem()
+        unit = self.list_inventory.GetItemText(j, 1).split()[-1]
         self.textbox_product_price.SetValue(self.list_inventory.GetItemText(j, 2))
-        self.textbox_product_id.SetValue(self.list_inventory.GetItemText(j, 0))
-        self.textbox_product_description.SetValue(self.list_inventory.GetItemText(j, 1))
+        self.textbox_product_id.SetValue(str(self.list_inventory.GetItemData(j)))
+        self.textbox_product_description.SetValue(self.list_inventory.GetItemText(j, 0))
+        self.textbox_product_unit.SetValue(unit)
         self.textbox_product_amount.SetFocus()
 
     def update_sale_data(self, event):
         total_price = float(0)
         w = self.list_sold.GetItemCount()
         for i in range(0, w):
-            product_price = self.list_sold.GetItem(i, 3).GetText()
-            total_price += core.money2float(product_price)
-        discount = self.textbox_sale_discount.GetValue().replace(",", ".")
+            amount = core.amount2float(self.list_sold.GetItemText(i, 1))
+            price = core.money2float(self.list_sold.GetItemText(i, 2))
+            total_price += amount * price
+        discount = self.textbox_sale_discount.GetValue()
         if discount == "":
             discount = float(0)
         else:
-            discount = float(discount)
-        additional_taxes = self.textbox_sale_taxes.GetValue().replace(",", ".")
+            discount = core.money2float(discount)
+        additional_taxes = self.textbox_sale_taxes.GetValue()
         if additional_taxes == "":
             additional_taxes = float(0)
         else:
-            additional_taxes = float(additional_taxes)
-        final_value = max(float(total_price + additional_taxes - discount), 0.0)
+            additional_taxes = core.money2float(additional_taxes)
+        final_value = max(total_price + additional_taxes - discount, 0.0)
         self.textbox_sale_products_price.SetValue(core.format_cash_user(total_price))
         self.textbox_sale_value.SetValue(core.format_cash_user(final_value))
 
@@ -596,17 +619,14 @@ class Sale(wx.Frame):
 
     def clean(self):
         self.list_sold.DeleteAllItems()
-        self.textbox_product_amount.Clear()
-        self.textbox_product_price.Clear()
+        self.data_editor_disable(None)
         self.textbox_sale_discount.Clear()
         self.textbox_sale_taxes.Clear()
-        self.textbox_product_description.Clear()
         self.textbox_client_cpf.Clear()
         self.textbox_client_name.Clear()
         self.textbox_client_id.Clear()
         self.textbox_sale_taxes.SetValue("0,00")
         self.textbox_sale_discount.SetValue("0,00")
-        self.textbox_product_price.SetValue("0,00")
         self.delivery.SetValue(False)
         self.setup_delivery(None)
         self.radio_payment_money.SetValue(True)
