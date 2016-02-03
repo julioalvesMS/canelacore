@@ -1,0 +1,5 @@
+- De que modo os tributos mudam quando se tem desconto ?? ele diminui tb ?
+   eu acho que tem que calcular os tributos
+- pegar as informacoes sobre tributos da tabela de tributos e não da internet
+- onde vai o vCFeLei12741 ?? ele ta na classe DescAcrEntr atualmente mas eu to confuso com isso
+- lembrar que na soma de tributos tem que somar varias vezes se o produto tiver varias unidades

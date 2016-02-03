@@ -14,6 +14,7 @@ import daily_report
 import dialogs
 import database
 import data_types
+import sat
 
 __author__ = 'Julio'
 
@@ -499,7 +500,7 @@ class Sale(wx.Frame):
         except ValueError:
             self.textbox_product_amount.Clear()
             return dialogs.launch_error(self, u'Quantidade inválida!')
-        
+
         _price = float(amount) * float(product.price)
         unit_price = core.format_cash_user(product.price, currency=True)
         price = core.format_cash_user(_price, currency=True)
@@ -720,6 +721,9 @@ class Sale(wx.Frame):
         new_sale.client_id = client_id if client_id else None
 
         new_sale.ID = self.key
+
+        # Envia venda ao SAT
+        sat.enviar_venda_ao_sat(new_sale)
 
         db = database.TransactionsDB()
 
