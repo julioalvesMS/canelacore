@@ -52,8 +52,6 @@ class Ask(wx.Dialog):
             caller.data_delete(None)
         elif self.option / 10 == 3:
             caller.delete()
-        elif self.option / 10 == 4:
-            caller.sale_disconnect()
         elif self.option / 10 == 9:
             caller.exit(event)
 
@@ -308,6 +306,13 @@ def launch_error(origin, message, title=u'Error 404'):
     a.ShowModal()
     a.Destroy()
     return False
+
+
+def backup_confirmation(origin=None):
+    a = wx.MessageDialog(origin, u'Backup salvo com sucesso!', u'Backup', style=wx.OK | wx.ICON_INFORMATION)
+    a.ShowModal()
+    a.Destroy()
+    return True
 
 ask_options = {
     1: u'Você tem certeza que deseja apagar tudo?',

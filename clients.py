@@ -426,7 +426,7 @@ class ClientData(wx.Frame):
     def __init__(self, parent, title, client_id, data=None, editable=True):
         wx.Frame.__init__(self, parent, -1, title,
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU |
-                          wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN | wx.TAB_TRAVERSAL)
+                                wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN | wx.TAB_TRAVERSAL)
 
         self.editable = editable
         self.client_id = client_id
@@ -502,7 +502,7 @@ class ClientData(wx.Frame):
             finish = GenBitmapTextButton(panel_bottom_buttons, -1,
                                          wx.Bitmap(core.directory_paths['icons'] + 'Check.png', wx.BITMAP_TYPE_PNG),
                                          u"Salvar", pos=(0, 0), size=(100, 40))
-            finish.Bind(wx.EVT_BUTTON, self.ask_delete)
+            finish.Bind(wx.EVT_BUTTON, self.ask_end)
             restart = GenBitmapTextButton(panel_bottom_buttons, -1,
                                           wx.Bitmap(core.directory_paths['icons'] + 'Reset.png', wx.BITMAP_TYPE_PNG),
                                           u"Recomeçar", pos=(100, 0), size=(120, 40))
@@ -532,8 +532,8 @@ class ClientData(wx.Frame):
             sunbind = GenBitmapTextButton(bp1, -1,
                                           wx.Bitmap(core.directory_paths['icons'] + 'list-remove.png',
                                                     wx.BITMAP_TYPE_PNG),
-                                          u'Desconectar Venda', pos=(120, 0), size=(180, 40))
-            sunbind.Bind(wx.EVT_BUTTON, self.ask_sale_disconnect)
+                                          u'Apagar Venda', pos=(120, 0), size=(180, 40))
+            sunbind.Bind(wx.EVT_BUTTON, self.ask_sale_delete)
             ssee = GenBitmapTextButton(bp1, -1,
                                        wx.Bitmap(core.directory_paths['icons'] + 'edit_find.png', wx.BITMAP_TYPE_PNG),
                                        u'Ver Mais', pos=(0, 0), size=(120, 40))
@@ -566,7 +566,7 @@ class ClientData(wx.Frame):
             self.textbox_client_address.Disable()
             self.textbox_client_observations.Disable()
 
-    def ask_delete(self, event):
+    def ask_end(self, event):
         dialogs.Ask(self, u'Finalizar Cadastro', 14)
 
     def ask_clean(self, event):
@@ -578,8 +578,8 @@ class ClientData(wx.Frame):
         elif not self.editable:
             self.exit(None)
 
-    def ask_sale_disconnect(self, event):
-        dialogs.Ask(self, u'Desconectar', 40)
+    def ask_sale_delete(self, event):
+        dialogs.Ask(self, u'Apagar', 28)
 
     def set_editable(self, event):
         ClientData(self.parent, self.title, self.client_id, editable=True)
@@ -589,13 +589,10 @@ class ClientData(wx.Frame):
         t = self.list_bought.GetFocusedItem()
         if t == -1:
             return
-        client_sale_id = self.list_bought.GetItemData(t)
-        db = database.ClientsDB()
-        client_sale = db.sales_search_id(client_sale_id)
-        db.close()
-        sale.Sale(self, core.format_id_user(client_sale.sale), key=client_sale.sale, editable=False)
+        sale_id = self.list_bought.GetItemData(t)
+        sale.Sale(self, core.format_id_user(sale_id), key=sale_id, editable=False)
 
-    def sale_disconnect(self):
+    def data_delete(self, event):
         t = self.list_bought.GetFocusedItem()
         if t == -1:
             return
@@ -604,8 +601,10 @@ class ClientData(wx.Frame):
             activate = True
         else:
             activate = False
-        client_sale_id = self.list_bought.GetItemData(t)
-        disconnect_sale(client_sale_id=client_sale_id, undo=activate)
+        db = database.TransactionsDB()
+        sale_id = self.list_bought.GetItemData(t)
+        db.delete_sale(sale_id=sale_id, undo=activate)
+        db.close()
         if activate:
             self.list_bought.SetItemTextColour(t, wx.BLACK)
         else:
@@ -625,10 +624,13 @@ class ClientData(wx.Frame):
         amount_card = 0
         for sale_ in sales:
             data = sales_db.sales_search_id(sale_.sale)
+            if not data.active:
+                disconnect_sale(sale_.ID, data.ID)
+                continue
             payed = u'Sim' if not data.payment_pendant else u'Não'
             item = self.list_bought.Append((data.record_date, data.record_time,
                                             core.format_cash_user(data.value, currency=True), payed))
-            self.list_bought.SetItemData(item, sale_.ID)
+            self.list_bought.SetItemData(item, data.ID)
 
             value += data.value
             amount += 1
