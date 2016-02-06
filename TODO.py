@@ -1,15 +1,16 @@
-# coding=utf-8
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 # TODO Lista a Baixo
 """
 ::::TODO::::
-Colocar Unidades na venda
 conexão cliente venda para NFe
 Implementar o SAT
 Implementar sistema de backup
-Fazer o Software arredondar o valor da venda
 Implementar sistema de Exceptions
 Consertar a obs
+Aprimorar o texto dos clientes
+adicionar sistema de contas a pagar
 
 ::::Notas:::
 Verificar se em todos os lugares as vendas estão usando float como quantidade
