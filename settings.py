@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import hashlib
-import os
 import pickle
-import shelve
+import ConfigParser
 
 import wx
 import wx.gizmos
@@ -40,14 +39,14 @@ class SettingsMenu(wx.Frame):
         self.SetBackgroundColour('#D6D6D6')
         self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
         self.notebook_settings = wx.Notebook(self, pos=(5, 5), style=wx.LEFT)
-        # --Geral
+        # --Geral--
         # buscar atualizações
         general = wx.Panel(self.notebook_settings)
         panel_update = wx.Panel(general, pos=(10, 20), size=(515, 150), style=wx.SIMPLE_BORDER)
         wx.StaticText(panel_update, -1, u'Atualizações', pos=(210, 5))
         self.checkbox_auto_update = wx.CheckBox(panel_update, -1, u'Buscar atualizações automaticamente?', (10, 50))
         self.checkbox_auto_update.SetValue(self.auto_update)
-        # --Security
+        # --Security--
         # escolher quais lugares precisam de senha
         panel_security = wx.Panel(self.notebook_settings)
         self.panel_password = wx.Panel(panel_security, pos=(10, 20), size=(515, 150), style=wx.SIMPLE_BORDER)
@@ -66,10 +65,11 @@ class SettingsMenu(wx.Frame):
                                                      style=wx.NO_BORDER | wx.TE_READONLY)
         self.textbox_password_notifier.SetBackgroundColour('#D6D6D6')
         button_change_password.Bind(wx.EVT_BUTTON, self.change_password)
-        # Custom
+        # --Custom--
         # logo da empresa, backgrounds
         custom = wx.Panel(self.notebook_settings)
 
+        # --Prepare Notbook--
         self.notebook_settings.AddPage(general, u'Geral')
         self.notebook_settings.AddPage(panel_security, u'Segurança')
         self.notebook_settings.AddPage(custom, u'Customizações')
@@ -81,13 +81,7 @@ class SettingsMenu(wx.Frame):
         wx.PaintDC(self.panel_password).DrawBitmap(lok, 0, 30)
 
     def setup(self):
-        if not os.path.exists('preferences'):
-            os.mkdir('preferences')
-        general_file = shelve.open(core.directory_paths['preferences'] + 'general.txt')
-        if 'Auto Update' not in general_file:
-            general_file['Auto Update'] = True
-        self.auto_update = general_file['Auto Update']
-        general_file.close()
+        pass
 
     def change_password(self, event):
         if self.textbox_new_password_1.GetValue() != self.textbox_new_password_2.GetValue():
@@ -105,8 +99,79 @@ class SettingsMenu(wx.Frame):
             return
         else:
             self.textbox_password_notifier.SetValue(u'Senha Incorreta!')
-            self.textbox_password_notifier.SetForegroundColour('red')
+            self.textbox_password_notifier.SetForegroundColour(wx.RED)
             return
 
     def exit(self, event):
         self.Close()
+
+
+def load_config():
+    config = ConfigParser.ConfigParser()
+    if not config.read(FILE_CONFIG):
+        create_config(config)
+
+    return config
+
+
+def save_config():
+    # save to a file
+    with open(FILE_CONFIG, 'w') as configfile:
+        CONFIG.write(configfile)
+
+
+def create_config(config=None):
+    """
+    Cria um arquivo de configuração para armazenar as preferencias do usuario
+    :param config: ConfigParser Object
+    :type config: ConfigParser.ConfigParser
+    :return:
+    """
+    if not config:
+        config = ConfigParser.ConfigParser()
+
+    # Adiciona as seções
+    for section in CONFIG_DATA:
+        if not config.has_section(section):
+            config.add_section(section)
+
+        # Aciciona os campos de cada seção
+        for field in CONFIG_DATA[section]:
+            if not config.has_option(section, field):
+                config.set(section, field, CONFIG_DATA[section][field])
+
+    # save to a file
+    with open(FILE_CONFIG, 'w') as configfile:
+        config.write(configfile)
+
+    return config
+
+
+FILE_CONFIG = core.current_dir + 'config.ini'
+
+CONFIG_FIELD_AUTO_UPDATE = 'AUTO_UPDATE'
+CONFIG_FIELD_AUTO_BACKUP = 'AUTO_BACKUP'
+
+CONFIG_FIELD_UPDATE_IMPOSTO_INTERVAL = 'IMPOSTO_UPDATE_INTERVAL'
+CONFIG_FIELD_LAST_UPDATE_IMPOSTO = 'IMPOSTO_LAST_UPDATE'
+
+CONFIG_DATA_GENERAL = {
+    CONFIG_FIELD_AUTO_UPDATE: True,
+    CONFIG_FIELD_AUTO_BACKUP: True
+}
+
+CONFIG_DATA_SAT = {
+    CONFIG_FIELD_UPDATE_IMPOSTO_INTERVAL: 30,
+    CONFIG_FIELD_LAST_UPDATE_IMPOSTO: '0-0-0'
+}
+
+
+CONFIG_SECTION_GENERAL = 'GENERAL'
+CONFIG_SECTION_SAT = 'SAT'
+
+CONFIG_DATA = {
+    CONFIG_SECTION_GENERAL: CONFIG_DATA_GENERAL,
+    CONFIG_SECTION_SAT: CONFIG_DATA_SAT
+}
+
+CONFIG = load_config()
