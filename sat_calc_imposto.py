@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+
 from ibptws import conf
 from decimal import Decimal
 from ibptws.calculadoras import DeOlhoNoImposto

@@ -1,25 +1,12 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+
 from distutils.core import setup
 from glob import glob
 import sys
-import shelve
-import os
-import shutil
-import calendar
 import time
-import codecs
-import hashlib
-import pickle
-import threading
-from datetime import datetime
-from unicodedata import normalize
-from string import lower, strip
-from random import randint
 
-import wx
-import wx.gizmos
-from wx.lib.buttons import GenBitmapTextButton
-
-import py2exe
 
 try:
       data_file = [("Microsoft.VC90.CRT", glob(

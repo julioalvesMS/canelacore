@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+
 from escpos.serial import SerialSettings
 from escpos.impl.epson import TMT20
 from satextrato import ExtratoCFeVenda, ExtratoCFeCancelamento
