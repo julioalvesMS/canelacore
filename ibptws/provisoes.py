@@ -17,8 +17,6 @@
 # limitations under the License.
 #
 
-import redis
-
 from .produtos import get_produto, Produto
 from .servicos import get_servico, Servico
 
@@ -102,7 +100,7 @@ class ProvisaoViaRedis(ProvisaoBase):
     
     .. versionadded:: 0.3
     """
-    
+
     def __init__(self, redis=None, expires=EXPIRA_EM_24H, **kwargs):
         """
         Inicia uma instância de :class:`ProvisaoViaRedis`.
