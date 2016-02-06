@@ -14,12 +14,15 @@ import dialogs
 import database
 import data_types
 import inventory
+from internet import imposto_122741
+import exception
 
 
 class CategoryManager(wx.Frame):
 
     list_categories = None
     textbox_filter = None
+    menu = None
 
     def __init__(self, parent, title=u'Gerenciador de Categorias'):
         wx.Frame.__init__(self, parent, -1, title,
@@ -31,13 +34,23 @@ class CategoryManager(wx.Frame):
         self.Show()
 
     def setup_gui(self):
-        self.SetSize(wx.Size(810, 550))
+        self.SetSize(wx.Size(815, 570))
         self.SetIcon((wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO)))
         self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
 
+        # Faz o menu
+        files = wx.Menu()
+        files.Append(759, u'&Sair\tCtrl+Q')
+
+        self.menu = wx.MenuBar()
+        self.menu.Append(files, u'&Arquivos')
+        self.SetMenuBar(self.menu)
+
+        self.Bind(wx.EVT_MENU, self.exit, id=759)
+
         panel_top = wx.Panel(self, pos=(10, 10), size=(790, 100))
 
-        panel_buttons_left = wx.Panel(panel_top, pos=(10, 40), size=(300, 40), style=wx.SIMPLE_BORDER)
+        panel_buttons_left = wx.Panel(panel_top, pos=(5, 40), size=(300, 40), style=wx.SIMPLE_BORDER)
         plus = GenBitmapTextButton(panel_buttons_left, -1,
                                    wx.Bitmap(core.directory_paths['icons'] + 'contact-new.png', wx.BITMAP_TYPE_PNG),
                                    u'Novo', pos=(0, 0), size=(100, 40))
@@ -59,7 +72,7 @@ class CategoryManager(wx.Frame):
         self.textbox_filter.Bind(wx.EVT_TEXT_ENTER, self.database_search)
         self.textbox_filter.Bind(wx.EVT_SEARCHCTRL_SEARCH_BTN, self.database_search)
 
-        panel_buttons_right = wx.Panel(panel_top, pos=(530, 40), size=(240, 40), style=wx.SIMPLE_BORDER)
+        panel_buttons_right = wx.Panel(panel_top, pos=(545, 40), size=(240, 40), style=wx.SIMPLE_BORDER)
         rep = GenBitmapTextButton(panel_buttons_right, -1, wx.Bitmap(core.directory_paths['icons'] + 'Reset.png'),
                                   u'Atualizar', pos=(0, 0), size=(120, 40))
         rep.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
@@ -131,29 +144,41 @@ class ProductCategoryManager(CategoryManager):
 
     def setup_gui(self):
         CategoryManager.setup_gui(self)
+
+        tasks = wx.Menu()
+
+        # tasks.Append(61, u'&Buscar atualizações')
+        tasks.Append(762, u'&Atualizar Impostos')
+        self.menu.Append(tasks, u'&Tarefas')
+
+        self.Bind(wx.EVT_MENU, self.atualiza_imposto_122741, id=762)
+
         self.list_categories.InsertColumn(1, u'ID', width=50)
-        self.list_categories.InsertColumn(2, u'Categoria', width=250)
+        self.list_categories.InsertColumn(2, u'Categoria', width=275)
         self.list_categories.InsertColumn(3, u'NCM', width=75)
-        self.list_categories.InsertColumn(4, u'CFOP', width=200)
+        self.list_categories.InsertColumn(4, u'CFOP', width=150)
         self.list_categories.InsertColumn(5, u'Unidade', width=100)
-        self.list_categories.InsertColumn(6, u'NCM', width=75)
+        self.list_categories.InsertColumn(6, u'Imposto', width=100)
 
     def __setup__(self):
         self.list_categories.DeleteAllItems()
         db = database.InventoryDB()
         categories = db.categories_list()
         for category in categories:
-            imposto = core.format_amount_user(category.imposto) + u' %' if category.imposto is not None else u''
+            imposto = core.format_amount_user(category.imposto_total) + u' %' if category.imposto_total is not None \
+                      else u''
             self.list_categories.Append((category.ID, category.category, category.ncm,
                                          core.cfop_optins[core.cfop_values.index(category.cfop)], category.unit,
                                          imposto))
         db.close()
 
     def database_search(self, event):
+        self.list_categories.DeleteAllItems()
         db = database.InventoryDB()
-        categories = db.categories_search(event.getEventObject().getValue())
+        categories = db.categories_search(event.GetEventObject().GetValue())
         for category in categories:
-            imposto = core.format_amount_user(category.imposto) + u' %' if category.imposto is not None else u''
+            imposto = core.format_amount_user(category.imposto_total) + u' %' if category.imposto_total is not None \
+                      else u''
             self.list_categories.Append((category.ID, category.category, category.ncm,
                                          core.cfop_optins[core.cfop_values.index(category.cfop)], category.unit,
                                          imposto))
@@ -179,6 +204,28 @@ class ProductCategoryManager(CategoryManager):
         category_name = self.list_categories.GetItemText(category_index, 1)
         ProductCategoryData(self, category_name, category_id)
 
+    def atualiza_imposto_122741(self, event):
+        import threading
+        thread = threading.Thread(target=self.__atualiza_imposto_122741)
+        thread.setDaemon(True)
+        thread.start()
+
+    def __atualiza_imposto_122741(self):
+        import database
+        db = database.InventoryDB()
+        line = db.categories_list()
+        for data in line:
+            try:
+                imposto_122741(data=data)
+                db.edit_category_impostos(data)
+            except exception.ExceptionNCM:
+                continue
+            except exception.ExceptionInternet:
+                continue
+
+        self.setup(None)
+        db.close()
+
 
 class TransactionCategoryManager(CategoryManager):
 
@@ -199,8 +246,9 @@ class TransactionCategoryManager(CategoryManager):
         db.close()
 
     def database_search(self, event):
+        self.list_categories.DeleteAllItems()
         db = database.TransactionsDB()
-        categories = db.categories_search(event.getEventObject().getValue())
+        categories = db.categories_search(event.GetEventObject().GetValue())
         for category in categories:
             self.list_categories.Append((category.ID, category.category))
         db.close()
@@ -378,14 +426,27 @@ class ProductCategoryData(CategoryData):
             db.insert_category(data)
         else:
             db.edit_category(data)
+
+        try:
+            imposto_122741(data=data, origin=self)
+            db.edit_category_impostos(data)
+        except exception.ExceptionNCM:
+            db.close()
+            self.data = data
+            self.category_id = data.ID
+            self.setup()
+            return
+        except exception.ExceptionInternet:
+            pass
+
         db.close()
 
         if isinstance(self.parent, inventory.ProductData):
             self.parent.update_categories()
-        if isinstance(self.parent, CategoryManager):
-            self.parent.setup(None)
 
         if self.data:
+            if isinstance(self.parent, ProductCategoryManager):
+                self.parent.setup(None)
             self.exit(None)
             return
 

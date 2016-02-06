@@ -68,7 +68,7 @@ class Confirmation(wx.Dialog):
         nok.Bind(wx.EVT_BUTTON, self.cont)
         self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         if type(parent.GetParent()) in [daily_report.Report, monthly_report.Report, clients.ClientManager,
-                                        inventory.InventoryManager, categories.ProductCategoryManager]:
+                                        inventory.InventoryManager, categories.CategoryManager]:
             parent.GetParent().setup(None)
         self.ShowModal()
         self.Destroy()

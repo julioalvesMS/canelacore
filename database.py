@@ -82,9 +82,12 @@ def database2productcategory(database_list):
     data.category = database_list[1]
     data.ncm = database_list[2]
     data.cfop = database_list[3]
-    data.imposto = database_list[4]
-    data.unit = database_list[5]
-    data.active = True if database_list[6] else False
+    data.unit = database_list[4]
+    data.imposto_federal = database_list[5]
+    data.imposto_estadual = database_list[6]
+    data.imposto_municipal = database_list[7]
+    data.imposto_total = database_list[8]
+    data.active = True if database_list[9] else False
 
     return data
 
@@ -133,8 +136,11 @@ class InventoryDB:
             RECORD_DATE CHAR(10) NOT NULL, ACTIVE INTEGER)''')
 
         self.cursor.execute('''CREATE TABLE CATEGORIES(ID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-            CATEGORY TEXT NOT NULL UNIQUE, NCM CHAR(8), CFOP INTEGER, IMPOSTO REAL,
-            UNIT CHAR(6) NOT NULL, ACTIVE INTEGER)''')
+            CATEGORY TEXT NOT NULL UNIQUE, NCM CHAR(8), CFOP INTEGER, UNIT CHAR(6) NOT NULL, IMPOSTO_FEDERAL REAL,
+            IMPOSTO_ESTADUAL REAL, IMPOSTO_MUNICIPAL REAL, IMPOSTO_TOTAL REAL, ACTIVE INTEGER)''')
+
+        self.cursor.execute('''CREATE TABLE FILA_IMPOSTOS(CATEGORY INTEGER)''')
+
         self.db.commit()
 
     def insert_product(self, data):
@@ -157,6 +163,36 @@ class InventoryDB:
 
         data.ID = self.cursor.lastrowid
 
+    def insert_category(self, data):
+        """
+        Insere uma nova entrada no Banco de Dados de Produtos
+        :param data: Dados da nova categoria
+        :type data: data_types.ProductCategoryData
+        """
+
+        _data = (data.category, data.ncm, data.cfop, data.unit, data.imposto_federal, data.imposto_estadual,
+                 data.imposto_municipal, data.imposto_total, 1)
+
+        self.cursor.execute("""INSERT INTO CATEGORIES (CATEGORY, NCM, CFOP, UNIT, IMPOSTO_FEDERAL, IMPOSTO_ESTADUAL,
+                            IMPOSTO_MUNICIPAL, IMPOSTO_TOTAL, ACTIVE) VALUES (?,?,?,?,?,?,?,?,?)""", _data)
+        self.db.commit()
+
+        data.ID = self.cursor.lastrowid
+
+    def insert_category_fila(self, category_id):
+        """
+        Insere uma nova entrada no Banco de Dados de Produtos
+        :type category_id: int
+        :param category_id: ID da nova entrada a ser inserida
+        """
+
+        # Transfere os dados mandados para um tuple
+
+        cmd = 'INSERT INTO FILA_IMPOSTOS (CATEGORY) VALUES (?)'
+        # Insere o novo produto no BD
+        self.cursor.execute(cmd, (category_id, ))
+        self.db.commit()
+
     def edit_product(self, data):
         """
         Edita uma entrada do Banco de Dados de Produtos
@@ -177,6 +213,40 @@ class InventoryDB:
 
         data.active = True
 
+    def edit_category_impostos(self, data):
+        """
+        Edita uma entrada do Banco de Dados de Produtos
+        :type data: data_types.ProductCategoryData
+        :param data: dados do novo produto a ser inserida
+        """
+
+        # Transfere os dados do dict mandado para um tuple
+        _data = (data.imposto_federal, data.imposto_estadual,
+                 data.imposto_municipal, data.imposto_total, data.ID)
+
+        # Prepara a linha de comando
+        cmd = 'UPDATE CATEGORIES SET IMPOSTO_FEDERAL=?, '
+        cmd += 'IMPOSTO_ESTADUAL=?, IMPOSTO_MUNICIPAL=?, IMPOSTO_TOTAL=? WHERE ID=?'
+        # Edita o produto no BD
+        self.cursor.execute(cmd, _data)
+        self.db.commit()
+
+    def edit_category(self, data):
+        """
+        Insere uma nova entrada no Banco de Dados de Produtos
+        :param data: Dados da nova categoria
+        :type data: data_types.ProductCategoryData
+        """
+
+        _data = (data.category, data.ncm, data.cfop, data.unit, data.imposto_federal, data.imposto_estadual,
+                 data.imposto_municipal, data.imposto_total, 1, data.ID)
+
+        self.cursor.execute("""UPDATE CATEGORIES SET CATEGORY=?, NCM=?, CFOP=?, UNIT=?, IMPOSTO_FEDERAL=?,
+                            IMPOSTO_ESTADUAL=?, IMPOSTO_MUNICIPAL=?, IMPOSTO_TOTAL=?, ACTIVE=? WHERE ID=?""", _data)
+        self.db.commit()
+
+        data.active = True
+
     def delete_product(self, product_id, undo=False):
         """
         Deleta permanentemente um produto do BD
@@ -190,6 +260,28 @@ class InventoryDB:
         self.cursor.execute('UPDATE INVENTORY SET ACTIVE=? WHERE ID=?', (active, product_id))
         self.db.commit()
 
+    def delete_category(self, category_id, undo=False):
+        """
+        Deleta permanentemente uma categoria do BD
+        :type undo: bool
+        :param undo: Caso True recupera um registro apagado
+        :type category_id: int
+        :param category_id: id da categoria a ser deletada
+        """
+        active = 1 if undo else 0
+
+        self.cursor.execute('UPDATE CATEGORIES SET ACTIVE=? WHERE ID=?', (active, category_id))
+        self.db.commit()
+
+    def delete_category_fila(self, category_id):
+        """
+        Deleta permanentemente um produto do BD
+        :type category_id: int
+        :param category_id: id do produto a ser deletado
+        """
+        self.cursor.execute('DELETE FROM FILA_IMPOSTOS WHERE CATEGORY=?', (category_id, ))
+        self.db.commit()
+
     def delete_product_permanently(self, product_id):
         """
         Deleta permanentemente um produto do BD
@@ -197,6 +289,15 @@ class InventoryDB:
         :param product_id: id do produto a ser deletado
         """
         self.cursor.execute('DELETE FROM INVENTORY WHERE ID=?', (product_id, ))
+        self.db.commit()
+
+    def delete_category_permanently(self, category_id):
+        """
+        Apaga uma categoria do BD
+        :param category_id: id da categoria sendo apagada
+        :return:
+        """
+        self.cursor.execute('DELETE FROM CATEGORIES WHERE ID=?', (category_id, ))
         self.db.commit()
 
     def update_product_amount(self, product_id, amount):
@@ -260,6 +361,22 @@ class InventoryDB:
         self.cursor.execute("""SELECT * FROM INVENTORY WHERE ID=?""", (product_id, ))
         return database2product(self.cursor.fetchone())
 
+    def categories_search_id(self, info):
+        """
+        Faz uma busca por um dado generico no banco de dados.
+        Dada uma String busca por correspondecia por ids, categoria, e NCM
+        :param info: String com o dado a ser buscado
+        :return: List com todos as categorias compativeis com a busca
+        :rtype: data_types.ProductCategoryData
+        """
+        # Lista para armazenar todos os produtos compativeis com a busca
+
+        # converte para integer para buscar por IDs e codigo de barras
+        int_info = int(info)
+
+        self.cursor.execute("""SELECT * FROM CATEGORIES WHERE ID=?""", (int_info, ))
+        return database2productcategory(self.cursor.fetchone())
+
     def inventory_search_description(self, description):
         """
         Busca o item com um ID especifico no BD
@@ -280,6 +397,17 @@ class InventoryDB:
             products_list.append(database2product(product))
 
         return products_list
+
+    def category_search_name(self, info):
+        """
+        Faz uma busca por um dado generico no banco de dados.
+        Dada uma String busca por correspondecia por ids, categoria, e NCM
+        :param info: String com o dado a ser buscado
+        :return: List com todos as categorias compativeis com a busca
+        """
+
+        self.cursor.execute("""SELECT * FROM CATEGORIES WHERE CATEGORY=?""", (info, ))
+        return database2productcategory(self.cursor.fetchone())
 
     def inventory_search(self, info):
         """
@@ -344,82 +472,6 @@ class InventoryDB:
 
         return products_list
 
-    def product_list(self, deleted=False):
-        """
-        Dados de todos os produtos cadastrados
-        :type deleted: bool
-        :param deleted: Caso True mostra apenas os produtos apagados, else apenas os ativos
-        :return: Dados do produto encontrado
-        :rtype: list[data_types.ProductData]
-        """
-        if deleted:
-            self.cursor.execute("""SELECT * FROM INVENTORY WHERE ACTIVE=0 ORDER BY DESCRIPTION""")
-        else:
-            self.cursor.execute("""SELECT * FROM INVENTORY WHERE ACTIVE=1 ORDER BY DESCRIPTION""")
-
-        temp = self.cursor.fetchall()
-
-        products_list = list()
-
-        for product in temp:
-            products_list.append(database2product(product))
-
-        return products_list
-
-    def insert_category(self, data):
-        """
-        Insere uma nova entrada no Banco de Dados de Produtos
-        :param data: Dados da nova categoria
-        :type data: data_types.ProductCategoryData
-        """
-
-        # TODO buscar o imposto
-
-        _data = (data.category, data.ncm, data.cfop, data.imposto, data.unit, 1)
-
-        self.cursor.execute("""INSERT INTO CATEGORIES (CATEGORY, NCM, CFOP,
-                            IMPOSTO, UNIT, ACTIVE) VALUES (?,?,?,?,?,?)""", _data)
-        self.db.commit()
-
-        data.ID = self.cursor.lastrowid
-
-    def edit_category(self, data):
-        """
-        Insere uma nova entrada no Banco de Dados de Produtos
-        :param data: Dados da nova categoria
-        :type data: data_types.ProductCategoryData
-        """
-
-        _data = (data.category, data.ncm, data.cfop, data.imposto, data.unit, 1, data.ID)
-
-        self.cursor.execute("""UPDATE CATEGORIES SET CATEGORY=?, NCM=?, CFOP=?,
-                            IMPOSTO=?, UNIT=?, ACTIVE=? WHERE ID=?""", _data)
-        self.db.commit()
-
-        data.active = True
-
-    def delete_category(self, category_id, undo=False):
-        """
-        Deleta permanentemente uma categoria do BD
-        :type undo: bool
-        :param undo: Caso True recupera um registro apagado
-        :type category_id: int
-        :param category_id: id da categoria a ser deletada
-        """
-        active = 1 if undo else 0
-
-        self.cursor.execute('UPDATE CATEGORIES SET ACTIVE=? WHERE ID=?', (active, category_id))
-        self.db.commit()
-
-    def delete_category_permanently(self, category_id):
-        """
-        Apaga uma categoria do BD
-        :param category_id: id da categoria sendo apagada
-        :return:
-        """
-        self.cursor.execute('DELETE FROM CATEGORIES WHERE ID=?', (category_id, ))
-        self.db.commit()
-
     def categories_search(self, info):
         """
         Faz uma busca por um dado generico no banco de dados.
@@ -446,7 +498,8 @@ class InventoryDB:
         self.cursor.execute("""SELECT * FROM CATEGORIES WHERE ACTIVE=1 AND NCM LIKE ? ORDER BY CATEGORY""", (info, ))
         filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
-        self.cursor.execute("""SELECT * FROM CATEGORIES WHERE ACTIVE=1 AND CATEGORY LIKE ? ORDER BY CATEGORY""", (info, ))
+        self.cursor.execute("""SELECT * FROM CATEGORIES WHERE ACTIVE=1 AND CATEGORY LIKE ? ORDER BY CATEGORY""",
+                            (info, ))
         filtered_list = list(set(filtered_list + self.cursor.fetchall()))
 
         categories_list = list()
@@ -456,32 +509,27 @@ class InventoryDB:
 
         return categories_list
 
-    def categories_search_id(self, info):
+    def product_list(self, deleted=False):
         """
-        Faz uma busca por um dado generico no banco de dados.
-        Dada uma String busca por correspondecia por ids, categoria, e NCM
-        :param info: String com o dado a ser buscado
-        :return: List com todos as categorias compativeis com a busca
-        :rtype: data_types.ProductCategoryData
+        Dados de todos os produtos cadastrados
+        :type deleted: bool
+        :param deleted: Caso True mostra apenas os produtos apagados, else apenas os ativos
+        :return: Dados do produto encontrado
+        :rtype: list[data_types.ProductData]
         """
-        # Lista para armazenar todos os produtos compativeis com a busca
+        if deleted:
+            self.cursor.execute("""SELECT * FROM INVENTORY WHERE ACTIVE=0 ORDER BY DESCRIPTION""")
+        else:
+            self.cursor.execute("""SELECT * FROM INVENTORY WHERE ACTIVE=1 ORDER BY DESCRIPTION""")
 
-        # converte para integer para buscar por IDs e codigo de barras
-        int_info = int(info)
+        temp = self.cursor.fetchall()
 
-        self.cursor.execute("""SELECT * FROM CATEGORIES WHERE ID=?""", (int_info, ))
-        return database2productcategory(self.cursor.fetchone())
+        products_list = list()
 
-    def category_search_name(self, info):
-        """
-        Faz uma busca por um dado generico no banco de dados.
-        Dada uma String busca por correspondecia por ids, categoria, e NCM
-        :param info: String com o dado a ser buscado
-        :return: List com todos as categorias compativeis com a busca
-        """
+        for product in temp:
+            products_list.append(database2product(product))
 
-        self.cursor.execute("""SELECT * FROM CATEGORIES WHERE CATEGORY=?""", (info, ))
-        return database2productcategory(self.cursor.fetchone())
+        return products_list
 
     def categories_list(self, deleted=False):
         """
@@ -504,6 +552,23 @@ class InventoryDB:
             categories_list.append(database2productcategory(category))
 
         return categories_list
+
+    def fila_list(self):
+        """
+        Fornece todas os produtos na fila presentes no BD
+        :return: Uma lista com todos os elementos do BD
+        :rtype: list[int]
+        """
+        self.cursor.execute("""SELECT * FROM FILA_IMPOSTOS""")
+
+        temp = self.cursor.fetchall()
+
+        fila = list()
+
+        for product in temp:
+            fila.append(product[0])
+
+        return fila
 
 
 def database2client(database_list):
@@ -1245,8 +1310,8 @@ class TransactionsDB:
         prices = ' '.join(core.convert_list(data.prices, str))
 
         # Transfere os dados do dict mandado para um tuple
-        _data = (products_ids, amounts, prices, data.sold, data.discount, data.taxes,
-                 data.value, data.payment, data.client_cpf, data.client_id, 1 if data.payment_pendant else 0, 1, data.ID)
+        _data = (products_ids, amounts, prices, data.sold, data.discount, data.taxes, data.value,
+                 data.payment, data.client_cpf, data.client_id, 1 if data.payment_pendant else 0, 1, data.ID)
 
         # Prepara a linha de comando
 
@@ -1768,7 +1833,8 @@ class TransactionsDB:
 
         month += '%'
 
-        self.cursor.execute("""SELECT * FROM WASTES WHERE ACTIVE=? AND RECORD_DATE LIKE ? ORDER BY RECORD_DATE""", (active, month))
+        self.cursor.execute("""SELECT * FROM WASTES WHERE ACTIVE=? AND RECORD_DATE LIKE ? ORDER BY RECORD_DATE""",
+                            (active, month))
 
         temp = self.cursor.fetchall()
         wastes_list = list()

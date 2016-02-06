@@ -24,6 +24,7 @@ import expense
 import waste
 import database
 import categories
+import internet
 
 __author__ = 'Julio'
 
@@ -55,6 +56,8 @@ class Base(wx.Frame):
         self.notification_control = {}
         self.Bind(wx.EVT_TIMER, self.delivery_check, self.timer_delivery)
         self.delivery_check(None)
+
+        internet.atualizar_imposto_122741()
 
         self.Show()
         self.tray = BaseTray(self)
@@ -169,7 +172,6 @@ class Base(wx.Frame):
 
         deliveries_db = database.DeliveriesDB()
         deliveries = deliveries_db.deliveries_list()
-        deliveries_db.close()
 
         check_interval = 30
         for _delivery in deliveries:
@@ -179,7 +181,7 @@ class Base(wx.Frame):
                 _delivery.active = False
                 deliveries_db.delete_delivery(_delivery.ID)
 
-            if _delivery.active is False:
+            if _delivery.active is False and _delivery.ID in self.notification_control:
                 del self.notification_control[_delivery.ID]
 
             if date_delivery_int != date_now_int or _delivery.active is False:
@@ -199,6 +201,8 @@ class Base(wx.Frame):
 
             timer = threading.Timer(60*minutes_to_warning + 1, self.notify_delivery, args=[_delivery])
             timer.start()
+
+        deliveries_db.close()
 
         check_interval *= 60000
         if not check_interval:

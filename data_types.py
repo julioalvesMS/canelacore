@@ -181,7 +181,10 @@ class ProductCategoryData:
 
     cfop = None
 
-    imposto = 0.0
+    imposto_federal = None
+    imposto_estadual = None
+    imposto_municipal = None
+    imposto_total = None
 
     unit = None
 
