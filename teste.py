@@ -5,9 +5,11 @@ import wx
 import wx.xrc
 from decimal import Decimal
 import sat
+from data_types import SaleData
 from satcfe.entidades import Detalhamento, Imposto, ICMSSN102, COFINSSN, PISSN, ProdutoServico, DescAcrEntr, \
     MeioPagamento, InformacoesAdicionais, LocalEntrega, Destinatario
 from satcomum import constantes
+import sat_calc_imposto
 
 REGRA_CALCULO = 'A'
 
@@ -42,57 +44,9 @@ class Teste(wx.Frame):
 
         # funcao_test()
         # sat.consultar_sat()
-        import sat_calc_imposto
+        sale_data = SaleData()
         sat_calc_imposto.calcular_total_imposto()
 
 
     def __del__(self):
         pass
-
-
-# Função que testa o sat.py
-def funcao_test():
-    # Preenche todas entidades da venda
-
-    destinatario = Destinatario(
-        CPF='11122233396',  # ou CNPJ, mas nunca os 2 ao mesmo tempo.
-        xNome=u'João de Teste')
-
-    detalhamentos = [
-        Detalhamento(
-            produto=ProdutoServico(
-                cProd='123456',
-                xProd='BORRACHA STAEDTLER pvc-free',
-                CFOP='5102',
-                uCom='UN',
-                qCom=Decimal('1.0000'),
-                vUnCom=Decimal('5.75'),
-                indRegra='A'),
-            imposto=Imposto(
-                icms=ICMSSN102(Orig='0', CSOSN='102'),
-                pis=PISSN(CST='49'),
-                cofins=COFINSSN(CST='49'),
-                vItem12741 = Decimal('19.99'))),
-    ]
-
-    descontos_acrescimos_subtotal = DescAcrEntr(
-        vAcresSubtot=Decimal('0.02'),
-        vCFeLei12741=Decimal('0.03'))
-
-    pagamentos = [
-        MeioPagamento(
-            cMP=constantes.WA03_DINHEIRO,
-            vMP=Decimal('10.00')),
-    ]
-
-    informacoes_adicionais = InformacoesAdicionais(infCpl='Teste')
-
-    resp = sat.enviar_dados_venda(detalhamentos=detalhamentos, pagamentos=pagamentos, destinatario=destinatario,
-                                  entrega=None, descontos_acrescimos_subtotal=descontos_acrescimos_subtotal,
-                                  informacoes_adicionais=informacoes_adicionais)
-
-    print(resp.mensagem)
-
-
-    # Salva o xml, gerado pelo SAT depois da compra, no HD
-    open("saida.xml", "w").write(resp.xml())

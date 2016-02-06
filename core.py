@@ -10,6 +10,7 @@ import shutil
 from unicodedata import normalize
 from datetime import datetime
 
+import sys
 import wx
 import wx.gizmos
 
@@ -634,7 +635,7 @@ masterPassword = '5600715f42bf51c40dc330d750cd996f58fead4ddea56466ce7498d17801b3
 slash = '\\' if platform.system() == 'Windows' else '/'
 
 # diretorio em que o programa esta sendo executado
-current_dir = os.path.realpath(os.curdir) + slash
+current_dir = os.path.dirname(os.path.realpath(sys.argv[0])) + slash
 
 # diretorios do programa
 directory_paths = {

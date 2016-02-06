@@ -11,7 +11,6 @@ def copy2memory(db_path, table=None):
 
     # create a memory database
     new_db = sqlite3.connect(':memory:')
-
     old_db = sqlite3.connect(db_path)
 
     query = ''

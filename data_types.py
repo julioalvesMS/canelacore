@@ -9,7 +9,6 @@ from transaction import EXPENSE, INCOME
 class SaleData:
 
     ID = -1
-
     products_IDs = None
     amounts = None
     prices = None
