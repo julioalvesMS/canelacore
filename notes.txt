@@ -3,3 +3,6 @@
 - pegar as informacoes sobre tributos da tabela de tributos e não da internet
 - onde vai o vCFeLei12741 ?? ele ta na classe DescAcrEntr atualmente mas eu to confuso com isso
 - lembrar que na soma de tributos tem que somar varias vezes se o produto tiver varias unidades
+
+- atualmente os impostos são calculados sobre o valor de cadastro product.price e não sobre o valor de venda com descontos e taxas.
+- e quanto tem varias unidades ? os impostos vItem12741 e vCFeLei12741 como ficam ?

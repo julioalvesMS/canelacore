@@ -14,7 +14,6 @@ from decimal import Decimal
 from satcfe.entidades import Detalhamento, Imposto, ICMSSN102, COFINSSN, PISSN, ProdutoServico, DescAcrEntr, \
     MeioPagamento, Destinatario
 from satcomum import constantes
-import sat_calc_imposto
 
 #####################################################
 #                    CONSTANTES                     #
@@ -95,20 +94,6 @@ def enviar_venda_ao_sat(sale):
     destinatario = Destinatario(
         CPF=sale.client_cpf) if sale.client_cpf else None
 
-    # DESCONTOS_ACRESCIMOS_SUBTOTAL
-    if sale.discount - sale.taxes > 0:
-        descontos_acrescimos_subtotal = DescAcrEntr(
-            vDescSubtot=Decimal(str(sale.discount - sale.taxes)),
-            vCFeLei12741=Decimal(
-                '0.03'))  # DEBUG
-    elif sale.discount - sale.taxes < 0:
-        descontos_acrescimos_subtotal = DescAcrEntr(
-            vAcresSubtot=Decimal(str(sale.taxes - sale.discount)),
-            vCFeLei12741=Decimal(
-                '0.03'))  # DEBUG
-    else:
-        descontos_acrescimos_subtotal = None
-
     # PAGAMENTOS
     modo_pagamento = None
     if sale.payment == u"Dinheiro":
@@ -129,11 +114,15 @@ def enviar_venda_ao_sat(sale):
 
     # DETALHAMENTOS
     detalhamentos = []
+    vCFeLei12741 = Decimal("0.00")
     for i in range(len(sale.products_IDs)):
         product_id = sale.products_IDs[i]
         inventory_db = InventoryDB()
         product = inventory_db.inventory_search_id(product_id)
         categoria = inventory_db.categories_search_id(product.category_ID)
+        vItem12741 = Decimal("%.2f" % ((categoria.imposto_total / 100) * product.price * sale.amounts[i]))
+
+        print(product.amount)
 
         detalhamento = Detalhamento(
             produto=ProdutoServico(
@@ -149,10 +138,24 @@ def enviar_venda_ao_sat(sale):
                 icms=ICMSSN102(Orig='0', CSOSN='102'),
                 pis=PISSN(CST='49'),
                 cofins=COFINSSN(CST='49'),
-                vItem12741=sat_calc_imposto.calcular_total_tributos(categoria.ncm, Decimal("%.2f" % product.price))
+                vItem12741=vItem12741
             )
         )
+        vCFeLei12741 += vItem12741
         detalhamentos.append(detalhamento)
+
+    # DESCONTOS_ACRESCIMOS_SUBTOTAL
+    # DEBUG - mano, e o vCFeLei12741, onde vai ? Por que ta aqui ? E quando é None ????
+    if sale.discount - sale.taxes > 0:
+        descontos_acrescimos_subtotal = DescAcrEntr(
+            vDescSubtot=Decimal(str(sale.discount - sale.taxes)),
+            vCFeLei12741=vCFeLei12741)
+    elif sale.discount - sale.taxes < 0:
+        descontos_acrescimos_subtotal = DescAcrEntr(
+            vAcresSubtot=Decimal(str(sale.taxes - sale.discount)),
+            vCFeLei12741=vCFeLei12741)
+    else:
+        descontos_acrescimos_subtotal = None
 
     resp = enviar_dados_venda(detalhamentos=detalhamentos, pagamentos=pagamentos, destinatario=destinatario,
                               entrega=None, descontos_acrescimos_subtotal=descontos_acrescimos_subtotal)
