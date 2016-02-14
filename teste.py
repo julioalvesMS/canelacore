@@ -9,7 +9,6 @@ from data_types import SaleData
 from satcfe.entidades import Detalhamento, Imposto, ICMSSN102, COFINSSN, PISSN, ProdutoServico, DescAcrEntr, \
     MeioPagamento, InformacoesAdicionais, LocalEntrega, Destinatario
 from satcomum import constantes
-import sat_calc_imposto
 
 REGRA_CALCULO = 'A'
 
@@ -45,7 +44,6 @@ class Teste(wx.Frame):
         # funcao_test()
         # sat.consultar_sat()
         sale_data = SaleData()
-        sat_calc_imposto.calcular_total_imposto()
 
 
     def __del__(self):
