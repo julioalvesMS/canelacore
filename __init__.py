@@ -8,5 +8,5 @@ __author__ = 'Julio'
 
 if __name__ == '__main__':
     program = wx.App()
-    base_s = base.Base()
+    base.Base()
     program.MainLoop()

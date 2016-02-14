@@ -21,6 +21,7 @@ import sale
 import settings
 import teste
 import expense
+import transaction
 import waste
 import database
 import categories
@@ -68,7 +69,7 @@ class Base(wx.Frame):
         self.Centre()
         part1 = wx.Panel(self, pos=(130, 325), size=(540, 60), style=wx.SIMPLE_BORDER)
         part2 = wx.Panel(self, pos=(100, 390), size=(600, 60), style=wx.SIMPLE_BORDER)
-        part3 = wx.Panel(self, pos=(220, 455), size=(360, 60), style=wx.SIMPLE_BORDER)
+        part3 = wx.Panel(self, pos=(160, 455), size=(480, 60), style=wx.SIMPLE_BORDER)
         part4 = wx.Panel(self, pos=(550, 535), size=(220, 50), style=wx.SIMPLE_BORDER)
         part5 = wx.Panel(self, pos=(35, 535), size=(150, 50), style=wx.SIMPLE_BORDER)
         self.panel_logo = wx.Panel(self, pos=(263, 45), size=(274, 274), style=wx.SIMPLE_BORDER)
@@ -88,12 +89,14 @@ class Base(wx.Frame):
                                                 wx.BITMAP_TYPE_PNG), u"Entregas", (360, 0), size=(120, 60))
         button_pendant = GenBitmapTextButton(part2, 22, wx.Bitmap(core.directory_paths['icons'] + 'Business.png',
                                              wx.BITMAP_TYPE_PNG), u"Pendente", (480, 0), size=(120, 60))
+        button_transactions = GenBitmapTextButton(part3, 23, wx.Bitmap(core.directory_paths['icons'] + 'Bills.png',
+                                            wx.BITMAP_TYPE_PNG), u"Contas", (0, 0), size=(120, 60))
         button_report = GenBitmapTextButton(part3, 20, wx.Bitmap(core.directory_paths['icons'] + 'Resumo.png',
-                                            wx.BITMAP_TYPE_PNG), u"Resumos", (0, 0), size=(120, 60))
+                                            wx.BITMAP_TYPE_PNG), u"Resumos", (120, 0), size=(120, 60))
         button_recovery = GenBitmapTextButton(part3, 15, wx.Bitmap(core.directory_paths['icons'] + 'Tools.png',
-                                              wx.BITMAP_TYPE_PNG), u"Recuperação", (120, 0), size=(120, 60))
+                                              wx.BITMAP_TYPE_PNG), u"Recuperação", (240, 0), size=(120, 60))
         button_categories = GenBitmapTextButton(part3, 16, wx.Bitmap(core.directory_paths['icons'] + 'Drawer.png',
-                                                wx.BITMAP_TYPE_PNG), u"Categorias", (240, 0), size=(120, 60))
+                                                wx.BITMAP_TYPE_PNG), u"Categorias", (360, 0), size=(120, 60))
         GenBitmapTextButton(self, 21, wx.Bitmap(core.directory_paths['icons'] + 'system-users.png', wx.BITMAP_TYPE_PNG),
                             u"Teste", (0, 0), size=(180, 60))
         GenBitmapTextButton(part4, 98, wx.Bitmap(core.directory_paths['icons'] + 'Down.png', wx.BITMAP_TYPE_PNG),
@@ -114,6 +117,7 @@ class Base(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.verify_credentials, id=20)
         self.Bind(wx.EVT_BUTTON, self.open_teste_window, id=21)
         self.Bind(wx.EVT_BUTTON, self.open_sale_manager, id=22)
+        self.Bind(wx.EVT_BUTTON, self.open_transaction_manager, id=23)
         self.Bind(wx.EVT_BUTTON, self.open_settings, id=42)
         self.Bind(wx.EVT_BUTTON, self.hide_to_tray, id=98)
         self.Bind(wx.EVT_BUTTON, self.ask_exit, id=99)
@@ -125,6 +129,7 @@ class Base(wx.Frame):
         button_inventory.SetBackgroundColour(core.COLOR_LIGHT_GREEN)
         button_deliveries.SetBackgroundColour(core.COLOR_LIGHT_GREEN)
         button_pendant.SetBackgroundColour(core.COLOR_LIGHT_GREEN)
+        button_transactions.SetBackgroundColour(core.COLOR_LIGHT_YELLOW)
         button_report.SetBackgroundColour(core.COLOR_LIGHT_YELLOW)
         button_recovery.SetBackgroundColour(core.COLOR_LIGHT_YELLOW)
         button_categories.SetBackgroundColour(core.COLOR_LIGHT_YELLOW)
@@ -281,6 +286,9 @@ class Base(wx.Frame):
 
     def open_sale_manager(self, event):
         sale.SaleManager(self)
+
+    def open_transaction_manager(self, event):
+        transaction.TransactionManager(self)
 
     def open_monthly_report(self, event):
         monthly_report.Report(self)
