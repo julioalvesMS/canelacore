@@ -206,7 +206,7 @@ class Report(wx.Frame):
         button44.Bind(wx.EVT_BUTTON, self.setup_monthly_expenses)
 
         db = database.TransactionsDB()
-        dates = db.list_record_dates()
+        dates = db.list_record_dates(transactions=True)
         db.close()
 
         month_options = list()
@@ -379,7 +379,7 @@ class Report(wx.Frame):
         incomes = db.monthly_transactions_list(month, transaction.INCOME)
         db.close()
 
-        root = self.list_incomes.AddRoot(self.combobox_month_displayed.GetValue())
+        root = self.list_incomes.AddRoot(self.combobox_month_displayed.GetValue() or u'-----')
         self.list_incomes.SetItemText(root, u'Ganhos Mensais', 1)
         self.list_incomes.SetItemFont(root, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
 
@@ -403,7 +403,7 @@ class Report(wx.Frame):
         expenses = db.monthly_transactions_list(month, transaction.EXPENSE)
         db.close()
 
-        root = self.list_expenses.AddRoot(self.combobox_month_displayed.GetValue())
+        root = self.list_expenses.AddRoot(self.combobox_month_displayed.GetValue() or u'-----')
         self.list_expenses.SetItemText(root, u'Gastos Mensais', 1)
         self.list_expenses.SetItemFont(root, wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
 
@@ -606,7 +606,7 @@ class Sheet(wx.gizmos.TreeListCtrl):
         self.SetItemText(root, u'Produtos Vendidos em %s' % core.format_date_user(self.month), 1)
         self.SetItemFont(root, wx.Font(14, wx.SWISS, wx.NORMAL, wx.BOLD))
         a = 0.0
-        b = 0
+        b = 0.0
         counter = 0
         for product_id in plist:
             data = plist[product_id]
@@ -839,7 +839,7 @@ class Sheet(wx.gizmos.TreeListCtrl):
         self.SetItemFont(root, wx.Font(14, wx.SWISS, wx.NORMAL, wx.BOLD))
 
         a = 0.0
-        b = 0
+        b = 0.0
         counter = 0
 
         for product_id in walist:

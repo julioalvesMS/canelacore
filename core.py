@@ -6,7 +6,6 @@ import calendar
 import hashlib
 import pickle
 import platform
-import shutil
 from unicodedata import normalize
 from datetime import datetime
 
@@ -269,6 +268,8 @@ def week_end(date):
     :param date: mes que deve ser analisado
     :return: lista com as datas dos sabados
     """
+    if not date:
+        return []
     ds = date.replace('/', '-').split('-')
     if len(ds[1]) == 4:
         ds.reverse()
@@ -328,7 +329,7 @@ def check_money(event):
     :param event: Evento gerado pela GUI
     """
     num = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57]
-    dex = [8, 127, 314, 316, 9]
+    dex = [8, 127, 314, 316, 9, 13]
     pro = event.GetKeyCode()
     box = event.GetEventObject()
     value = box.GetValue()
@@ -369,7 +370,7 @@ def check_date(event):
     try:
         box = event.GetEventObject()
         value = event.GetKeyCode()
-        num = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 8, 127, 314, 316, 9]
+        num = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 8, 127, 314, 316, 9, 13]
         if value in num[:10]:
             text = box.GetValue()
             text2 = text.replace('/', '').replace('_', '')
@@ -400,7 +401,7 @@ def check_date_simple(event):
     try:
         box = event.GetEventObject()
         value = event.GetKeyCode()
-        num = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 8, 127, 314, 316, 9]
+        num = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 8, 127, 314, 316, 9, 13]
         if value in num[:10]:
             text = box.GetValue()
             text2 = text.replace('/', '').replace('_', '')
@@ -429,7 +430,7 @@ def check_hour(event):
     :param event: Evento gerado pela GUI
     """
     num = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57]
-    dex = [8, 127, 314, 316, 9]
+    dex = [8, 127, 314, 316, 9, 13]
     pro = event.GetKeyCode()
     box = event.GetEventObject()
     rhyme = box.GetValue().replace(":", ".")
@@ -454,7 +455,7 @@ def check_telephone(event):
     box = event.GetEventObject()
     try:
         value = event.GetKeyCode()
-        num = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 8, 127, 314, 316, 9]
+        num = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 8, 127, 314, 316, 9, 13]
         text = box.GetValue()
         text2 = text.replace('-', '').replace('(', '').replace(')', '')
 
@@ -483,7 +484,7 @@ def check_number(event):
     Verifica se o character sendo adicionado eh um numero, caso nao, nao adiciona
     :param event: Evento gerado pela GUI
     """
-    num = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 8, 9, 127, 314, 316]
+    num = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 8, 9, 127, 314, 316, 13]
     pro = event.GetKeyCode()
     if pro in num:
         event.Skip()
@@ -497,7 +498,7 @@ def check_ncm(event):
     """
     if len(event.GetEventObject().GetValue()) < 8:
         check_number(event)
-    elif event.GetKeyCode() in [8, 9, 127, 314, 316]:
+    elif event.GetKeyCode() in [8, 9, 127, 314, 316, 13]:
         event.Skip()
 
 
@@ -509,7 +510,7 @@ def check_cpf(event):
     box = event.GetEventObject()
     try:
         value = event.GetKeyCode()
-        num = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 8, 127, 314, 316, 9]
+        num = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 8, 127, 314, 316, 9, 13]
         text = box.GetValue()
         text2 = text.replace('-', '').replace('.', '')
 
@@ -534,7 +535,7 @@ def check_cep(event):
     box = event.GetEventObject()
     try:
         value = event.GetKeyCode()
-        num = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 8, 127, 314, 316, 9]
+        num = [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 8, 127, 314, 316, 9, 13]
         text = box.GetValue()
         text2 = text.replace('-', '')
 
@@ -599,8 +600,10 @@ def password_check(password):
 def setup_environment():
     if not os.path.exists(directory_paths['databases']):
         os.mkdir(directory_paths['databases'])
-    if os.path.exists(directory_paths['temporary']):
-        shutil.rmtree(directory_paths['temporary'])
+    if not os.path.exists(directory_paths['SEFAZ']):
+        os.mkdir(directory_paths['SEFAZ'])
+    if not os.path.exists(directory_paths['cupons_fiscais']):
+        os.mkdir(directory_paths['cupons_fiscais'])
 
 
 def datetime_today():
@@ -625,8 +628,8 @@ brazil_states.sort()
 
 week_days = [u'Segunda', u'Terça', u'Quarta', u'Quinta', u'Sexta', u'Sábado', u'Domingo']
 
-cfop_optins = [u'5101-Produção interna', u'5102-Revenda']
-cfop_values = [5101, 5102]
+cfop_optins = [u'5101-Produção interna', u'5102-Revenda', u'5405-Substituição Tributária']
+cfop_values = [5101, 5102, 5405]
 unit_options = [u'UN', u'KG']
 
 # Senha mestra
@@ -642,11 +645,10 @@ directory_paths = {
     'backgrounds': current_dir + 'data' + slash + 'backgrounds' + slash,
     'icons': current_dir + 'data' + slash + 'icons' + slash,
     'custom': current_dir + 'data' + slash + 'custom' + slash,
-    'backups': current_dir + 'backup' + slash,
-    'temporary': current_dir + '.temp' + slash,
-    'trash': current_dir + '.trash' + slash,
     'preferences': current_dir + 'preferences' + slash,
-    'databases': current_dir + 'databases' + slash
+    'databases': current_dir + 'databases' + slash,
+    'SEFAZ': current_dir + 'SEFAZ' + slash,
+    'cupons_fiscais': current_dir + 'SEFAZ' + slash + 'cupons_fiscais' + slash
 }
 
 ICON_MAIN = current_dir + "bronze.ico"

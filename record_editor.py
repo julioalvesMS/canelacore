@@ -78,8 +78,8 @@ class EditionManager(wx.Frame):
 
     def setup_options(self):
         db = database.TransactionsDB()
-        record_dates = db.list_record_dates(deleted=True)
-        transactions_dates = db.list_transactions_dates(deleted=True)
+        record_dates = db.list_record_dates(transactions=True, deleted=True)
+        transactions_dates = db.list_transactions_record_dates(deleted=True)
         db.close()
 
         day_options = core.convert_list(record_dates, core.format_date_user)

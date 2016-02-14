@@ -172,6 +172,8 @@ class Sale(wx.Frame):
         self.panel_product_data = wx.Panel(self, 22, pos=(460, 5), size=(450, 275),
                                            style=wx.DOUBLE_BORDER | wx.TAB_TRAVERSAL)
         self.panel_product_data.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        self.panel_product_data.Bind(wx.EVT_TEXT_ENTER, self.data_insert)
+
         wx.StaticText(self.panel_product_data, -1, u"Adicionar Produto", pos=(160, 8)).SetFont(
             wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
 
@@ -180,10 +182,13 @@ class Sale(wx.Frame):
         fin.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         fin.Bind(wx.EVT_BUTTON, self.open_product_register)
 
-        self.textbox_product_description = wx.SearchCtrl(self.panel_product_data, 223, pos=(10, 25), size=(395, 32))
-        self.textbox_product_description.Bind(wx.EVT_TEXT, self.database_search, id=223)
+        self.textbox_product_description = wx.SearchCtrl(self.panel_product_data, pos=(10, 25), size=(395, 32),
+                                                         style=wx.TE_PROCESS_ENTER)
+        self.textbox_product_description.Bind(wx.EVT_TEXT, self.database_search)
+        self.textbox_product_description.Bind(wx.EVT_TEXT_ENTER, self.database_select)
         self.textbox_product_description.ShowSearchButton(False)
         self.textbox_product_description.SetDescriptiveText(u'Descrição do produto')
+
         self.list_inventory = wx.ListCtrl(self.panel_product_data, -1, pos=(10, 60), size=(430, 115),
                                           style=wx.LC_REPORT | wx.LC_VRULES | wx.LC_HRULES | wx.SIMPLE_BORDER)
         self.list_inventory.InsertColumn(0, u'Descrição', width=230)
@@ -191,17 +196,20 @@ class Sale(wx.Frame):
         self.list_inventory.InsertColumn(2, u'Preço')
         self.list_inventory.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.database_select)
 
-        self.textbox_product_id = wx.SearchCtrl(self.panel_product_data, -1, pos=(10, 185), size=(100, -1))
+        self.textbox_product_id = wx.SearchCtrl(self.panel_product_data, -1, pos=(10, 185), size=(100, -1),
+                                                style=wx.TE_PROCESS_ENTER)
         self.textbox_product_id.ShowSearchButton(False)
         self.textbox_product_id.SetDescriptiveText(u'ID')
 
-        self.textbox_product_price = wx.SearchCtrl(self.panel_product_data, -1, pos=(130, 185), size=(80, -1))
+        self.textbox_product_price = wx.SearchCtrl(self.panel_product_data, -1, pos=(130, 185), size=(80, -1),
+                                                   style=wx.TE_PROCESS_ENTER)
         self.textbox_product_price.ShowSearchButton(False)
         self.textbox_product_price.SetDescriptiveText(u'Preço')
         self.textbox_product_price.SetValue(u'R$ 0,00')
         self.textbox_product_price.Disable()
 
-        self.textbox_product_amount = wx.SearchCtrl(self.panel_product_data, -1, pos=(230, 185), size=(100, -1))
+        self.textbox_product_amount = wx.SearchCtrl(self.panel_product_data, -1, pos=(230, 185), size=(100, -1),
+                                                    style=wx.TE_PROCESS_ENTER)
         self.textbox_product_amount.ShowSearchButton(False)
         self.textbox_product_amount.SetDescriptiveText(u'Quantidade')
 
@@ -451,6 +459,8 @@ class Sale(wx.Frame):
         _amount = self.textbox_product_amount.GetValue()
         try:
             amount = core.amount2float(_amount)
+            if not amount:
+                raise ValueError
         except ValueError:
             self.textbox_product_amount.Clear()
             return dialogs.launch_error(self, u'Quantidade inválida!')
@@ -470,6 +480,7 @@ class Sale(wx.Frame):
         self.textbox_product_description.Clear()
         self.textbox_product_price.SetValue(u"0,00")
         self.update_sale_data(None)
+        self.textbox_product_description.SetFocus()
 
     def data_delete(self, event):
         if self.list_sold.GetFocusedItem() == -1:
@@ -480,6 +491,7 @@ class Sale(wx.Frame):
     def data_editor_enable(self, event):
         self.item = self.list_sold.GetFocusedItem()
         if not self.item == -1:
+            self.Bind(wx.EVT_TEXT_ENTER, self.data_edit)
             amount, unit = self.list_sold.GetItemText(self.item, 1).split()
             self.textbox_product_description.SetValue(self.list_sold.GetItemText(self.item, 0))
             self.textbox_product_id.SetValue(str(self.list_sold.GetItemData(self.item)))
@@ -531,6 +543,8 @@ class Sale(wx.Frame):
         self.update_sale_data(None)
         self.data_editor_disable(event)
 
+        self.textbox_product_description.SetFocus()
+
     def data_editor_disable(self, event):
         self.textbox_product_unit.Clear()
         self.textbox_product_amount.Clear()
@@ -538,6 +552,9 @@ class Sale(wx.Frame):
         self.textbox_product_id.Clear()
         self.textbox_product_description.Clear()
         self.__panel_product.Destroy()
+
+        self.panel_product_data.Bind(wx.EVT_TEXT_ENTER, self.data_insert)
+
         self.__panel_product = wx.Panel(self.panel_product_data, size=(300, 40), pos=(100, 225), style=wx.SIMPLE_BORDER)
         button_add_product = GenBitmapTextButton(self.__panel_product, 220,
                                                  wx.Bitmap(core.directory_paths['icons'] + 'Add.png',
@@ -571,6 +588,8 @@ class Sale(wx.Frame):
 
     def database_select(self, event):
         j = self.list_inventory.GetFocusedItem()
+        if j is -1:
+            j = 0
         unit = self.list_inventory.GetItemText(j, 1).split()[-1]
         self.textbox_product_price.SetValue(self.list_inventory.GetItemText(j, 2))
         self.textbox_product_id.SetValue(str(self.list_inventory.GetItemData(j)))

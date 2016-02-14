@@ -227,7 +227,7 @@ class ProductData(wx.Frame):
         self.textbox_barcode = wx.TextCtrl(self.panel_data, -1, pos=(190, 90), size=(300, 30))
         self.textbox_price = wx.TextCtrl(self.panel_data, -1, pos=(190, 150), size=(100, 30))
         self.textbox_amount = wx.TextCtrl(self.panel_data, -1, pos=(350, 150), size=(100, 30))
-        self.textbox_price.Bind(wx.EVT_CHAR, core.check_money)
+        self.textbox_price.Bind(wx.EVT_CHAR, core.check_currency)
         self.textbox_barcode.Bind(wx.EVT_CHAR, core.check_number)
         if not self.editable:
             self.combobox_category = wx.TextCtrl(self.panel_data, -1, pos=(190, 210), size=(150, 30))
@@ -378,14 +378,14 @@ class ProductData(wx.Frame):
             db.insert_product(s)
         db.close()
 
-        if isinstance(self.parent, InventoryManager):
-            self.parent.setup(None)
-
-        elif isinstance(self.parent, sale.Sale):
+        if isinstance(self.parent, sale.Sale):
             self.parent.database_inventory.insert_product(s)
             self.parent.database_search(None)
 
         if self.data:
+            if isinstance(self.parent, InventoryManager):
+                self.parent.setup(None)
+
             return self.exit(None)
 
         self.clean()

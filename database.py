@@ -1077,10 +1077,11 @@ def database2transaction(database_list):
     data.value = database_list[2]
     data.transaction_date = database_list[3]
     data.category = database_list[4]
-    data.record_time = database_list[5]
-    data.record_date = database_list[6]
-    data.payment_pendant = True if database_list[7] else False
-    data.active = True if database_list[8] else False
+    data.type = database_list[5]
+    data.record_time = database_list[6]
+    data.record_date = database_list[7]
+    data.payment_pendant = True if database_list[8] else False
+    data.active = True if database_list[9] else False
 
     return data
 
@@ -1889,18 +1890,40 @@ class TransactionsDB:
 
         records = list()
 
-        self.cursor.execute('SELECT RECORD_DATE FROM WASTES WHERE ACTIVE=?', (active, ))
+        self.cursor.execute('SELECT RECORD_DATE FROM WASTES WHERE ACTIVE=? GROUP BY RECORD_DATE', (active, ))
         records = list(set(records + self.cursor.fetchall()))
 
-        self.cursor.execute('SELECT RECORD_DATE FROM SALES WHERE ACTIVE=?', (active, ))
+        self.cursor.execute('SELECT RECORD_DATE FROM SALES WHERE ACTIVE=? GROUP BY RECORD_DATE', (active, ))
         records = list(set(records + self.cursor.fetchall()))
 
-        self.cursor.execute('SELECT RECORD_DATE FROM EXPENSES WHERE ACTIVE=?', (active, ))
+        self.cursor.execute('SELECT RECORD_DATE FROM EXPENSES WHERE ACTIVE=? GROUP BY RECORD_DATE', (active, ))
         records = list(set(records + self.cursor.fetchall()))
 
         if transactions:
-            self.cursor.execute('SELECT RECORD_DATE FROM TRANSACTIONS WHERE ACTIVE=?', (active, ))
+            self.cursor.execute('SELECT TRANSACTION_DATE FROM TRANSACTIONS WHERE ACTIVE=? GROUP BY TRANSACTION_DATE',
+                                (active, ))
             records = list(set(records + self.cursor.fetchall()))
+
+        for i in range(len(records)):
+            records[i] = records[i][0]
+
+        records.sort(reverse=True)
+
+        return records
+
+    def list_transactions_record_dates(self, deleted=False):
+        """
+        Obtém uma lista com todas as datas com transações registradas
+        :type deleted: bool
+        :param deleted: Mostrar entradas apagadas apenas
+        :return: Lista com todos os dias com movimento registrado
+        :rtype: list[str]
+        """
+
+        active = 0 if deleted else 1
+
+        self.cursor.execute('SELECT RECORD_DATE FROM TRANSACTIONS WHERE ACTIVE=? GROUP BY RECORD_DATE', (active, ))
+        records = self.cursor.fetchall()
 
         for i in range(len(records)):
             records[i] = records[i][0]
@@ -1920,7 +1943,7 @@ class TransactionsDB:
 
         active = 0 if deleted else 1
 
-        self.cursor.execute('SELECT RECORD_DATE FROM TRANSACTIONS WHERE ACTIVE=? GROUP BY RECORD_DATE', (active, ))
+        self.cursor.execute('SELECT TRANSACTION_DATE FROM TRANSACTIONS WHERE ACTIVE=? GROUP BY TRANSACTION_DATE', (active, ))
         records = self.cursor.fetchall()
 
         for i in range(len(records)):

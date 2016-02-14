@@ -82,8 +82,6 @@ def atualizar_imposto_122741():
     last_update = settings.CONFIG.get(settings.CONFIG_SECTION_SAT, settings.CONFIG_FIELD_LAST_UPDATE_IMPOSTO)
     interval = int(settings.CONFIG.get(settings.CONFIG_SECTION_SAT, settings.CONFIG_FIELD_UPDATE_IMPOSTO_INTERVAL))
 
-    print last_update, interval
-
     now_date = core.date2int(core.datetime_today()[0])
     last_date = core.date2int(last_update)
 

@@ -85,7 +85,7 @@ class CategoryManager(wx.Frame):
         import base
         if isinstance(self.GetParent(), base.Base):
 
-            panel_change_type = wx.Panel(panel_top, pos=(315, 0), size=(200, 30), style=wx.SIMPLE_BORDER)
+            panel_change_type = wx.Panel(panel_top, pos=(315, 0), size=(203, 33), style=wx.SIMPLE_BORDER)
             rep = wx.Button(panel_change_type, -1, label=u'Transações', pos=(0, 0), size=(100, 30))
             rep.Bind(wx.EVT_BUTTON, self.change_data_type)
             quir = wx.Button(panel_change_type, -1, label=u'Produtos', pos=(100, 0), size=(100, 30))
@@ -296,6 +296,9 @@ class CategoryData(wx.Frame):
         self.Centre()
         self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
         self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+
+        self.Bind(wx.EVT_TEXT_ENTER, self.ask_end)
+
         # first
         self.panel_data = wx.Panel(self, -1, size=(420, 150), pos=(10, 10), style=wx.SIMPLE_BORDER | wx.TAB_TRAVERSAL)
         self.panel_data.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
@@ -357,19 +360,23 @@ class ProductCategoryData(CategoryData):
         CategoryData.setup_gui(self)
 
         wx.StaticText(self.panel_data, -1, u"Descrição:", pos=(10, 5))
-        self.textbox_description = wx.TextCtrl(self.panel_data, -1, pos=(10, 25), size=(400, 30))
+        self.textbox_description = wx.TextCtrl(self.panel_data, -1, pos=(10, 25), size=(400, 30),
+                                               style=wx.TE_PROCESS_ENTER)
 
         wx.StaticText(self.panel_data, -1, u"NCM:", pos=(10, 70))
-        self.textbox_ncm = wx.TextCtrl(self.panel_data, -1, pos=(10, 90), size=(60, 30))
+        self.textbox_ncm = wx.TextCtrl(self.panel_data, pos=(10, 90), size=(60, -1), style=wx.TE_PROCESS_ENTER)
+        self.textbox_ncm.Bind(wx.EVT_TEXT_ENTER, self.ask_end)
         self.textbox_ncm.Bind(wx.EVT_CHAR, core.check_ncm)
 
-        wx.StaticText(self.panel_data, -1, u"CFOP:", pos=(100, 70))
-        self.combobox_cfop = wx.ComboBox(self.panel_data, -1, pos=(100, 90), size=(150, 30), style=wx.CB_READONLY)
+        wx.StaticText(self.panel_data, -1, u"CFOP:", pos=(90, 70))
+        self.combobox_cfop = wx.ComboBox(self.panel_data, -1, pos=(90, 90), size=(170, 30),
+                                         style=wx.TE_PROCESS_ENTER | wx.CB_READONLY)
         self.combobox_cfop.SetItems(core.cfop_optins)
         self.combobox_cfop.SetSelection(1)
 
         wx.StaticText(self.panel_data, -1, u"Unidade de medida:", pos=(280, 70))
-        self.combobox_unit = wx.ComboBox(self.panel_data, -1, pos=(280, 90), size=(120, 30), style=wx.CB_READONLY)
+        self.combobox_unit = wx.ComboBox(self.panel_data, -1, pos=(280, 90), size=(120, 30),
+                                         style=wx.TE_PROCESS_ENTER | wx.CB_READONLY)
         self.combobox_unit.SetItems(core.unit_options)
         self.combobox_unit.SetSelection(0)
 
@@ -462,7 +469,8 @@ class TransactionCategoryData(CategoryData):
     def setup_gui(self):
         CategoryData.setup_gui(self)
         wx.StaticText(self.panel_data, -1, u"Descrição:", pos=(10, 40))
-        self.textbox_description = wx.TextCtrl(self.panel_data, -1, pos=(10, 60), size=(400, 30))
+        self.textbox_description = wx.TextCtrl(self.panel_data, -1, pos=(10, 60), size=(400, 30),
+                                               style=wx.TE_PROCESS_ENTER)
 
     def setup(self):
         if self.data:
