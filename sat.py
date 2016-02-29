@@ -163,7 +163,10 @@ def enviar_venda_ao_sat(sale):
     print(resp.mensagem)
 
     # Salva o xml, gerado pelo SAT depois da compra, no HD
-    open("saida.xml", "w").write(resp.xml())
+    import core
+    xml_path = core.directory_paths['cupons_fiscais'] + core.format_id_user(sale.ID) + ".xml"
+    with open(xml_path, "w") as xml:
+        xml.write(resp.xml())
 
 
 #####################################################
