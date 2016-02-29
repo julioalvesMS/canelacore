@@ -509,14 +509,13 @@ class TransactionCategoryData(CategoryData):
         else:
             db.edit_category(data)
         db.close()
+
         import transaction
         import expense
         if isinstance(self.parent, transaction.Transaction):
             self.parent.update_categories()
         if isinstance(self.parent, expense.Expense):
             self.parent.update_categories()
-        if isinstance(self.parent, CategoryManager):
-            self.parent.setup(None)
 
         if self.data:
             self.exit(None)

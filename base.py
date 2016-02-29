@@ -9,6 +9,7 @@ import wx
 import wx.gizmos
 from wx.lib.buttons import GenBitmapTextButton
 
+import routines
 import clients
 import core
 import daily_report
@@ -90,7 +91,7 @@ class Base(wx.Frame):
         button_pendant = GenBitmapTextButton(part2, 22, wx.Bitmap(core.directory_paths['icons'] + 'Business.png',
                                              wx.BITMAP_TYPE_PNG), u"Pendente", (480, 0), size=(120, 60))
         button_transactions = GenBitmapTextButton(part3, 23, wx.Bitmap(core.directory_paths['icons'] + 'Bills.png',
-                                            wx.BITMAP_TYPE_PNG), u"Contas", (0, 0), size=(120, 60))
+                                                  wx.BITMAP_TYPE_PNG), u"Contas", (0, 0), size=(120, 60))
         button_report = GenBitmapTextButton(part3, 20, wx.Bitmap(core.directory_paths['icons'] + 'Resumo.png',
                                             wx.BITMAP_TYPE_PNG), u"Resumos", (120, 0), size=(120, 60))
         button_recovery = GenBitmapTextButton(part3, 15, wx.Bitmap(core.directory_paths['icons'] + 'Tools.png',
@@ -163,11 +164,11 @@ class Base(wx.Frame):
         self.Bind(wx.EVT_MENU, self.hide_to_tray, id=58)
         self.Bind(wx.EVT_MENU, self.reopen, id=57)
 
-    def OnPaint(self, event):
+    def OnPaint(self, event=None):
         wx.PaintDC(self).DrawBitmap(self.background_image, 0, 0)
         wx.PaintDC(self.panel_logo).DrawBitmap(self.logo, 0, 0)
 
-    def delivery_check(self, event):
+    def delivery_check(self, event=None):
         self.timer_delivery.Stop()
 
         date_now, time_now = core.datetime_today()
@@ -214,7 +215,7 @@ class Base(wx.Frame):
             check_interval = 300000
         self.timer_delivery.Start(check_interval)
         
-    def notify_delivery(self, data):
+    def notify_delivery(self, data=None):
         """
         Notifica o usuario sobre a existencia de uma entrega a a ser realizada
         :param data: Dados da entrega
@@ -238,65 +239,66 @@ class Base(wx.Frame):
                 timer.start()
                 break
 
-        dialogs.Warner(self, data)
+        dialogs.DeliveryNotification(self, data)
 
-    def hide_to_tray(self, event):
+    def hide_to_tray(self, event=None):
         self.Hide()
 
-    def exit(self, event):
-        self.Destroy()
-        self.tray.Destroy()
+    def exit(self, event=None):
+        if not routines.on_close():
+            self.Destroy()
+            self.tray.Destroy()
 
-    def ask_exit(self, event):
+    def ask_exit(self, event=None):
         dialogs.Ask(self, u'Sair', 90)
 
-    def reopen(self, event):
-        self.exit(None)
+    def reopen(self, event=None):
+        self.exit()
         Base()
 
-    def verify_credentials(self, event):
-        dialogs.PasswordBox(self)
+    def verify_credentials(self, event=None):
+        dialogs.PasswordBox(self, self.open_monthly_report)
 
-    def open_new_sale(self, event):
+    def open_new_sale(self, event=None):
         sale.Sale(self)
 
-    def open_client_manager(self, event):
+    def open_client_manager(self, event=None):
         clients.ClientManager(self)
 
-    def open_new_expense(self, event):
+    def open_new_expense(self, event=None):
         expense.Expense(self)
 
-    def open_daily_report(self, event):
+    def open_daily_report(self, event=None):
         daily_report.Report(self)
 
-    def open_edition_manager(self, event):
+    def open_edition_manager(self, event=None):
         record_editor.EditionManager(self)
 
-    def open_category_manager(self, event):
+    def open_category_manager(self, event=None):
         categories.TransactionCategoryManager(self)
 
-    def open_new_waste(self, event):
+    def open_new_waste(self, event=None):
         waste.Waste(self)
 
-    def open_delivery_manager(self, event):
+    def open_delivery_manager(self, event=None):
         delivery.DeliveryManager(self)
 
-    def open_inventory_manager(self, event):
+    def open_inventory_manager(self, event=None):
         inventory.InventoryManager(self)
 
-    def open_sale_manager(self, event):
+    def open_sale_manager(self, event=None):
         sale.SaleManager(self)
 
-    def open_transaction_manager(self, event):
+    def open_transaction_manager(self, event=None):
         transaction.TransactionManager(self)
 
-    def open_monthly_report(self, event):
+    def open_monthly_report(self, event=None):
         monthly_report.Report(self)
 
-    def open_settings(self, event):
+    def open_settings(self, event=None):
         settings.SettingsMenu(self)
 
-    def open_teste_window(self, event):
+    def open_teste_window(self, event=None):
         teste.Teste(self)
 
 
@@ -352,7 +354,7 @@ class BaseTray(wx.TaskBarIcon):
         return menu
 
     def verify_credentials(self, event):
-        dialogs.PasswordBox(self.frame)
+        dialogs.PasswordBox(self.frame, self.open_monthly_report)
 
     def open_new_sale(self, event):
         sale.Sale(self.frame)
@@ -409,16 +411,3 @@ class BaseTray(wx.TaskBarIcon):
 
     def ask_exit(self, event):
         dialogs.Ask(self.frame, u'Sair', 90)
-
-
-'''
-###TOP PRIORITY###
-criar venda programada
-na venda programada, se for entrega, já deixar a entrega programada
-
-categoria no relatório de produtos
-v2.0
-fazer instalador
-recuperação de __backup__,
-salvar tudo  ou os backups no drop ou parecido
-'''

@@ -83,6 +83,16 @@ class Sale(wx.Frame):
     __panel_product = None
 
     def __init__(self, parent, title=u'Vendas', key=-1, data=None, delivery_id=-1, editable=True):
+        """
+        Método construtor do Frame de Vendas
+        :param wx.Window parent: Frame pai
+        :param str title: Título do Frame
+        :param int key: ID da venda a ser editada
+        :param data_types.SaleData data: Dados da venda sendo aberta
+        :param int delivery_id: ID da entrega, caso seja uma entrega sendo aberta
+        :param bool editable: True para o Frame ser editável, False Caso contrário
+        :return:
+        """
         wx.Frame.__init__(self, parent, -1, title,
                           style=wx.MINIMIZE_BOX | wx.SYSTEM_MENU | wx.CAPTION | wx.CLOSE_BOX | wx.CLIP_CHILDREN)
 
@@ -104,11 +114,15 @@ class Sale(wx.Frame):
         self.Show()
 
     def setup_gui(self):
+        """
+        Cria a GUI do Frame
+        :return:
+        """
         self.SetPosition(wx.Point(200, 25))
         self.SetSize(wx.Size(925, 700))
         self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
 
-        self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        self.SetBackgroundColour(core.COLOR_SECONDARY_BACKGROUND)
 
         # result
         result = wx.Panel(self, -1, pos=(5, 5), size=(450, 605), style=wx.DOUBLE_BORDER | wx.TAB_TRAVERSAL)
@@ -305,7 +319,7 @@ class Sale(wx.Frame):
 
         # last
         last = wx.Panel(self, 24, pos=(5, 615), size=(905, 50), style=wx.DOUBLE_BORDER | wx.TAB_TRAVERSAL)
-        last.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        last.SetBackgroundColour(core.COLOR_SECONDARY_BACKGROUND)
         if self.editable:
             last_ = wx.Panel(last, pos=(292, 5), size=(320, 40), style=wx.SIMPLE_BORDER)
             finish = GenBitmapTextButton(last_, 240,
@@ -335,7 +349,13 @@ class Sale(wx.Frame):
             cancel.Bind(wx.EVT_BUTTON, self.exit)
 
     def setup(self):
+        """
+        Preenche o Frame com os dados já existentes, caso tenham sido fornecidos
+         ou um ID de venda ou data na criação do Frame
+        :return:
+        """
 
+        # Obtém os dados da venda, ou encerra o método caso não haja nenhum dado
         if self.data:
             self.key = self.data.ID
         elif self.key != -1:
@@ -351,11 +371,21 @@ class Sale(wx.Frame):
         if self.data.client_id:
             self.textbox_client_id.SetValue(core.format_id_user(self.data.client_id))
 
-        # Caso haja, adiciona os dados da entrega
-        if self.delivery_id is not -1:
+        delivery_data = None
+
+        if self.data.delivery and self.delivery_id == -1:
+            db = database.DeliveriesDB()
+            delivery_data = db.deliveries_search_sale(self.data.ID)
+            self.delivery_id = delivery_data.ID
+            db.close()
+
+        if not delivery_data and self.delivery_id != -1:
             db = database.DeliveriesDB()
             delivery_data = db.deliveries_search_id(self.delivery_id)
             db.close()
+
+        # Caso haja, adiciona os dados da entrega
+        if delivery_data:
 
             self.delivery.SetValue(True)
             if self.editable:
@@ -404,6 +434,12 @@ class Sale(wx.Frame):
         self.update_sale_data(None)
 
     def setup_delivery(self, event):
+        """
+        Habilita e desabilita os campos referentes a dados de entrga,
+        de acordo com a seleção que diz ser uma entrega ou não
+        :param event:
+        :return:
+        """
         self.delivery_enabled = self.delivery.GetValue()
         if self.delivery.GetValue():
             self.textbox_client_name.Enable()
@@ -430,23 +466,54 @@ class Sale(wx.Frame):
             self.textbox_delivery_hour.Disable()
 
     def open_client_manager(self, event):
+        """
+        Abre o Gerenciador de Clientes para permitir que o usuário selecione um cliente do registro
+        :param event: Evento da GUI
+        :return:
+        """
         clients.ClientManager(self, client_selection_mode=True)
 
     def open_client_register(self, event):
+        """
+        Abre o Registro de clientes para permitir que o usuário registre um novo usuário na venda
+        :param event:
+        :return:
+        """
         clients.ClientRegister(self)
 
     def open_product_register(self, event):
+        """
+        Abre o Registro de produtos, permitindo que o usuário cadastre um novo produto não registrado durante a venda
+        :param event:
+        :return:
+        """
         inventory.ProductData(self)
 
     def open_sale_edit(self, event):
+        """
+        Abre novamente o Frame, mas agora permitindo a edição
+        :param event:
+        :return:
+        """
         Sale(self.GetParent(), key=self.key, data=self.data, delivery_id=self.delivery_id)
         self.exit(None)
 
     def clean_client(self, event):
+        """
+        Apaga os dados do cliente do Frame
+        :param event: Evento da GUI
+        :return:
+        """
+        self.textbox_client_id.Clear()
         self.textbox_client_name.Clear()
         self.textbox_client_cpf.Clear()
 
     def data_insert(self, event):
+        """
+        Insere uma nova entrada na lista de produtos vendidos
+        :param event: Evento da GUI
+        :return:
+        """
         _product_id = self.textbox_product_id.GetValue()
         if not _product_id:
             return dialogs.launch_error(self, u'Eh necessário especificar o ID do produto!')
@@ -483,12 +550,23 @@ class Sale(wx.Frame):
         self.textbox_product_description.SetFocus()
 
     def data_delete(self, event):
+        """
+        Apaga uma entrada na lista de produtos vendidos
+        :param event: Evento da GUI
+        :return:
+        """
         if self.list_sold.GetFocusedItem() == -1:
             return
         self.list_sold.DeleteItem(self.list_sold.GetFocusedItem())
         self.update_sale_data(None)
 
     def data_editor_enable(self, event):
+        """
+        Habilita o modo de edição de entradas, que permite que o usuário altere
+        todos os dados de uma entrada de produto vendido
+        :param event: Evento da GUI
+        :return:
+        """
         self.item = self.list_sold.GetFocusedItem()
         if not self.item == -1:
             self.Bind(wx.EVT_TEXT_ENTER, self.data_edit)
@@ -511,6 +589,11 @@ class Sale(wx.Frame):
             eremov.Bind(wx.EVT_BUTTON, self.data_editor_disable)
 
     def data_edit(self, event):
+        """
+        Edita uma entrada na lista de produtos vendidos
+        :param event: Evento da GUI
+        :return:
+        """
         _product_id = self.textbox_product_id.GetValue()
         if not _product_id:
             return dialogs.launch_error(self, u'Eh necessário especificar o ID do produto!')
@@ -546,6 +629,11 @@ class Sale(wx.Frame):
         self.textbox_product_description.SetFocus()
 
     def data_editor_disable(self, event):
+        """
+        Desativa o modo de edição de entradas
+        :param event: Evento da GUI
+        :return:
+        """
         self.textbox_product_unit.Clear()
         self.textbox_product_amount.Clear()
         self.textbox_product_price.SetValue(u'0,00')
@@ -573,10 +661,20 @@ class Sale(wx.Frame):
         button_remove_product.Bind(wx.EVT_BUTTON, self.data_delete, id=222)
 
     def exit(self, event):
+        """
+        Fecha o Frame e o Banco de dados
+        :param event: Evento da GUI
+        :return:
+        """
         self.database_inventory.close()
         self.Close()
 
     def database_search(self, event):
+        """
+        Busca no Banco de Dados de Produtos entradas compativeis com a string digitada no textbox_product_description
+        :param event: Evento da GUI
+        :return:
+        """
         self.list_inventory.DeleteAllItems()
         product_list = self.database_inventory.inventory_search_description(self.textbox_product_description.GetValue())
         for product in product_list:
@@ -587,6 +685,12 @@ class Sale(wx.Frame):
             self.list_inventory.SetItemData(item, product.ID)
 
     def database_select(self, event):
+        """
+        Seleciona um produto da lista de produtos e insere os dados no Painel de Produto,
+        restando apenas a quantidade a ser inserida pelo usuário
+        :param event: Evento da GUI
+        :return:
+        """
         j = self.list_inventory.GetFocusedItem()
         if j is -1:
             j = 0
@@ -598,6 +702,12 @@ class Sale(wx.Frame):
         self.textbox_product_amount.SetFocus()
 
     def update_sale_data(self, event):
+        """
+        Atualiza os dados da venda como Total vendido e preço final, conforme dados dos produtos inseridos,
+        descontos e taxas
+        :param event: evento da GUI
+        :return:
+        """
         total_price = float(0)
         w = self.list_sold.GetItemCount()
         for i in range(0, w):
@@ -619,6 +729,12 @@ class Sale(wx.Frame):
         self.textbox_sale_value.SetValue(core.format_cash_user(final_value))
 
     def update_payment_method(self, event):
+        """
+        Atualiza o Frame de acordo com a seleção de método de pagamento do usuário
+        :param event: Evento da GUI
+        :return:
+        """
+        # Caso o método de pagamento seja algum não listado, permite a entrada pelo usuário, caso contrário a desabilita
         if self.radio_payment_other.GetValue():
             self.textbox_payment_other.Enable()
         else:
@@ -626,18 +742,37 @@ class Sale(wx.Frame):
             self.textbox_payment_other.Disable()
 
     def ask_clean(self, event):
+        """
+        Confirma a limpeza do Frame de todos os dados inseridos pelo usuário
+        :param event: Evento da GUI
+        :return:
+        """
         dialogs.Ask(self, u"Apagar Tudo", 1)
 
     def ask_exit(self, event):
+        """
+        Confirma o fechamento do Frame
+        :param event: Evento da GUI
+        :return:
+        """
         if self.list_sold.GetItemCount() == 0 and not self.delivery.GetValue():
             self.exit(None)
             return
         dialogs.Ask(self, u"Sair", 91)
 
     def ask_end(self, event):
+        """
+        Confirma a finalização da entrada de dados e salvamento da venda
+        :param event: Evento da GUI
+        :return:
+        """
         dialogs.Ask(self, u"Finalizar Venda", 11)
 
     def clean(self):
+        """
+        Apaga todos os dados inseridos no frame, aprontando-o para receber novas entradas
+        :return:
+        """
         self.list_sold.DeleteAllItems()
         self.data_editor_disable(None)
         self.textbox_sale_discount.Clear()
@@ -654,7 +789,11 @@ class Sale(wx.Frame):
         self.update_sale_data(None)
         self.database_search(None)
 
-    def end(self):
+    def get_sale_data(self):
+        """
+        Coleta os dados da venda
+        :return data_types.SaleData: Objeto SaleData com os dados da venda
+        """
         w = self.list_sold.GetItemCount()
         if w == 0:
             return dialogs.launch_error(self, u'Você não adicionou nenhum produto!')
@@ -678,26 +817,11 @@ class Sale(wx.Frame):
         additional_taxes = core.money2float(self.textbox_sale_taxes.GetValue())
         discount = core.money2float(self.textbox_sale_discount.GetValue())
 
-        payment_pendant = False
-
-        if self.radio_payment_money.GetValue():
-            payment_method = u'Dinheiro'
-        elif self.radio_payment_credit_card.GetValue():
-            payment_method = u'Cartão de Crédito'
-        elif self.radio_payment_debit_card.GetValue():
-            payment_method = u'Cartão de Débito'
-        elif self.radio_payment_check.GetValue():
-            payment_method = u'Cheque'
-        elif self.radio_payment_pendant.GetValue():
-            payment_method = u'Pendente'
-            payment_pendant = True
-        else:
-            payment_method = self.textbox_payment_other.GetValue()
+        payment_method, payment_pendant = self.get_payment_method()
 
         if not payment_method:
             return dialogs.launch_error(self, u'Forma de pagamento inválida!')
 
-        client_name = self.textbox_client_name.GetValue()
         client_cpf = self.textbox_client_cpf.GetValue().replace('.', '').replace('-', '')
         client_id_str = self.textbox_client_id.GetValue()
         client_id = 0
@@ -713,25 +837,9 @@ class Sale(wx.Frame):
                 return dialogs.launch_error(self, u'ID de cliente inválido')
             if not client_cpf:
                 client_cpf = client.cpf
-            if not client_name:
-                client_name = client.name
+
         if payment_pendant and not client_id:
             return dialogs.launch_error(self, u'É necessário um cliente cadastrado para registrar pagamento pendente!')
-
-        delivery_receiver_name = self.textbox_delivery_receiver.GetValue()
-        delivery_address = self.textbox_delivery_address.GetValue()
-        delivery_city = self.textbox_delivery_city.GetValue()
-        client_telephone = self.textbox_delivery_telephone.GetValue()
-        delivery_date = self.textbox_delivery_date.GetValue() + u'/' + str(datetime.now().year)
-        delivery_hour = self.textbox_delivery_hour.GetValue()
-
-        delivery_date = core.format_date_internal(delivery_date)
-        if self.delivery_enabled:
-            for r in (delivery_receiver_name, delivery_address, delivery_city,
-                      client_telephone, delivery_date, delivery_hour):
-
-                if len(r) == 0 or r == u'00:00' or r == u'__/__':
-                    return dialogs.launch_error(self, u'Dados insulficientes para registro de entrega!')
 
         if client_cpf:
             try:
@@ -761,60 +869,151 @@ class Sale(wx.Frame):
 
         new_sale.ID = self.key
 
-        # Envia venda ao SAT
-        sat.enviar_venda_ao_sat(new_sale)
+        return new_sale
 
-        db = database.TransactionsDB()
+    def get_payment_method(self):
+        """
+        Obtém o Método de pagamento sendo usado
+        :return str: Método de pagamento
+        """
 
-        if self.key == -1:
-            db.insert_sale(new_sale)
+        payment_pendant = False
+
+        if self.radio_payment_money.GetValue():
+            payment_method = u'Dinheiro'
+        elif self.radio_payment_credit_card.GetValue():
+            payment_method = u'Cartão de Crédito'
+        elif self.radio_payment_debit_card.GetValue():
+            payment_method = u'Cartão de Débito'
+        elif self.radio_payment_check.GetValue():
+            payment_method = u'Cheque'
+        elif self.radio_payment_pendant.GetValue():
+            payment_method = u'Pendente'
+            payment_pendant = True
         else:
-            db.edit_sale(new_sale)
+            payment_method = self.textbox_payment_other.GetValue()
 
-        db.close()
+        return payment_method, payment_pendant
+
+    def get_delivery_data(self):
+        """
+        Coleta os dados para a entrega
+        :return data_types.DeliveryData: Dados da entrega
+        """
+
+        date = core.datetime_today()[0]
+
+        client_name = self.textbox_client_name.GetValue()
+
+        delivery_receiver_name = self.textbox_delivery_receiver.GetValue()
+        delivery_address = self.textbox_delivery_address.GetValue()
+        delivery_city = self.textbox_delivery_city.GetValue()
+        client_telephone = self.textbox_delivery_telephone.GetValue()
+        delivery_date = self.textbox_delivery_date.GetValue() + u'/' + str(datetime.now().year)
+        delivery_hour = self.textbox_delivery_hour.GetValue()
+
+        delivery_date = core.format_date_internal(delivery_date)
+
+        if core.date2int(date) < core.date2int(delivery_date):
+                delivery_date = delivery_date[:-1] + str(int(delivery_date[-1:]) + 1)
+
+        new_delivery = data_types.DeliveryData()
+        new_delivery.client = client_name
+        new_delivery.telephone = client_telephone
+        new_delivery.address = delivery_address
+        new_delivery.city = delivery_city
+        new_delivery.date = delivery_date
+        new_delivery.hour = delivery_hour
+        new_delivery.receiver = delivery_receiver_name
+
+        if self.delivery_enabled:
+            for r in (client_name, delivery_receiver_name, delivery_address, delivery_city,
+                      client_telephone, delivery_date, delivery_hour):
+
+                if len(r) == 0 or r == u'00:00' or r == u'__/__':
+                    dialogs.launch_error(self, u'Dados insulficientes para registro de entrega!')
+                    return None
+        return new_delivery
+
+    def save_delivery_data(self, sale_data, new_delivery):
+        """
+        Salva os dados da entrega
+        :param data_types.SaleData sale_data: Dados da venda
+        :param data_types.DeliveryData new_delivery: Dados da entrega
+        :return:
+        """
+
+        if not self.delivery_enabled:
+            return
 
         deliveries_db = database.DeliveriesDB()
 
         if self.key == -1:
-            delivery = deliveries_db.deliveries_search_sale(new_sale.ID)
+            delivery = deliveries_db.deliveries_search_sale(sale_data.ID)
             if delivery:
                 deliveries_db.delete_delivery_permanently(delivery.ID)
 
-        if self.delivery_enabled:
+        new_delivery.sale_ID = sale_data.ID
 
-            if core.date2int(date) < core.date2int(delivery_date):
-                delivery_date = delivery_date[:-1] + str(int(delivery_date[-1:]) + 1)
-
-            new_delivery = data_types.DeliveryData()
-            new_delivery.client = client_name
-            new_delivery.telephone = client_telephone
-            new_delivery.address = delivery_address
-            new_delivery.city = delivery_city
-            new_delivery.date = delivery_date
-            new_delivery.hour = delivery_hour
-            new_delivery.receiver = delivery_receiver_name
-            new_delivery.sale_ID = new_sale.ID
-
-            deliveries_db.insert_delivery(new_delivery)
+        deliveries_db.insert_delivery(new_delivery)
 
         deliveries_db.close()
+
+    def end(self):
+        """
+        Coleta os dado da venda, envia ao sat e salva tudo no BD
+        :return: None
+        """
+        # Colera os dados da venda
+        new_sale = self.get_sale_data()
+        if not new_sale:
+            return
+
+        # Coleta os dados da entrega, caso seja uma entrega
+        if self.delivery_enabled:
+            new_delivery = self.get_delivery_data()
+            if not new_delivery:
+                return
+            new_sale.delivery = True
+        else:
+            new_delivery = None
+
+        # Envia venda ao SAT
+        # sat.enviar_venda_ao_sat(new_sale)
+
+        # Salva a venda no BD
+        db = database.TransactionsDB()
+        if self.key == -1:
+            db.insert_sale(new_sale)
+        else:
+            db.edit_sale(new_sale)
+        db.close()
+
+        # Caso seja uma entrega, registra-a
+        if new_delivery:
+            self.save_delivery_data(new_sale, new_delivery)
 
         # Atualiza os dados da venda no estoque
         if self.data:
             update_inventory(self.data, True)
         update_inventory(new_sale)
 
+        # Registra a venda no histórico do cliente, caso tenha sido informado um id ou um cpf
         if self.data:
             if self.data.client_id:
                 clients.disconnect_sale(self.data.ID)
-        if client_id:
+        if new_sale.client_id:
             clients.connect_sale(new_sale.ID, new_sale.client_id, new_sale.record_date)
 
+        # Prepara o Frame para receber uma nova venda ou o fecha caso tenha sido uma edição
         self.clean()
         if self.key == -1:
             dialogs.Confirmation(self, u"Sucesso", 1)
         else:
             if type(self.GetParent()) is daily_report.Report:
+                self.GetParent().setup(None)
+            import delivery
+            if type(self.GetParent()) is delivery.DeliveryManager:
                 self.GetParent().setup(None)
             self.exit(None)
 
@@ -959,4 +1158,3 @@ class SaleManager(wx.Frame):
 
     def exit(self, event):
         self.Close()
-

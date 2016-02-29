@@ -357,8 +357,7 @@ class ClientRegister(wx.Frame):
     def end(self):
         if not self.textbox_client_name.GetValue():
             return dialogs.launch_error(self, u'É necessário o nome, para o cadastro')
-        rdate = str(datetime.now().year) + "-" + core.good_show("o", str(datetime.now().month)) + "-" + core.good_show(
-            "o", str(datetime.now().day))
+        rdate = core.datetime_today()[0]
 
         xname = self.textbox_client_name.GetValue()
         names = xname.strip().split()
