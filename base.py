@@ -245,9 +245,8 @@ class Base(wx.Frame):
         self.Hide()
 
     def exit(self, event=None):
-        if not routines.on_close():
-            self.Destroy()
-            self.tray.Destroy()
+        self.Destroy()
+        self.tray.Destroy()
 
     def ask_exit(self, event=None):
         dialogs.Ask(self, u'Sair', 90)
