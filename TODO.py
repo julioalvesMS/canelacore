@@ -5,7 +5,7 @@
 """
 ::::TODO::::
 Atualizar NFe quando a venda eh apagada ou editada
-conexão cliente venda para NFe
+conexão cliente_venda para NFe
 Implementar o SAT
 Implementar sistema de backup
 Implementar sistema de Exceptions

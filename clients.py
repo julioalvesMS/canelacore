@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import threading
-from datetime import datetime
 
 import wx
 import wx.gizmos

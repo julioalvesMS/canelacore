@@ -127,7 +127,7 @@ class DeliveryManager(wx.Frame):
         else:
             self.list_deliveries.SetItemTextColour(red, wx.BLACK)
 
-    def setup(self, event):
+    def setup(self, event=None):
         date_today = core.datetime_today()[0]
 
         show_all = True if self.combobox_show_option.GetSelection() else False
