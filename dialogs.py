@@ -97,14 +97,12 @@ class Notification(wx.Dialog):
         self.data = data
         self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
 
-        self.panel_image = wx.Panel(self, wx.ID_ANY, pos=(5, 57), size=(65, 65))
-
         textbox_message = wx.TextCtrl(self, wx.ID_ANY, self.get_message(), pos=(75, 50), size=(400, 90),
                                       style=wx.NO_BORDER | wx.TE_READONLY | wx.TE_MULTILINE |
                                       wx.TE_NO_VSCROLL | wx.TE_BESTWRAP)
         textbox_message.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
 
-        panel_side_buttons = wx.Panel(self, pos=(100, 150), size=(350, 40), style=wx.SIMPLE_BORDER)
+        panel_side_buttons = wx.Panel(self, pos=(100, 150), size=(370, 40), style=wx.SIMPLE_BORDER)
 
         button_show_more = GenBitmapTextButton(panel_side_buttons, wx.ID_ANY,
                                                wx.Bitmap(core.directory_paths['icons'] + 'Search.png'),
@@ -114,7 +112,7 @@ class Notification(wx.Dialog):
                                         u'OK', pos=(100, 0), size=(100, 40))
         button_done = GenBitmapTextButton(panel_side_buttons, wx.ID_EXIT,
                                           wx.Bitmap(core.directory_paths['icons'] + 'Delivery.png'),
-                                          self.text_done, pos=(200, 0), size=(160, 40))
+                                          self.text_done, pos=(200, 0), size=(170, 40), style=wx.BU_LEFT)
 
         button_show_more.Bind(wx.EVT_BUTTON, self.more)
         button_ok.Bind(wx.EVT_BUTTON, self.exit)
@@ -125,7 +123,7 @@ class Notification(wx.Dialog):
         wx.EVT_PAINT(self, self.OnPaint)
 
     def OnPaint(self, event=None):
-        wx.PaintDC(self.panel_image).DrawBitmap(self.get_image(), 0, 0)
+        wx.PaintDC(self).DrawBitmap(self.get_image(), 5, 57)
 
     def get_image(self):
         return self.image

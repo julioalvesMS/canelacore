@@ -55,7 +55,9 @@ class Base(wx.Frame):
         core.setup_environment()
 
         self.timer_delivery = wx.Timer(self)
+        self.exit_interrupted = False
         self.notification_control = {}
+        self.deliveries_timers = list()
         self.Bind(wx.EVT_TIMER, self.delivery_check, self.timer_delivery)
         self.delivery_check(None)
 
@@ -63,6 +65,8 @@ class Base(wx.Frame):
 
         self.Show()
         self.tray = BaseTray(self)
+
+        routines.on_start()
 
     def setup_gui(self):
         self.Bind(wx.EVT_CLOSE, self.ask_exit)
@@ -206,6 +210,7 @@ class Base(wx.Frame):
             self.notification_control[_delivery.ID] = _delivery
 
             timer = threading.Timer(60*minutes_to_warning + 1, self.notify_delivery, args=[_delivery])
+            self.deliveries_timers.append(timer)
             timer.start()
 
         deliveries_db.close()
@@ -236,19 +241,28 @@ class Base(wx.Frame):
         for i in breaks:
             if remaining > i:
                 timer = threading.Timer(60*i, self.notify_delivery, args=[data])
+                self.deliveries_timers.append(timer)
                 timer.start()
                 break
 
-        dialogs.DeliveryNotification(self, data)
+        wx.CallAfter(dialogs.DeliveryNotification, self, data)
 
     def hide_to_tray(self, event=None):
         self.Hide()
 
     def exit(self, event=None):
-        self.Destroy()
-        self.tray.Destroy()
+        if not routines.on_close():
+            for timer in self.deliveries_timers:
+                if timer.isActive():
+                    timer.calcel()
+            self.Destroy()
+            self.tray.Destroy()
+        else:
+            self.exit_interrupted = True
 
     def ask_exit(self, event=None):
+        if self.exit_interrupted:
+            self.exit()
         dialogs.Ask(self, u'Sair', 90)
 
     def reopen(self, event=None):

@@ -4,6 +4,7 @@
 import threading
 import core
 
+
 # -- Available Routines --
 
 UPDATE = 131
@@ -17,7 +18,15 @@ ACTTIVE_ROUTINES = list()
 # -- Routine Management functions --
 
 
-def add_to_be_done(to_be_done, routine_type, time=None):
+def add_to_be_done(parent, to_be_done, routine_type, time=None):
+    """
+    Adiciona uma rotina a ser executada
+    :param wx.Window parent: Frame de origem da Rotina
+    :param to_be_done: Função que será executada
+    :param int routine_type: Tipo da rotina (Executada no icício do programa, no fim, etc)
+    :param str time: Hora em que deve ser executada
+    :return:
+    """
     my_routine = None
 
     for routine in ACTTIVE_ROUTINES:
@@ -27,7 +36,7 @@ def add_to_be_done(to_be_done, routine_type, time=None):
         break
 
     if not my_routine:
-        my_routine = Routine(routine_type, time)
+        my_routine = Routine(parent, routine_type, time)
 
     my_routine.add(to_be_done)
 
@@ -41,7 +50,7 @@ def start_routines(routine_type):
     activated = False
     for routine in ACTTIVE_ROUTINES:
         if routine.routine_type == routine_type:
-            routine.execute()
+            routine.start()
             activated = True
 
     return activated
@@ -76,7 +85,7 @@ def clear_routines():
         routine.destroy()
 
 
-def update_routines():
+def update_routines(parent=None):
 
     clear_routines()
 
@@ -92,30 +101,33 @@ def update_routines():
         transaction_selections = gui.FrequencyPanel.get_selections_from_string(transaction_frequency)
 
         if notify_expenses:
-            frequency2routine(NOTIFY_EXPENSES, transaction_selections)
+            frequency2routine(parent, NOTIFY_EXPENSES, transaction_selections)
         if notify_incomes:
-            frequency2routine(NOTIFY_INCOMES, transaction_selections)
+            frequency2routine(parent, NOTIFY_INCOMES, transaction_selections)
+
+    on_time()
 
 
-def frequency2routine(to_be_done, selections):
+def frequency2routine(parent, to_be_done, selections):
     """
-
-    :param int to_be_done:
+    Cria uma rotina a partir dos dados de um FrequencyPanel
+    :param int to_be_done: Que tipo de rotina deve ser executada
+    :param wx.Window parent: Frame pai
     :param core_gui.FrequencyPanel.FrequencySelections selections:
     :return:
     """
     if core.ON_START in selections.options:
-        add_to_be_done(to_be_done, core.ON_START)
+        add_to_be_done(parent, to_be_done, core.ON_START)
     if core.ON_CLOSE in selections.options:
-        add_to_be_done(to_be_done, core.ON_CLOSE)
+        add_to_be_done(parent, to_be_done, core.ON_CLOSE)
     if core.ON_TIME in selections.options:
-        add_to_be_done(to_be_done, core.ON_TIME, time=selections.time)
+        add_to_be_done(parent, to_be_done, core.ON_TIME, time=selections.time)
 
 
 #  -- Routines Actions --
 
 
-def notify_pendant_transactions(transaction_type):
+def notify_pendant_transactions(transaction_type, parent=None):
     import database
     import dialogs
 
@@ -130,17 +142,17 @@ def notify_pendant_transactions(transaction_type):
 
     for exchange in transactions:
         if exchange.type == transaction_type:
-            dialogs.TransactionNotification(None, exchange, title=exchange.description)
+            gui_line.open(dialogs.TransactionNotification, parent, exchange, title=exchange.description)
 
 
-def notify_pendant_expenses():
+def notify_pendant_expenses(parent=None):
     from transaction import EXPENSE
-    notify_pendant_transactions(EXPENSE)
+    notify_pendant_transactions(EXPENSE, parent)
 
 
-def notify_pendant_incomes():
+def notify_pendant_incomes(parent=None):
     from transaction import INCOME
-    notify_pendant_transactions(INCOME)
+    notify_pendant_transactions(INCOME, parent)
 
 
 # -- Routine Class
@@ -153,10 +165,11 @@ class Routine(object):
         NOTIFY_INCOMES: notify_pendant_incomes
     }
 
-    def __init__(self, routine_type, time=None):
+    def __init__(self, parent, routine_type, time=None):
 
         self.routine_type = routine_type
         self.time = time
+        self.parent = parent
 
         self.timer = None
 
@@ -169,7 +182,7 @@ class Routine(object):
 
     def start(self):
         if self.routine_type == core.ON_TIME:
-            time_now = core.hour2int(core.datetime_today()[1])
+            time_now = core.hour2int(core.datetime_today()[1][:-3])
             time_objective = core.hour2int(self.time)
             minutes_to_exec = time_objective - time_now
 
@@ -180,19 +193,51 @@ class Routine(object):
             self.timer = threading.Timer(60*minutes_to_exec, self.execute)
             self.timer.start()
 
+        elif self.routine_type == core.ON_START:
+            thread = threading.Timer(3, self.execute)
+            thread.start()
+
         else:
             self.execute()
 
     def execute(self):
         for key in self.__actions:
             if key in self.__to_be_done:
-                self.__actions[key]()
+                self.__actions[key](self.parent)
 
+        gui_line.run_list()
         self.destroy()
 
     def destroy(self):
         ACTTIVE_ROUTINES.remove(self)
         if self.timer:
             self.timer.cancel()
+
+
+class Gui(object):
+    __line = list()
+    opening = False
+
+    def open(self, window, *args, **kwargs):
+        self.__line.append((window, args, kwargs))
+
+    def run_list(self):
+        if not len(self.__line):
+            return
+
+        item = self.__line[0]
+
+        self.__open(item[0], item[1], item[2])
+
+        self.__line.remove(item)
+
+        self.run_list()
+
+    def __open(self, window, args, kwargs):
+        self.opening = True
+        window(*args, **kwargs)
+        self.opening = False
+
+gui_line = Gui()
 
 update_routines()
