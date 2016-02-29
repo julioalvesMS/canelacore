@@ -1382,6 +1382,20 @@ class TransactionsDB:
 
         data.active = True
 
+    def edit_transaction_payment(self, transaction_id, undo=False):
+        """
+        Edita uma entrada do Banco de Dados de Transaçoes, tornando-o pago ou não
+        :param int transaction_id: ID da Transação a ser editada
+        :param bool undo: Torna uma transação pendente novamente
+        """
+
+        pendant = 1 if undo else 0
+
+        # Edita a transação no BD
+        self.cursor.execute("""UPDATE TRANSACTIONS SET PAYMENT_PENDANT=?, ACTIVE=? WHERE ID=?""",
+                            (pendant, 1, transaction_id))
+        self.db.commit()
+
     def edit_category(self, data):
         """
         Edita uma entrada do Banco de Dados de Categorias
@@ -1875,6 +1889,28 @@ class TransactionsDB:
 
         return transactions_list
 
+    def pendant_transactions_list(self, up_to=None, deleted=False):
+        """
+        Dados de todos os cadastros em uma data no BD
+        :param  bool deleted: Mostrar entradas apagadas apenas
+        :param str up_to: ver os registros de até esta data, caso seja None, verifica todos os registros
+        :rtype: list[data_types.TransactionData]
+        :return: uma list com todas as entradas do BD na data
+        """
+        active = 0 if deleted else 1
+        if up_to:
+            self.cursor.execute("""SELECT * FROM TRANSACTIONS WHERE ACTIVE=? AND TRANSACTION_DATE<=?
+                                AND PAYMENT_PENDANT=1""", (active, up_to))
+        else:
+            self.cursor.execute("""SELECT * FROM TRANSACTIONS WHERE ACTIVE=? AND PAYMENT_PENDANT=1""", (active, ))
+        temp = self.cursor.fetchall()
+        transactions_list = list()
+
+        for transaction in temp:
+            transactions_list.append(database2transaction(transaction))
+
+        return transactions_list
+
     def list_record_dates(self, transactions=False, deleted=False):
         """
         Obtém uma lista com todas as datas com dados registrados
@@ -1943,7 +1979,8 @@ class TransactionsDB:
 
         active = 0 if deleted else 1
 
-        self.cursor.execute('SELECT TRANSACTION_DATE FROM TRANSACTIONS WHERE ACTIVE=? GROUP BY TRANSACTION_DATE', (active, ))
+        self.cursor.execute('SELECT TRANSACTION_DATE FROM TRANSACTIONS WHERE ACTIVE=? GROUP BY TRANSACTION_DATE',
+                            (active, ))
         records = self.cursor.fetchall()
 
         for i in range(len(records)):

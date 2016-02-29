@@ -17,20 +17,21 @@ import categories
 import monthly_report
 import sale
 import database
+import transaction
 
 __author__ = 'Julio'
 
 
 class Ask(wx.Dialog):
     def __init__(self, parent, title, option):
-        wx.Dialog.__init__(self, parent, -1, title, size=(400, 180))
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, title, size=(400, 180))
         self.option = option
 
         self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
-        wx.StaticText(self, -1, ask_options[option], pos=(50, 50))
+        wx.StaticText(self, wx.ID_ANY, ask_options[option], pos=(50, 50))
         self.Centre()
-        ok = wx.Button(self, -1, u"Sim", pos=(100, 100))
-        nok = wx.Button(self, -1, u"Não", pos=(200, 100))
+        ok = wx.Button(self, wx.ID_ANY, u"Sim", pos=(100, 100))
+        nok = wx.Button(self, wx.ID_ANY, u"Não", pos=(200, 100))
         ok.Bind(wx.EVT_BUTTON, self.confirmed)
         nok.Bind(wx.EVT_BUTTON, self.exit)
 
@@ -58,13 +59,13 @@ class Ask(wx.Dialog):
 
 class Confirmation(wx.Dialog):
     def __init__(self, parent, title, option):
-        wx.Dialog.__init__(self, parent, -1, title, size=(400, 180))
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, title, size=(400, 180))
         self.Centre()
         self.option = option
-        wx.StaticText(self, -1, confirmation_options[option], pos=(50, 50))
-        ok = wx.Button(self, -1, u"Sim", pos=(100, 100))
+        wx.StaticText(self, wx.ID_ANY, confirmation_options[option], pos=(50, 50))
+        ok = wx.Button(self, wx.ID_ANY, u"Sim", pos=(100, 100))
         ok.Bind(wx.EVT_BUTTON, self.exit)
-        nok = wx.Button(self, -1, u"Não", pos=(200, 100))
+        nok = wx.Button(self, wx.ID_ANY, u"Não", pos=(200, 100))
         nok.Bind(wx.EVT_BUTTON, self.cont)
         self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         if type(parent.GetParent()) in [daily_report.Report, monthly_report.Report, clients.ClientManager,
@@ -81,54 +82,103 @@ class Confirmation(wx.Dialog):
         self.exit(None)
 
 
-class Warner(wx.Dialog):
+class Notification(wx.Dialog):
+
+    text_done = u''
+
     def __init__(self, parent, data, title=u'Aviso de Entrega!'):
         """
-        :type data: data_types.DeliveryData
+        Método construtor do Dialog para
         """
-        wx.Dialog.__init__(self, parent, -1, title, size=(500, 230))
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, title, size=(500, 230))
         self.Centre()
 
+        self.image = None
         self.data = data
         self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
 
-        address = data.city + u' - ' + data.address
-        blur = u'Lembrete'
-        tempo = str(datetime.now().hour) + ':' + str(datetime.now().minute)
-        minor = core.hour2int(data.hour) - core.hour2int(tempo)
-        if minor >= 0:
-            y = u"%s! Faltam menos de %s minutos para a entrega para o(a) Sr(a) %s " \
-                u"em %s, a qual esta marcada para as %s." % (blur, str(minor), data.receiver, address, data.hour)
-        else:
-            y = u"%s! Passou-se %s minutos da hora da entrega para o(a) Sr(a) %s " \
-                u"em %s, a qual estava marcada para as %s." % (blur, str(-minor), data.receiver, address, data.hour)
-        textbox = wx.TextCtrl(self, -1, y, pos=(10, 50), size=(480, 90),
-                              style=wx.NO_BORDER | wx.TE_READONLY | wx.TE_MULTILINE | wx.TE_NO_VSCROLL | wx.TE_BESTWRAP)
-        textbox.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        self.panel_image = wx.Panel(self, wx.ID_ANY, pos=(5, 57), size=(65, 65))
 
-        maps = wx.BitmapButton(self, -1, wx.Bitmap(core.directory_paths['icons'] + 'map_icon_48.png'),
+        textbox_message = wx.TextCtrl(self, wx.ID_ANY, self.get_message(), pos=(75, 50), size=(400, 90),
+                                      style=wx.NO_BORDER | wx.TE_READONLY | wx.TE_MULTILINE |
+                                      wx.TE_NO_VSCROLL | wx.TE_BESTWRAP)
+        textbox_message.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+
+        panel_side_buttons = wx.Panel(self, pos=(100, 150), size=(350, 40), style=wx.SIMPLE_BORDER)
+
+        button_show_more = GenBitmapTextButton(panel_side_buttons, wx.ID_ANY,
+                                               wx.Bitmap(core.directory_paths['icons'] + 'Search.png'),
+                                               u'Ver Mais', pos=(0, 0), size=(100, 40))
+        button_ok = GenBitmapTextButton(panel_side_buttons, wx.ID_OK,
+                                        wx.Bitmap(core.directory_paths['icons'] + 'Check.png'),
+                                        u'OK', pos=(100, 0), size=(100, 40))
+        button_done = GenBitmapTextButton(panel_side_buttons, wx.ID_EXIT,
+                                          wx.Bitmap(core.directory_paths['icons'] + 'Delivery.png'),
+                                          self.text_done, pos=(200, 0), size=(160, 40))
+
+        button_show_more.Bind(wx.EVT_BUTTON, self.more)
+        button_ok.Bind(wx.EVT_BUTTON, self.exit)
+        button_done.Bind(wx.EVT_BUTTON, self.ready)
+
+        panel_side_buttons.SetFocus()
+
+        wx.EVT_PAINT(self, self.OnPaint)
+
+    def OnPaint(self, event=None):
+        wx.PaintDC(self.panel_image).DrawBitmap(self.get_image(), 0, 0)
+
+    def get_image(self):
+        return self.image
+
+    def exit(self, event):
+        self.Destroy()
+
+    def more(self, event):
+        pass
+
+    def get_message(self):
+        pass
+
+    def ready(self, event):
+        pass
+
+
+class DeliveryNotification(Notification):
+
+    text_done = u'Entrega Realizada'
+
+    def __init__(self, parent, data, title=u'Aviso de Entrega!'):
+        """
+        Método construtor do Dialog para
+        :type data: data_types.DeliveryData
+        """
+        Notification.__init__(self, parent, data, title)
+
+        maps = wx.BitmapButton(self, wx.ID_ANY, wx.Bitmap(core.directory_paths['icons'] + 'map_icon_48.png'),
                                pos=(50, 146), size=(48, 48), style=wx.NO_BORDER)
         maps.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         maps.Bind(wx.EVT_BUTTON, self.open_maps)
 
-        panel_side_buttons = wx.Panel(self, pos=(100, 150), size=(350, 40), style=wx.SIMPLE_BORDER)
-        ok = GenBitmapTextButton(panel_side_buttons, -1, wx.Bitmap(core.directory_paths['icons'] + 'Search.png'),
-                                 u'Ver Mais', pos=(0, 0), size=(100, 40))
-        nok = GenBitmapTextButton(panel_side_buttons, -1, wx.Bitmap(core.directory_paths['icons'] + 'Check.png'),
-                                  u'OK', pos=(100, 0), size=(100, 40))
-        gray = GenBitmapTextButton(panel_side_buttons, -1, wx.Bitmap(core.directory_paths['icons'] + 'Delivery.png'),
-                                   u'Entrega Realizada', pos=(200, 0), size=(150, 40))
-        ok.Bind(wx.EVT_BUTTON, self.more)
-        nok.Bind(wx.EVT_BUTTON, self.exit)
-        gray.Bind(wx.EVT_BUTTON, self.ready)
-
-        panel_side_buttons.SetFocus()
-
         self.ShowModal()
         self.Destroy()
 
-    def exit(self, event):
-        self.Close()
+    def get_image(self):
+        if not self.image:
+            self.image = wx.Bitmap(core.directory_paths['icons'] + 'Gift_64.png', wx.BITMAP_TYPE_PNG)
+        return self.image
+
+    def get_message(self):
+        address = self.data.city + u' - ' + self.data.address
+        blur = u'Lembrete'
+        tempo = str(datetime.now().hour) + ':' + str(datetime.now().minute)
+        minor = core.hour2int(self.data.hour) - core.hour2int(tempo)
+        if minor >= 0:
+            message = u"%s! Faltam menos de %s minutos para a entrega para o(a) Sr(a) %s em %s, a qual esta " \
+                      u"marcada para as %s." % (blur, str(minor), self.data.receiver, address, self.data.hour)
+        else:
+            message = u"%s! Passou-se %s minutos da hora da entrega para o(a) Sr(a) %s em %s, a qual estava " \
+                      u"marcada para as %s." % (blur, str(-minor), self.data.receiver, address, self.data.hour)
+        return message
 
     def more(self, event):
         sale.Sale(self.GetParent(), key=self.data.sale_ID, delivery_id=self.data.ID, editable=False)
@@ -147,20 +197,64 @@ class Warner(wx.Dialog):
         internet.search_in_maps(address)
 
 
+class TransactionNotification(Notification):
+
+    text_done = u'Pagamento Realizada'
+
+    def __init__(self, parent, data, title=u'Aviso de Pendencia no Pagamento!'):
+        """
+        Método construtor do Dialog para
+        :type data: data_types.TransactionData
+        """
+        Notification.__init__(self, parent, data, title)
+
+        self.ShowModal()
+        self.Destroy()
+
+    def get_image(self):
+        if not self.image:
+            self.image = wx.Bitmap(core.directory_paths['icons'] + 'Bills_64.png', wx.BITMAP_TYPE_PNG)
+        return self.image
+
+    def get_message(self):
+        blur = u'Atenção'
+        what = u'recebimento' if self.data.type is transaction.INCOME else u'pagamento'
+
+        args = (blur, what, self.data.description, core.format_cash_user(self.data.value, currency=True),
+                core.format_date_user(self.data.transaction_date))
+        message = u'%s! O %s da conta "%s" no valor de %s, ' \
+                  u'a qual está programada para %s ainda está pendente' % args
+
+        return message
+
+    def more(self, event):
+        transaction.Transaction(self.GetParent(), transaction_type=self.data.type,
+                                data=self.data, editable=False)
+        self.exit(None)
+
+    def ready(self, event):
+        db = database.TransactionsDB()
+        db.edit_transaction_payment(self.data.ID)
+        db.close()
+        self.exit(None)
+
+
 class PasswordBox(wx.Dialog):
-    def __init__(self, parent, title=u'Acesso Restrito'):
-        wx.Dialog.__init__(self, parent, -1, title, size=(400, 180))
+    def __init__(self, parent, protected_function, title=u'Acesso Restrito'):
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, title, size=(400, 180))
         self.parent = parent
+        self.protected_function = protected_function
         self.Centre()
         self.SetIcon(wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO))
         wx.EVT_PAINT(self, self.OnPaint)
-        wx.StaticText(self, -1, u'Digíte a senha:', pos=(100, 25)).SetFont(wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
-        self.password = wx.TextCtrl(self, -1, pos=(100, 50), size=(250, 30), style=wx.TE_PASSWORD)
+        text_digite = wx.StaticText(self, wx.ID_ANY, u'Digíte a senha:', pos=(100, 25))
+        text_digite.SetFont(wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD))
+        self.password = wx.TextCtrl(self, wx.ID_ANY, pos=(100, 50), size=(250, 30), style=wx.TE_PASSWORD)
         cancel = wx.Button(self, wx.ID_CANCEL, u'Cancelar', pos=(120, 90))
         contin = wx.Button(self, wx.ID_OK, u'Continuar', pos=(250, 90))
         cancel.Bind(wx.EVT_BUTTON, self.exit)
         contin.Bind(wx.EVT_BUTTON, self.go_on)
-        self.denied_message = wx.StaticText(self, -1, u'Acesso Negado!', pos=(170, 130))
+        self.denied_message = wx.StaticText(self, wx.ID_ANY, u'Acesso Negado!', pos=(170, 130))
         self.denied_message.SetForegroundColour(wx.RED)
         self.denied_message.Hide()
         self.password.SetFocus()
@@ -177,7 +271,7 @@ class PasswordBox(wx.Dialog):
     def go_on(self, event):
         key = self.password.GetValue()
         if core.password_check(key):
-            self.parent.open_monthly_report(None)
+            self.protected_function()
             self.Destroy()
         else:
             self.denied_message.Show()
@@ -188,7 +282,7 @@ class TextBox(wx.Frame):
     status_bar = None
 
     def __init__(self, parent, month, title=u'Observações'):
-        wx.Frame.__init__(self, parent, -1, title, size=(400, 300))
+        wx.Frame.__init__(self, parent, wx.ID_ANY, title, size=(400, 300))
         self.month = month
         self.parent = parent
 
@@ -231,7 +325,8 @@ class TextBox(wx.Frame):
         tool_bar.AddSeparator()
         tool_bar.AddSimpleTool(4509, wx.Bitmap(core.directory_paths['icons'] + 'Exit.png', wx.BITMAP_TYPE_PNG),
                                u'Sair', '')
-        self.notes_box = wx.TextCtrl(self, -1, pos=(10, 60), size=(400, 300), style=wx.TE_MULTILINE | wx.TE_BESTWRAP)
+        self.notes_box = wx.TextCtrl(self, wx.ID_ANY, pos=(10, 60), size=(400, 300),
+                                     style=wx.TE_MULTILINE | wx.TE_BESTWRAP)
         self.Bind(wx.EVT_MENU, self.save, id=4001)
         self.Bind(wx.EVT_MENU, self.save_to, id=4002)
         self.Bind(wx.EVT_MENU, self.exit, id=4009)
@@ -300,6 +395,22 @@ class TextBox(wx.Frame):
     def exit(self, event):
         self.Close()
 
+
+def lauch_directory_selector(parent, title=u'Selecionar Diretório', default_path=None):
+
+    if not default_path:
+        default_path = core.current_dir
+
+    loc = wx.DirDialog(parent, title, default_path)
+    loc.ShowModal()
+    loc.Destroy()
+
+    new_path = loc.GetPath()
+
+    if new_path == default_path:
+        return None
+
+    return new_path
 
 def launch_error(origin, message, title=u'Error 404'):
     a = wx.MessageDialog(origin, message, title, style=wx.OK | wx.ICON_ERROR)

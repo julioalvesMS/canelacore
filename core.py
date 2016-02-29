@@ -244,6 +244,23 @@ def format_date_user(date):
     return '/'.join(date)
 
 
+def format_2_digits(value):
+    """
+    Recebe um numero e o padroniza para ter 2 digitos
+    :param int value: valor a ser formatado
+    :return str: Uma String no formato 'xx' ou '0x' ou '00'
+    """
+    tex = str(value)
+    if len(tex) == 1:
+        tex = "0" + tex
+        return tex
+    elif len(tex) == 0:
+        tex = "00"
+        return tex
+    else:
+        return tex
+
+
 def format_cpf(cpf):
     cpf = cpf.replace('-', '').replace('.', '')
 
@@ -655,9 +672,16 @@ ICON_MAIN = current_dir + "bronze.ico"
 ICON_TRAY = current_dir + "bronze2.ico"
 
 COLOR_DEFAULT_BACKGROUND = '#B4CDCD'
+COLOR_PRIMARY_BACKGROUND = '#FFFFFF'
+COLOR_SECONDARY_BACKGROUND = None
 
 COLOR_LIGHT_BLUE = '#C2E6F8'
 COLOR_LIGHT_GREEN = '#6EFF70'
 COLOR_LIGHT_YELLOW = '#FFDF85'
 
 COLOR_LIST_ITEM_DISABLED = '#ADADAD'
+
+
+ON_START = 1001
+ON_CLOSE = 1002
+ON_TIME = 1003
