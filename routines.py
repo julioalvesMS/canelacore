@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import threading
+
 import core
+import settings as st
 
 
 # -- Available Routines --
@@ -89,7 +91,6 @@ def update_routines(parent=None):
 
     clear_routines()
 
-    import settings as st
     import core_gui as gui
     notify_expenses = st.config2type(st.CONFIG.get(st.CONFIG_SECTION_NOTIFICATIONS, st.CONFIG_FIELD_NOTIFY_EXPENSES),
                                      bool)
@@ -131,10 +132,9 @@ def notify_pendant_transactions(transaction_type, parent=None):
     import database
     import dialogs
 
-    # TODO adicionar confifuração para selecionar quantos dias antes ser notificado
-
     today = core.datetime_today()[0]
-    limit_day = core.int2date(core.date2int(today) + 3)
+    advance = st.config2type(st.CONFIG.get(st.CONFIG_SECTION_NOTIFICATIONS, st.CONFIG_FIELD_TRANSACTION_ADVANCE), int)
+    limit_day = core.int2date(core.date2int(today) + advance)
 
     db = database.TransactionsDB()
     transactions = db.pendant_transactions_list(up_to=limit_day)

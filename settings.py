@@ -240,11 +240,15 @@ class NotificationPanel(wx.Panel):
 
         panel_transaction = wx.StaticBox(self, wx.ID_ANY, u'Contas e Entradas', size=(780, 140))
         text_transaction = wx.StaticText(panel_transaction, wx.ID_ANY, u'Notificações de Contas e Entradas pendentes',
-                                         pos=(150, 25))
+                                         pos=(150, 15))
         text_transaction.SetFont(wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD))
-        self.checkbox_expenses = wx.CheckBox(self, wx.ID_ANY, u'Contas', pos=(15, 70))
-        self.checkbox_incomes = wx.CheckBox(self, wx.ID_ANY, u'Entradas', pos=(90, 70))
-        self.panel_transaction_frequency = gui.FrequencyPanel(self, pos=(15, 110))
+        self.checkbox_expenses = wx.CheckBox(panel_transaction, wx.ID_ANY, u'Contas', pos=(15, 60))
+        self.checkbox_incomes = wx.CheckBox(panel_transaction, wx.ID_ANY, u'Entradas', pos=(90, 60))
+        self.panel_transaction_frequency = gui.FrequencyPanel(panel_transaction, pos=(15, 95))
+
+        wx.StaticText(panel_transaction, wx.ID_ANY, u'Avisar com quantos dias de antecedencia: ', pos=(270, 60))
+        self.spinctrl_transaction_advance = wx.SpinCtrl(panel_transaction, wx.ID_ANY, pos=(500, 57), size=(50, -1),
+                                                        min=0, max=7, initial=2, style=wx.TE_CENTRE)
 
         self.checkbox_expenses.Bind(wx.EVT_CHECKBOX, self.transaction_change_enable)
         self.checkbox_incomes.Bind(wx.EVT_CHECKBOX, self.transaction_change_enable)
@@ -259,6 +263,7 @@ class NotificationPanel(wx.Panel):
 
         notify_expenses = config2type(CONFIG.get(CONFIG_SECTION_NOTIFICATIONS, CONFIG_FIELD_NOTIFY_EXPENSES), bool)
         notify_incomes = config2type(CONFIG.get(CONFIG_SECTION_NOTIFICATIONS, CONFIG_FIELD_NOTIFY_INCOMES), bool)
+        notify_advance = config2type(CONFIG.get(CONFIG_SECTION_NOTIFICATIONS, CONFIG_FIELD_TRANSACTION_ADVANCE), int)
         transaction_frequency = config2type(CONFIG.get(CONFIG_SECTION_NOTIFICATIONS,
                                                        CONFIG_FIELD_TRANSACTIONS_FREQUENCY), str)
 
@@ -266,6 +271,7 @@ class NotificationPanel(wx.Panel):
 
         self.checkbox_expenses.SetValue(notify_expenses)
         self.checkbox_incomes.SetValue(notify_incomes)
+        self.spinctrl_transaction_advance.SetValue(notify_advance)
         self.panel_transaction_frequency.set_selections(transactions_selections)
 
         setup_enabled(self.panel_transaction_frequency, notify_expenses or notify_incomes)
@@ -273,10 +279,12 @@ class NotificationPanel(wx.Panel):
     def save(self):
         notify_expenses = self.checkbox_expenses.GetValue()
         notify_incomes = self.checkbox_incomes.GetValue()
+        notify_advance = self.spinctrl_transaction_advance.GetValue()
         transactions_frequency = self.panel_transaction_frequency.get_string_selections()
 
         CONFIG.set(CONFIG_SECTION_NOTIFICATIONS, CONFIG_FIELD_NOTIFY_EXPENSES, type2config(notify_expenses))
         CONFIG.set(CONFIG_SECTION_NOTIFICATIONS, CONFIG_FIELD_NOTIFY_INCOMES, type2config(notify_incomes))
+        CONFIG.set(CONFIG_SECTION_NOTIFICATIONS, CONFIG_FIELD_TRANSACTION_ADVANCE, type2config(notify_advance))
         CONFIG.set(CONFIG_SECTION_NOTIFICATIONS, CONFIG_FIELD_TRANSACTIONS_FREQUENCY,
                    type2config(transactions_frequency))
 
@@ -391,6 +399,7 @@ CONFIG_FIELD_CUPOM_PATH = 'CUPONS_PATH'
 
 CONFIG_FIELD_NOTIFY_EXPENSES = 'NOTIFY_EXPENSES'
 CONFIG_FIELD_NOTIFY_INCOMES = 'NOTIFY_INCOMES'
+CONFIG_FIELD_TRANSACTION_ADVANCE = 'TRANSACTIONS_DAYS_IN_ADVANCE'
 CONFIG_FIELD_TRANSACTIONS_FREQUENCY = 'TRANSACTIONS_FREQUENCY'
 
 CONFIG_DATA_GENERAL = {
@@ -410,6 +419,7 @@ CONFIG_DATA_SAT = {
 CONFIG_DATA_NOTIFICATIONS = {
     CONFIG_FIELD_NOTIFY_EXPENSES: True,
     CONFIG_FIELD_NOTIFY_INCOMES: True,
+    CONFIG_FIELD_TRANSACTION_ADVANCE: 1,
     CONFIG_FIELD_TRANSACTIONS_FREQUENCY: ' 12:30'
 }
 
