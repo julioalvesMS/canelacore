@@ -54,10 +54,10 @@ class TransactionManager(wx.Frame):
 
     def setup_gui(self):
         self.SetPosition(wx.Point(100, 100))
-        self.SetSize(wx.Size(960, 560))
+        self.SetSize(wx.Size(1140, 560))
         self.SetIcon((wx.Icon(core.ICON_MAIN, wx.BITMAP_TYPE_ICO)))
         self.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
-        panel_top = wx.Panel(self, pos=(10, 10), size=(1180, 100))
+        panel_top = wx.Panel(self, pos=(10, 10), size=(1120, 100))
 
         button_categories = GenBitmapTextButton(panel_top, -1, wx.Bitmap(core.directory_paths['icons'] + 'Drawer.png',
                                                 wx.BITMAP_TYPE_PNG), u'Categorias', pos=(5, 40), size=(115, 40),
@@ -65,7 +65,13 @@ class TransactionManager(wx.Frame):
         button_categories.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         button_categories.Bind(wx.EVT_BUTTON, self.open_category_manager)
 
-        panel_buttons_left = wx.Panel(panel_top, pos=(140, 40), size=(400, 40), style=wx.SIMPLE_BORDER)
+        button_payment = GenBitmapTextButton(panel_top, -1, wx.Bitmap(core.directory_paths['icons'] + 'Check.png',
+                                             wx.BITMAP_TYPE_PNG), u'Pagamento Realizado', pos=(140, 40),
+                                             size=(160, 40), style=wx.SIMPLE_BORDER)
+        button_payment.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
+        button_payment.Bind(wx.EVT_BUTTON, self.data_edit_payment)
+
+        panel_buttons_left = wx.Panel(panel_top, pos=(320, 40), size=(400, 40), style=wx.SIMPLE_BORDER)
 
         see = GenBitmapTextButton(panel_buttons_left, -1,
                                   wx.Bitmap(core.directory_paths['icons'] + 'Search.png', wx.BITMAP_TYPE_PNG),
@@ -90,11 +96,11 @@ class TransactionManager(wx.Frame):
         era.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         era.Bind(wx.EVT_BUTTON, self.ask_delete)
 
-        self.combobox_month_displayed = wx.ComboBox(panel_top, -1, pos=(565, 45), size=(100, 30), style=wx.CB_READONLY)
+        self.combobox_month_displayed = wx.ComboBox(panel_top, -1, pos=(745, 45), size=(100, 30), style=wx.CB_READONLY)
 
         self.combobox_month_displayed.Bind(wx.EVT_TEXT_ENTER, self.setup)
 
-        panel_buttons_right = wx.Panel(panel_top, pos=(690, 40), size=(240, 40), style=wx.SIMPLE_BORDER)
+        panel_buttons_right = wx.Panel(panel_top, pos=(870, 40), size=(240, 40), style=wx.SIMPLE_BORDER)
         quir = GenBitmapTextButton(panel_buttons_right, -1, wx.Bitmap(core.directory_paths['icons'] + 'Exit.png'),
                                    u'Sair',
                                    pos=(120, 0), size=(120, 40))
@@ -105,17 +111,17 @@ class TransactionManager(wx.Frame):
                                   pos=(0, 0), size=(120, 40))
         rep.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         rep.Bind(wx.EVT_BUTTON, self.setup)
-        self.notebook_lists = wx.Notebook(self, -1, pos=(15, 110), size=(930, 410))
+        self.notebook_lists = wx.Notebook(self, -1, pos=(15, 110), size=(1110, 410))
         self.notebook_lists.SetBackgroundColour(core.COLOR_DEFAULT_BACKGROUND)
         for i in range(2):
             list_transactions = wx.ListCtrl(self.notebook_lists, -1,
                                             style=wx.LC_VRULES | wx.LC_HRULES | wx.SIMPLE_BORDER | wx.LC_REPORT)
-            list_transactions.InsertColumn(0, u'Descrição', width=300)
-            list_transactions.InsertColumn(1, u'ID', width=80)
-            list_transactions.InsertColumn(2, u'Categoria', width=200)
+            list_transactions.InsertColumn(0, u'Descrição', width=400)
+            list_transactions.InsertColumn(1, u'ID', width=90)
+            list_transactions.InsertColumn(2, u'Categoria', width=250)
             list_transactions.InsertColumn(3, u'Valor', width=110)
-            list_transactions.InsertColumn(4, u'Data', width=110)
-            list_transactions.InsertColumn(5, u'Pagamento', width=120)
+            list_transactions.InsertColumn(4, u'Data', width=120)
+            list_transactions.InsertColumn(5, u'Pagamento', width=130)
 
             list_transactions.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.data_open)
 
@@ -133,38 +139,59 @@ class TransactionManager(wx.Frame):
         rest.start()
 
     def __setup__(self):
-        self.setup_monthly_expenses()
-        self.setup_monthly_incomes()
+        self.setup_monthly_list(EXPENSE)
+        self.setup_monthly_list(INCOME)
 
-    def setup_monthly_incomes(self):
-        self.list_incomes.DeleteAllItems()
+    def setup_monthly_list(self, data_type):
+
         month = core.format_date_internal(self.combobox_month_displayed.GetValue())
+        date = core.datetime_today()[0]
+
+        lists = {
+            EXPENSE: self.list_expenses,
+            INCOME: self.list_incomes
+        }
+        list_ctrl = lists[data_type]
+
+        list_ctrl.DeleteAllItems()
 
         db = database.TransactionsDB()
-        incomes = db.monthly_transactions_list(month, INCOME)
-        for income in incomes:
-            category = db.categories_search_id(income.category)
-            self.list_incomes.Append((income.description, core.format_id_user(income.ID),
-                                      category.category if category else u'',
-                                      core.format_cash_user(income.value, currency=True),
-                                      core.format_date_user(income.transaction_date),
-                                      u'OK' if not income.payment_pendant else u'Pendente'))
+        transaction_registered = db.monthly_transactions_list(month, data_type)
+        for _transaction in transaction_registered:
+
+            category = db.categories_search_id(_transaction.category)
+            item = list_ctrl.Append((_transaction.description, core.format_id_user(_transaction.ID),
+                                    category.category if category else u'',
+                                    core.format_cash_user(_transaction.value, currency=True),
+                                    core.format_date_user(_transaction.transaction_date),
+                                    u'OK' if not _transaction.payment_pendant else u'Pendente'))
+
+            # Atribui uma cor ao item caso o pagamento ainda não tenha sido realizado
+            if _transaction.payment_pendant:
+                self.setup_item_color(item, data_type)
+
         db.close()
 
-    def setup_monthly_expenses(self):
-        self.list_expenses.DeleteAllItems()
-        month = core.format_date_internal(self.combobox_month_displayed.GetValue())
+    def setup_item_color(self, item, data_type):
 
-        db = database.TransactionsDB()
-        expenses = db.monthly_transactions_list(month, EXPENSE)
-        for expense in expenses:
-            category = db.categories_search_id(expense.category)
-            self.list_expenses.Append((expense.description, core.format_id_user(expense.ID),
-                                       category.category if category else u'',
-                                       core.format_cash_user(expense.value, currency=True),
-                                       core.format_date_user(expense.transaction_date),
-                                       u'OK' if not expense.payment_pendant else u'Pendente'))
-        db.close()
+        lists = {
+            EXPENSE: self.list_expenses,
+            INCOME: self.list_incomes
+        }
+        list_ctrl = lists[data_type]
+
+        date = core.datetime_today()[0]
+        transaction_date = core.format_date_internal(list_ctrl.GetItemText(item, 4))
+
+        date_diference = core.date2int(transaction_date) - core.date2int(date)
+
+        if date_diference < 0:
+            color = '#FC1501'
+        elif date_diference < 2:
+            color = '#FF8600'
+        else:
+            color = '#1C86EE'
+        list_ctrl.SetItemTextColour(item, color)
 
     def data_delete(self, event):
 
@@ -200,6 +227,31 @@ class TransactionManager(wx.Frame):
 
         Transaction(self, transaction_type=transaction_type, key=key)
 
+    def data_edit_payment(self, event):
+        if self.notebook_lists.GetSelection():
+            data_list = self.list_incomes
+            data_type = INCOME
+        else:
+            data_list = self.list_expenses
+            data_type = EXPENSE
+
+        it = data_list.GetFocusedItem()
+        if it == -1:
+            return
+
+        key = data_list.GetItemText(it, 1)
+
+        payment = data_list.GetItemText(it, 5)
+
+        undo = True if payment == u'OK' else False
+
+        db = database.TransactionsDB()
+        db.edit_transaction_payment(key, undo=undo)
+        db.close()
+
+        data_list.SetStringItem(it, 5, u'OK' if not undo else u'Pendente')
+        self.setup_item_color(it, data_type)
+
     def data_open(self, event):
         if self.notebook_lists.GetSelection():
             data_list = self.list_incomes
@@ -213,7 +265,6 @@ class TransactionManager(wx.Frame):
             return
 
         key = data_list.GetItem(it, 1).GetText()
-
         Transaction(self, transaction_type=transaction_type, key=key, editable=False)
 
     def ask_delete(self, event):
